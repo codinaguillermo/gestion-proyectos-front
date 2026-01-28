@@ -27,6 +27,8 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     
+
+    //limpiar todos los datos en localStorage
     logout() {
       this.token = null;
       this.usuario = null;

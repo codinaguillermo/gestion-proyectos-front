@@ -43,6 +43,8 @@
 <script setup>
 import { ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
+import { useRouter } from 'vue-router';
+const router = useRouter();
 
 const authStore = useAuthStore();
 const email = ref('');
@@ -51,18 +53,28 @@ const errorMsg = ref('');
 const cargando = ref(false);
 
 const handleLogin = async () => {
+  console.log("1. Intento de login iniciado...");
   errorMsg.value = '';
   cargando.value = true;
   
-  const resultado = await authStore.login(email.value, password.value);
-  
-  cargando.value = false;
-  
-  if (resultado.success) {
-    alert('¡Bienvenido a la Software Factory! ✅');
-    // Aquí luego usaremos el router para ir al Dashboard
-  } else {
-    errorMsg.value = resultado.error;
+  try {
+    console.log("2. Llamando al Store con:", email.value);
+    const resultado = await authStore.login(email.value, password.value);
+    
+    console.log("3. Respuesta del Store:", resultado);
+    
+    if (resultado && resultado.success) {
+      console.log("4. Login Exitoso, intentando redirigir...");
+      router.push('/dashboard'); 
+    } else {
+      console.log("4. Login Fallido:", resultado?.error);
+      errorMsg.value = resultado?.error || 'Credenciales incorrectas';
+    }
+  } catch (err) {
+    console.error("❌ ERROR CRÍTICO EN LOGINVIEW:", err);
+    errorMsg.value = 'Error inesperado en el sistema';
+  } finally {
+    cargando.value = false;
   }
 };
 </script>
