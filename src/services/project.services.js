@@ -41,6 +41,14 @@ export const projectService = {
                 error: error.response?.data?.mensaje || "Error al eliminar" 
             };
         }
+    },
+    update: async (id, data) => {
+        try {
+            const res = await api.put(`/proyectos/${id}`, data);
+            return res.data;
+        } catch (error) {
+            throw error;
+        }
     }
 };
 

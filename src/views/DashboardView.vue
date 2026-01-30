@@ -1,6 +1,5 @@
 <template>
   <div>   
-
     <div class="container mt-5 px-4">
       <div class="level">
         <div class="level-left">
@@ -25,6 +24,7 @@
               <th>Descripción</th>
               <th>Estado</th>
               <th>Creado</th>
+              <th class="has-text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -83,16 +83,25 @@
         </footer>
       </div>
     </div>
+
+    <EditarProyectoModal 
+      v-if="isEditModalActive" 
+      :proyectoOriginal="proyectoAEditar"
+      :miembrosActuales="proyectoAEditar.integrantes || []"
+      @close="isEditModalActive = false"
+      @save="actualizarProyecto"
+    />
   </div>
-  
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
-// Este es el import que vamos a usar ahora mismo:
 import { projectService } from '../services/project.services'; 
+
+// Importación del componente especializado en CamelCase
+import EditarProyectoModal from '../components/modals/EditarProyectoModal.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -102,13 +111,18 @@ const proyectos = ref([]);
 const cargando = ref(false);
 const errorMsg = ref('');
 
-// --- 2. Variables del Modal y Formulario ---
+// --- 2. Variables del Modal Nuevo y Formulario ---
 const isModalActive = ref(false);
 const enviando = ref(false);
 const formProyecto = reactive({
     nombre: '',
     descripcion: ''
 });
+
+// --- VARIABLES NUEVAS PARA EL CARGÓMETRO ---
+const isEditModalActive = ref(false);
+const proyectoAEditar = ref(null);
+const miembrosAEditar = ref([]);
 
 // --- 3. Funciones de Lógica ---
 
@@ -119,11 +133,8 @@ const handleLogout = () => {
 
 const cargarProyectos = async () => {
     cargando.value = true;
-    errorMsg.value = ''; // Limpiamos errores previos
-    
-    // AQUÍ usamos el import que decías que nadie usaba:
+    errorMsg.value = ''; 
     const res = await projectService.getAll();
-    console.log(res)
     if (res.success) {
         proyectos.value = res.data;
     } else {
@@ -132,23 +143,46 @@ const cargarProyectos = async () => {
     cargando.value = false;
 };
 
-// Agregamos estas dos variables de control
 const esEdicion = ref(false);
 const idEnEdicion = ref(null);
+
 const abrirModal = () => {
-    esEdicion.value = false; // Es nuevo
+    esEdicion.value = false; 
     idEnEdicion.value = null;
     formProyecto.nombre = '';
     formProyecto.descripcion = '';
     isModalActive.value = true;
 };
 
+// REFACTORIZADA: Ahora dispara el componente EditarProyectoModal
 const prepararEdicion = (proyecto) => {
-    esEdicion.value = true; // Es edición
-    idEnEdicion.value = proyecto.id;
-    formProyecto.nombre = proyecto.nombre;
-    formProyecto.descripcion = proyecto.descripcion;
-    isModalActive.value = true;
+    proyectoAEditar.value = proyecto;
+    // Extraemos los alumnos asignados para el cálculo de carga en el modal [cite: 205, 208]
+    miembrosAEditar.value = proyecto.Usuarios || []; 
+    isEditModalActive.value = true;
+};
+
+const actualizarProyecto = async (datos) => {
+    try {
+        // 'datos' trae { form, miembros } desde el modal
+        const { form, miembros } = datos; 
+        
+        // Preparamos el paquete completo para el backend
+        const payload = {
+            ...form,
+            usuariosIds: miembros.map(m => m.id) // Extraemos solo los IDs
+        };
+
+        const res = await projectService.update(form.id, payload);
+        
+        if (res) { 
+            isEditModalActive.value = false;
+            await cargarProyectos(); // Esto refresca la lista y trae los integrantes nuevos
+        }
+    } catch (error) {
+        console.error("Error en la comunicación con la API:", error);
+        alert("No se pudo conectar con el servidor para actualizar.");
+    }
 };
 
 const guardarProyecto = async () => {
@@ -159,16 +193,14 @@ const guardarProyecto = async () => {
     
     if (res.success) {
         isModalActive.value = false;
-        await cargarProyectos(); // Recarga la tabla para mostrar el nuevo
+        await cargarProyectos(); 
     } else {
         alert(res.error);
     }
     enviando.value = false;
 };
 
-
 const confirmarEliminar = async (proyecto) => {
-  // Si Swal no cargó todavía, usamos el confirm viejo para no trabar al usuario
   if (typeof Swal === 'undefined') {
     if (confirm(`¿Eliminar ${proyecto.nombre}?`)) {
        const res = await projectService.delete(proyecto.id);
@@ -177,8 +209,6 @@ const confirmarEliminar = async (proyecto) => {
     return;
   }
 
-  
-  // FUSIBLE: Si no hay proyecto, salimos silenciosamente
   if (!proyecto || !proyecto.id) return; 
 
   const result = await Swal.fire({
@@ -206,31 +236,18 @@ const confirmarEliminar = async (proyecto) => {
   }
 };
 
-/*
-const prepararEdicion = (proyecto) => {
-  // Por ahora solo lo definimos para que no tire error al hacer clic
-  console.log("Editando proyecto:", proyecto.id);
-  // Aquí es donde luego cargaremos el modal con los datos
-};
-*/
-
 const formatearFecha = (fechaRaw) => {
     if (!fechaRaw) return '-';
     return new Date(fechaRaw).toLocaleDateString('es-AR');
 };
 
-// --- 4. Disparo inicial ---
 onMounted(() => {
     cargarProyectos();
 });
 </script>
 
 <script>
-/* ¿Qué hace que esto funcione?
-v-if="cargando": Mientras Axios espera la respuesta del Node, mostramos un aviso amigable.
-
-v-for="proy in proyectos": Este es el "bucle" de Vue. Por cada objeto que encontró en la base de datos, crea una fila <tr> nueva.
-
-:key="proy.id": Fundamental para que Vue no se maree. Le damos el ID único de la base de datos para que sepa qué fila es cuál.
+/* Este archivo orquestación la vista principal[cite: 136, 137].
+Se vincula con projectService para CRUD de proyectos[cite: 128].
 */
 </script>

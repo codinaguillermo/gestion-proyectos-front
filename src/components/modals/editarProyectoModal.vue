@@ -59,9 +59,21 @@
             </div>
 
             <div class="field mt-4">
-              [cite_start]<label class="label">Asignar nuevo integrante [cite: 214]</label>
+              <label class="label">Asignar nuevo integrante</label>
               <div class="control has-icons-left">
-                <input class="input" type="text" placeholder="Buscar por nombre o email..." v-model="busqueda">
+                <input class="input" type="text" v-model="busqueda" @input="buscarUsuarios" placeholder="Buscar por nombre o email...">
+                <div v-if="resultadosBusqueda.length > 0" class="box is-paddingless mt-1" style="position: absolute; z-index: 100; width: 90%;">
+                  <aside class="menu">
+                    <ul class="menu-list">
+                      <li v-for="u in resultadosBusqueda" :key="u.id">
+                        <a @click="seleccionarUsuario(u)">
+                          <strong>{{ u.nombre }}</strong> 
+                          <small class="is-pulled-right">{{ u.email }}</small>
+                        </a>
+                      </li>
+                    </ul>
+                  </aside>
+                </div>
                 <span class="icon is-small is-left"><i class="fas fa-search"></i></span>
               </div>
             </div>
@@ -72,7 +84,7 @@
 
       <footer class="modal-card-foot is-justify-content-flex-end">
         <button class="button" @click="$emit('close')">Cancelar</button>
-        [cite_start]<button class="button is-success" @click="confirmarCambios">Guardar Cambios [cite: 221]</button>
+        <button class="button is-success" @click="confirmarCambios">Guardar Cambios</button>
       </footer>
 
     </div>
@@ -80,7 +92,10 @@
 </template>
 
 <script>
-import configService from '@/services/config.service';
+//Agregamos las llaves para que coincida con 'export const'
+import { configService } from '../../services/configService';
+import axios from 'axios';
+import { useAuthStore } from '../../stores/auth';
 
 export default {
   props: {
@@ -91,9 +106,10 @@ export default {
     return {
       form: { ...this.proyectoOriginal },
       estadosProyecto: [],
-      [cite_start]prioridadesMaster: [], // Para saber cuánto vale cada tarea [cite: 202]
+      prioridadesMaster: [], 
       miembrosAsignados: [],
-      busqueda: ''
+      busqueda: '',          // Aquí se guarda lo que escribís
+      resultadosBusqueda: [] // Aquí guardaremos los alumnos que encontremos
     }
   },
   async mounted() {
@@ -104,38 +120,109 @@ export default {
     async cargarConfiguraciones() {
       try {
         const data = await configService.getTablasMaestras();
-        [cite_start]this.estadosProyecto = data.estadosProyecto; [cite: 88]
-        [cite_start]this.prioridadesMaster = data.prioridades; [cite: 202]
+        this.estadosProyecto = data.estadosProyecto; 
+        this.prioridadesMaster = data.prioridades; 
       } catch (e) {
         console.error("Error cargando maestros", e);
       }
     },
     prepararMiembros() {
-      [cite_start]// Mapeamos los miembros y calculamos su carga inicial basada en los pesos [cite: 205, 206]
+      // Mapeamos los miembros y calculamos su carga inicial basada en los pesos 
       this.miembrosAsignados = this.miembrosActuales.map(m => ({
         ...m,
-        [cite_start]cargaTotal: this.calcularCargaAlumno(m.tareas) // [cite: 206]
+        cargaTotal: this.calcularCargaAlumno(m.tareas) 
       }));
     },
     calcularCargaAlumno(tareas) {
       if (!tareas) return 0;
-      [cite_start]// Sumamos el peso de cada tarea buscando su valor en prioridadesMaster [cite: 206]
+      // Sumamos el peso de cada tarea buscando su valor en prioridadesMaster 
       return tareas.reduce((total, tarea) => {
         const prioridad = this.prioridadesMaster.find(p => p.id === tarea.prioridad_id);
         return total + (prioridad ? prioridad.peso : 0);
       }, 0);
     },
     obtenerColorCarga(puntos) {
-      [cite_start]// Lógica de semáforo pedagógico [cite: 212, 219]
+      // Lógica de semáforo pedagógico 
       if (puntos >= 60) return 'is-danger';    // Saturado (Rojo)
       if (puntos >= 30) return 'is-warning';   // Carga Media (Amarillo)
       return 'is-success';                     // Disponible (Verde)
     },
     quitarMiembro(id) {
-      [cite_start]this.miembrosAsignados = this.miembrosAsignados.filter(m => m.id !== id); [cite: 213]
+      this.miembrosAsignados = this.miembrosAsignados.filter(m => m.id !== id); 
     },
-    confirmarCambios() {
-      this.$emit('save', { form: this.form, miembros: this.miembrosAsignados });
+    async confirmarCambios() {
+      // Llamamos a la lógica de guardado real
+      await this.actualizarProyecto();
+    },
+    async actualizarProyecto() {
+      try {
+        const authStore = useAuthStore();
+        
+        // 1. Extraemos los IDs finales del equipo
+        const usuariosIds = this.miembrosAsignados.map(m => m.id);
+
+        // 2. Armamos el paquete con lo que realmente hay en el formulario
+        const datosParaGuardar = {
+          nombre: this.form.nombre,      // Antes decía this.proyecto.nombre
+          estado_id: this.form.estado_id, // Aprovechamos de guardar el estado
+          usuariosIds: usuariosIds
+        };
+
+        // 3. Mandamos el PUT usando el ID que vive en form
+        await axios.put(`http://localhost:3000/api/proyectos/${this.form.id}`, datosParaGuardar, {
+          headers: {
+            'Authorization': `Bearer ${authStore.token}`
+          }
+        });
+
+        // 4. Éxito y limpieza
+        alert("Proyecto actualizado con éxito");
+        this.$emit('actualizado'); 
+        this.$emit('close'); // En lugar de this.close(), que no está definido
+
+      } catch (error) {
+        console.error("Error al guardar:", error);
+        alert("No se pudo guardar el proyecto. Revisá la consola.");
+      }
+    },
+    async buscarUsuarios() {
+        // Si escribiste menos de 2 letras, no buscamos nada
+        if (this.busqueda.length < 2) {
+          this.resultadosBusqueda = [];
+          return;
+        }
+
+        try {
+        const authStore = useAuthStore(); // Accedemos a Pinia
+        
+        const response = await axios.get(`http://localhost:3000/api/usuarios?q=${this.busqueda}`, {
+          
+          headers: {
+            // Importante: El espacio después de 'Bearer' es obligatorio por el .split(' ')[1] del backend
+            'Authorization': `Bearer ${authStore.token}`
+          }
+        });
+        console.log("Datos recibidos del servidor:", response.data);
+
+        this.resultadosBusqueda = response.data;
+      } catch (error) {
+        console.error("Error al buscar:", error);
+        // Si vuelve a dar 403, revisá la consola para ver el mensaje exacto
+      }
+    },
+    seleccionarUsuario(u) {
+      // 1. Lo sumamos a la lista de miembros asignados
+      // Le ponemos puntos en 0 por ahora, el cargómetro se encargará después
+      this.miembrosAsignados.push({
+        id: u.id,
+        nombre: u.nombre,
+        email: u.email,
+        puntos: 0 
+      });
+
+      // 2. Limpiamos el buscador (esto hace que la lista desaparezca sola)
+      this.busqueda = '';
+      this.resultadosBusqueda = [];
     }
   }
 }
