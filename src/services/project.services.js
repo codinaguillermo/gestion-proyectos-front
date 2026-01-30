@@ -1,6 +1,7 @@
 // Este archivo solo se encargará de la comunicación técnica con el Backend.
 import api from './api';
 
+
 export const projectService = {
     // Función para pedir todos los proyectos
     async getAll() {
@@ -18,13 +19,26 @@ export const projectService = {
     // función para crear un proyecto
     async create(proyectoData) {
         try {
-            // Mandamos nombre y descripcion al POST /proyectos
             const response = await api.post('/proyectos', proyectoData);
             return { success: true, data: response.data };
         } catch (error) {
             return {
                 success: false,
                 error: error.response?.data?.mensaje || 'Error al crear el proyecto'
+            };
+        }
+    },
+
+    // MÉTODO CORREGIDO: Usando 'api' y sacando logs ruidosos
+    async delete(id) {
+        try {
+            // Usamos la instancia 'api' para que use el puerto 3000 y mande el Token
+            const response = await api.delete(`proyectos/${id}`); 
+            return { success: true, data: response.data };
+        } catch (error) {
+            return { 
+                success: false, 
+                error: error.response?.data?.mensaje || "Error al eliminar" 
             };
         }
     }

@@ -1,30 +1,5 @@
 <template>
-  <div>
-    <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
-      <div class="container">
-        <div class="navbar-brand">
-          <a class="navbar-item has-text-weight-bold" href="#">
-            SISTEMA GESTIÓN
-          </a>
-        </div>
-
-        <div class="navbar-menu is-active">
-          <div class="navbar-end">
-            <div class="navbar-item has-text-white">
-              <span class="mr-3">Hola, <strong>{{ authStore.user?.nombre || 'Usuario' }}</strong></span>
-            </div>
-            <div class="navbar-item">
-              <div class="buttons">
-                <button class="button is-danger is-small" @click="handleLogout">
-                  <span class="icon is-small"><i class="fas fa-sign-out-alt"></i></span>
-                  <span>Cerrar Sesión</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </nav>
+  <div>   
 
     <div class="container mt-5 px-4">
       <div class="level">
@@ -40,7 +15,7 @@
       </div>
 
       <div v-if="cargando" class="notification is-info is-light">Cargando proyectos...</div>
-      <div v-if="errorMsg" class="notification is-danger is-light">{{ errorMsg }}</div>
+      <div v-if="errorMsg && errorMsg.length > 0" class="notification is-danger is-light"> {{ errorMsg }}</div>
 
       <div class="box" v-if="!cargando && !errorMsg">
         <table class="table is-fullwidth is-hoverable is-striped">
@@ -62,9 +37,17 @@
                 </span>
               </td>
               <td>{{ formatearFecha(proyecto.created_at) }}</td>
-            </tr>
-            <tr v-if="proyectos.length === 0">
-              <td colspan="4" class="has-text-centered">No hay proyectos para mostrar.</td>
+              
+              <td class="has-text-right">
+                <div class="buttons is-right">
+                  <button class="button is-small is-warning is-light" @click="prepararEdicion(proyecto)">
+                    <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                  </button>
+                  <button class="button is-small is-danger is-light" @click="confirmarEliminar(proyecto)">
+                    <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                  </button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -140,7 +123,7 @@ const cargarProyectos = async () => {
     
     // AQUÍ usamos el import que decías que nadie usaba:
     const res = await projectService.getAll();
-    
+    console.log(res)
     if (res.success) {
         proyectos.value = res.data;
     } else {
@@ -149,9 +132,22 @@ const cargarProyectos = async () => {
     cargando.value = false;
 };
 
+// Agregamos estas dos variables de control
+const esEdicion = ref(false);
+const idEnEdicion = ref(null);
 const abrirModal = () => {
+    esEdicion.value = false; // Es nuevo
+    idEnEdicion.value = null;
     formProyecto.nombre = '';
     formProyecto.descripcion = '';
+    isModalActive.value = true;
+};
+
+const prepararEdicion = (proyecto) => {
+    esEdicion.value = true; // Es edición
+    idEnEdicion.value = proyecto.id;
+    formProyecto.nombre = proyecto.nombre;
+    formProyecto.descripcion = proyecto.descripcion;
     isModalActive.value = true;
 };
 
@@ -169,6 +165,54 @@ const guardarProyecto = async () => {
     }
     enviando.value = false;
 };
+
+
+const confirmarEliminar = async (proyecto) => {
+  // Si Swal no cargó todavía, usamos el confirm viejo para no trabar al usuario
+  if (typeof Swal === 'undefined') {
+    if (confirm(`¿Eliminar ${proyecto.nombre}?`)) {
+       const res = await projectService.delete(proyecto.id);
+       if (res.success) await cargarProyectos();
+    }
+    return;
+  }
+
+  
+  // FUSIBLE: Si no hay proyecto, salimos silenciosamente
+  if (!proyecto || !proyecto.id) return; 
+
+  const result = await Swal.fire({
+    title: '¿Estás seguro?',
+    text: `Vas a eliminar el proyecto "${proyecto.nombre}"`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ff3860',
+    confirmButtonText: 'Sí, borrar',
+    cancelButtonText: 'Cancelar'
+  });
+
+  if (result.isConfirmed) {
+    try {
+      const res = await projectService.delete(proyecto.id);
+      if (res.success) {
+        Swal.fire('¡Eliminado!', 'El proyecto desapareció.', 'success');
+        await cargarProyectos();
+      } else {
+        Swal.fire('Error', res.error, 'error');
+      }
+    } catch (error) {
+      Swal.fire('Error', 'Error de red', 'error');
+    }
+  }
+};
+
+/*
+const prepararEdicion = (proyecto) => {
+  // Por ahora solo lo definimos para que no tire error al hacer clic
+  console.log("Editando proyecto:", proyecto.id);
+  // Aquí es donde luego cargaremos el modal con los datos
+};
+*/
 
 const formatearFecha = (fechaRaw) => {
     if (!fechaRaw) return '-';
