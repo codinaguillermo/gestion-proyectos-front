@@ -18,6 +18,13 @@ const router = createRouter({
       meta: { requiresAuth: true } // Etiqueta para saber que esta ruta es privada
     },
     {
+    // RUTA: el Backlog de US
+    path: '/proyectos/:id/backlog', 
+    name: 'backlog-proyecto',
+    component: () => import('../views/userStoriesView.vue'),
+    meta: { requiresAuth: true }
+  },
+    {
       path: '/',
       redirect: '/dashboard'
     }

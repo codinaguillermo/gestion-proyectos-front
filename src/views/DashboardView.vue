@@ -40,6 +40,10 @@
               
               <td class="has-text-right">
                 <div class="buttons is-right">
+                  <button class="button is-small is-link is-light" @click="irAbacklog(proyecto.id)" title="Ver Backlog">
+                      <span class="icon is-small"><i class="fas fa-list-ul"></i></span> 
+                  </button>
+
                   <button class="button is-small is-warning is-light" @click="prepararEdicion(proyecto)">
                     <span class="icon is-small"><i class="fas fa-edit"></i></span>
                   </button>
@@ -131,6 +135,10 @@ const handleLogout = () => {
     router.push('/login');
 };
 
+const irAbacklog = (id) => {
+    router.push(`/proyectos/${id}/backlog`); // Cambiamos 'tareas' por 'backlog'
+};
+
 const cargarProyectos = async () => {
     cargando.value = true;
     errorMsg.value = ''; 
@@ -154,30 +162,25 @@ const abrirModal = () => {
     isModalActive.value = true;
 };
 
-// REFACTORIZADA: Ahora dispara el componente EditarProyectoModal
 const prepararEdicion = (proyecto) => {
     proyectoAEditar.value = proyecto;
-    // Extraemos los alumnos asignados para el cálculo de carga en el modal [cite: 205, 208]
     miembrosAEditar.value = proyecto.Usuarios || []; 
     isEditModalActive.value = true;
 };
 
 const actualizarProyecto = async (datos) => {
     try {
-        // 'datos' trae { form, miembros } desde el modal
         const { form, miembros } = datos; 
-        
-        // Preparamos el paquete completo para el backend
         const payload = {
             ...form,
-            usuariosIds: miembros.map(m => m.id) // Extraemos solo los IDs
+            usuariosIds: miembros.map(m => m.id)
         };
 
         const res = await projectService.update(form.id, payload);
         
         if (res) { 
             isEditModalActive.value = false;
-            await cargarProyectos(); // Esto refresca la lista y trae los integrantes nuevos
+            await cargarProyectos();
         }
     } catch (error) {
         console.error("Error en la comunicación con la API:", error);
@@ -247,7 +250,7 @@ onMounted(() => {
 </script>
 
 <script>
-/* Este archivo orquestación la vista principal[cite: 136, 137].
-Se vincula con projectService para CRUD de proyectos[cite: 128].
+/* Este archivo orquestación la vista principal.
+Se vincula con projectService para CRUD de proyectos.
 */
 </script>
