@@ -14,6 +14,7 @@ export const authService = {
     async login(email, password) {
         // Solo pedimos los datos y los devolvemos. 
         // No guardamos nada acá para no puentear al Store.
+        
         const response = await api.post('/auth/login', { email, password });
         return response.data;
     }

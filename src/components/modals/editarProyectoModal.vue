@@ -93,7 +93,7 @@
 
 <script>
 //Agregamos las llaves para que coincida con 'export const'
-import { configService } from '../../services/configService';
+import { configService } from '../../services/config.service';
 import axios from 'axios';
 import { useAuthStore } from '../../stores/auth';
 

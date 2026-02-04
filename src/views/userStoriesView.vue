@@ -29,7 +29,9 @@
       <UserStoryCard 
         v-for="us in userStories" 
         :key="us.id" 
-        :userStory="us" />
+        :userStory="us" 
+        @abrir-tareas="prepararDesglose" 
+      />
     </div>
 
     <div v-else class="box has-text-centered py-6">
@@ -83,6 +85,13 @@
         </footer>
       </div>
     </div>
+    <CrearTareaModal 
+      v-if="usSeleccionada"
+      :isActive="isTareaModalActive"
+      :userStory="usSeleccionada"
+      @close="isTareaModalActive = false"
+      @tarea-creada="cargarUserStories"
+    />
   </div>
 </template>
 
@@ -91,7 +100,7 @@ import UserStoryCard from '../components/userStoryCard.vue';
 import userStoryService from '../services/userStory.service';
 import { ref, reactive, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
-import api from '../services/api'; 
+import CrearTareaModal from '../components/modals/crearTareaModal.vue'; 
 
 
 const route = useRoute();
@@ -100,6 +109,8 @@ const userStories = ref([]); // Antes: tareas
 const cargando = ref(true);
 const isModalActive = ref(false);
 const enviando = ref(false);
+const isTareaModalActive = ref(false); // NUEVO: control del modal de tareas
+const usSeleccionada = ref(null);    // NUEVO: para saber a qué US le creamos tareas
 
 // El formulario ahora se refiere a la US
 const formUS = reactive({
@@ -107,7 +118,11 @@ const formUS = reactive({
   descripcion: ''
 });
 
-
+// Función para abrir el modal de tareas (la llama la Card)
+const prepararDesglose = (us) => {
+  usSeleccionada.value = us;
+  isTareaModalActive.value = true;
+};
 
 const crearUserStory = async () => {
   if (!formUS.titulo) return alert("El título de la US es obligatorio");

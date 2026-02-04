@@ -1,6 +1,5 @@
 <script setup>
-import { ref } from 'vue';
-import api from '../services/api';
+import userStoryService from '../services/userStory.service'; // Usamos el service pro
 
 const props = defineProps({
   userStory: {
@@ -9,17 +8,27 @@ const props = defineProps({
   }
 });
 
+// Definimos el evento que va a escuchar el padre (userStoriesView)
+const emit = defineEmits(['abrir-tareas']);
+// Función para disparar la apertura del modal de tareas
+const manejarClickTareas = () => {
+  emit('abrir-tareas', props.userStory);
+};
+
+
 const eliminarUS = async () => {
   if (!confirm(`¿Estás seguro de eliminar la US: ${props.userStory.titulo}?`)) return;
   
   try {
-    await api.delete(`/user-stories/${props.userStory.id}`);
+    // Usamos el service, no la api pelada
+    await userStoryService.delete(props.userStory.id);
     location.reload(); 
   } catch (error) {
     console.error("Error al eliminar:", error);
     alert("No se pudo eliminar la User Story");
   }
 };
+
 </script>
 
 <template>
@@ -39,7 +48,11 @@ const eliminarUS = async () => {
 
       <div class="column is-narrow">
         <div class="buttons">
-          <button class="button is-small is-info is-outlined" title="Desglosar Tareas Técnicas">
+          <button 
+            class="button is-small is-info is-outlined" 
+            title="Desglosar Tareas Técnicas"
+            @click="manejarClickTareas"
+          >
             <span class="icon"><i class="fas fa-layer-group"></i></span>
             <span>Tareas</span>
           </button>
@@ -53,15 +66,3 @@ const eliminarUS = async () => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.border-us {
-  border-left: 6px solid #3273dc;
-  transition: all 0.2s ease;
-  background-color: #ffffff;
-}
-.border-us:hover {
-  transform: translateX(5px);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-}
-</style>

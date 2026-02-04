@@ -9,7 +9,7 @@
               
               <div class="field">
                 <label class="label">Email</label>
-                <div class="control has-icons-left">
+                <div class="control has-icons-left">                  
                   <input v-model="email" type="email" placeholder="e.g. guille@gmail.com" class="input" required>
                   <span class="icon is-small is-left">📧</span>
                 </div>
