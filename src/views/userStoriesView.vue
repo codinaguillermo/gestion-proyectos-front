@@ -30,7 +30,8 @@
         v-for="us in userStories" 
         :key="us.id" 
         :userStory="us" 
-        @abrir-tareas="prepararDesglose" 
+        @click="abrirDetalleUS(us)" 
+        @eliminar="prepararEliminacion" 
       />
     </div>
 
@@ -39,7 +40,6 @@
         <i class="fas fa-list-ul fa-3x"></i>
       </span>
       <p class="is-size-5 has-text-grey">El Product Backlog está vacío.</p>
-      <p class="is-size-7 has-text-grey-light">Define las User Stories necesarias para este proyecto.</p>
     </div>
 
     <div class="modal" :class="{ 'is-active': isModalActive }">
@@ -53,111 +53,114 @@
           <div class="field">
             <label class="label">Título de la US</label>
             <div class="control">
-              <input 
-                class="input" 
-                type="text" 
-                v-model="formUS.titulo" 
-                placeholder="Ej: Registro de Usuarios"
-              >
+              <input class="input" type="text" v-model="formUS.titulo" placeholder="Ej: Registro de Usuarios">
             </div>
           </div>
           <div class="field">
-            <label class="label">Descripción (Formato Estándar)</label>
+            <label class="label">Descripción</label>
             <div class="control">
-              <textarea 
-                class="textarea" 
-                v-model="formUS.descripcion" 
-                placeholder="Como [usuario], quiero [funcionalidad] para [beneficio]..."
-              ></textarea>
+              <textarea class="textarea" v-model="formUS.descripcion" placeholder="Como... quiero... para..."></textarea>
             </div>
-            <p class="help is-info">Usa el formato: Como... quiero... para...</p>
+          </div>
+          <div class="field">
+            <label class="label">Prioridad Inicial</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select v-model="formUS.prioridad_id">
+                  <option v-for="p in prioridades" :key="p.id" :value="p.id">{{ p.nombre }}</option>
+                </select>
+              </div>
+            </div>
           </div>
         </section>
         <footer class="modal-card-foot">
-          <button 
-            @click="crearUserStory" 
-            :disabled="enviando"
-            class="button is-primary"
-          >
-            {{ enviando ? 'Guardando...' : 'Añadir al Backlog' }}
+          <button @click="crearUserStory" :disabled="enviando" class="button is-primary" :class="{'is-loading': enviando}">
+            Añadir al Backlog
           </button>
           <button class="button" @click="isModalActive = false">Cancelar</button>
         </footer>
       </div>
     </div>
+
+    <DetalleUserStoryModal 
+      v-if="usSeleccionada"
+      :isActive="isDetalleModalActive"
+      :userStory="usSeleccionada"
+      :prioridades="prioridades"
+      :estados="estados"
+      @close="isDetalleModalActive = false"
+      @actualizar="actualizarUS"
+      @agregar-tarea="prepararNuevaTarea"
+    />
+
     <CrearTareaModal 
       v-if="usSeleccionada"
       :isActive="isTareaModalActive"
       :userStory="usSeleccionada"
       @close="isTareaModalActive = false"
-      @tarea-creada="cargarUserStories"
+      @tarea-creada="refrescarTodo"
     />
+
+    <ConfirmarModal 
+      :isActive="isConfirmActive"
+      :mensaje="`¿Estás seguro de eliminar la US '${usAEliminar?.titulo}'?`"
+      @confirmar="ejecutarEliminacion"
+      @cancelar="isConfirmActive = false"
+    />
+
   </div>
 </template>
 
 <script setup>
-import UserStoryCard from '../components/userStoryCard.vue';
-import userStoryService from '../services/userStory.service';
 import { ref, reactive, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import api from '../services/api';
+import userStoryService from '../services/userStory.service';
+import UserStoryCard from '../components/userStoryCard.vue';
+import DetalleUserStoryModal from '../components/modals/DetalleUserStoryModal.vue';
 import CrearTareaModal from '../components/modals/crearTareaModal.vue'; 
-
+import ConfirmarModal from '../components/modals/ConfirmarModal.vue'; // <-- Importar
 
 const route = useRoute();
 const proyectoId = ref(null);
-const userStories = ref([]); // Antes: tareas
+const userStories = ref([]);
 const cargando = ref(true);
-const isModalActive = ref(false);
 const enviando = ref(false);
-const isTareaModalActive = ref(false); // NUEVO: control del modal de tareas
-const usSeleccionada = ref(null);    // NUEVO: para saber a qué US le creamos tareas
 
-// El formulario ahora se refiere a la US
+// Control de Modales
+const isModalActive = ref(false);
+const isDetalleModalActive = ref(false);
+const isTareaModalActive = ref(false);
+const isConfirmActive = ref(false); // <-- Estado para el confirm
+
+// Datos Maestros y Selección
+const usSeleccionada = ref(null);
+const usAEliminar = ref(null); // <-- Referencia para borrar
+const prioridades = ref([]);
+const estados = ref([]);
+
 const formUS = reactive({
   titulo: '',
-  descripcion: ''
+  descripcion: '',
+  prioridad_id: 2
 });
 
-// Función para abrir el modal de tareas (la llama la Card)
-const prepararDesglose = (us) => {
-  usSeleccionada.value = us;
-  isTareaModalActive.value = true;
-};
-
-const crearUserStory = async () => {
-  if (!formUS.titulo) return alert("El título de la US es obligatorio");
-  
-  enviando.value = true;
+const cargarMaestros = async () => {
   try {
-    const payloadUS = {
-      proyecto_id: Number(proyectoId.value),
-      titulo: String(formUS.titulo).trim(),
-      descripcion: String(formUS.descripcion || '').trim(),
-      prioridad: 'Media'
-    };
-
-    // CAMBIO CLAVE: Usamos el service, no el api.post directo
-    const res = await userStoryService.create(payloadUS);
-    
-    // Si el service devuelve directamente la data o el status
-    if (res) { 
-      isModalActive.value = false;
-      formUS.titulo = '';
-      formUS.descripcion = '';
-      await cargarUserStories(); 
-    }
+    const [resP, resE] = await Promise.all([
+      api.get('/common/prioridades-us'), 
+      api.get('/common/estados-us')
+    ]);
+    prioridades.value = resP.data;
+    estados.value = resE.data;
   } catch (error) {
-    console.error("Error al crear US:", error);
-    alert("No se pudo crear la US");
-  } finally {
-    enviando.value = false;
+    console.error("Error cargando maestros:", error);
   }
 };
 
 const cargarUserStories = async () => {
   cargando.value = true;
   try {
-    // Usando el nuevo service que creamos
     const res = await userStoryService.getByProyecto(proyectoId.value);
     userStories.value = res.data;
   } catch (error) {
@@ -167,8 +170,76 @@ const cargarUserStories = async () => {
   }
 };
 
+const abrirDetalleUS = (us) => {
+  usSeleccionada.value = us;
+  isDetalleModalActive.value = true;
+};
+
+const prepararNuevaTarea = (us) => {
+  isDetalleModalActive.value = false;
+  isTareaModalActive.value = true;
+};
+
+const crearUserStory = async () => {
+  if (!formUS.titulo) return;
+  enviando.value = true;
+  try {
+    const payload = {
+      proyecto_id: Number(proyectoId.value),
+      titulo: formUS.titulo.trim(),
+      descripcion: formUS.descripcion.trim(),
+      prioridad_id: formUS.prioridad_id,
+      estado_id: 1 
+    };
+    await userStoryService.create(payload);
+    isModalActive.value = false;
+    formUS.titulo = '';
+    formUS.descripcion = '';
+    await cargarUserStories();
+  } catch (error) {
+    console.error("Error al crear US");
+  } finally {
+    enviando.value = false;
+  }
+};
+
+const actualizarUS = async (datos) => {
+  try {
+    await userStoryService.update(datos.id, datos);
+    isDetalleModalActive.value = false;
+    await cargarUserStories();
+  } catch (error) {
+    console.error("Error al actualizar");
+  }
+};
+
+// --- LÓGICA DE ELIMINACIÓN SIN ALERTS ---
+const prepararEliminacion = (usId) => {
+  // Buscamos la US en el array para mostrar el título en el modal
+  usAEliminar.value = userStories.value.find(u => u.id === usId);
+  isConfirmActive.value = true;
+};
+
+const ejecutarEliminacion = async () => {
+  if (!usAEliminar.value) return;
+  try {
+    await userStoryService.delete(usAEliminar.value.id);
+    isConfirmActive.value = false;
+    usAEliminar.value = null;
+    await cargarUserStories(); 
+  } catch (error) {
+    console.error("Error al eliminar:", error);
+  }
+};
+
+const refrescarTodo = async () => {
+  await cargarUserStories();
+  isTareaModalActive.value = false;
+};
+
 onMounted(() => {
   proyectoId.value = route.params.id;
+  cargarMaestros();
   cargarUserStories();
 });
 </script>

@@ -28,7 +28,12 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="proyecto in proyectos" :key="proyecto.id">
+            <tr 
+              v-for="proyecto in proyectos" 
+              :key="proyecto.id" 
+              @click="irAbacklog(proyecto.id)" 
+              style="cursor: pointer;"
+            >
               <td><strong>{{ proyecto.nombre }}</strong></td>
               <td>{{ proyecto.descripcion }}</td>
               <td>
@@ -40,14 +45,10 @@
               
               <td class="has-text-right">
                 <div class="buttons is-right">
-                  <button class="button is-small is-link is-light" @click="irAbacklog(proyecto.id)" title="Ver Backlog">
-                      <span class="icon is-small"><i class="fas fa-list-ul"></i></span> 
-                  </button>
-
-                  <button class="button is-small is-warning is-light" @click="prepararEdicion(proyecto)">
+                  <button class="button is-small is-warning is-light" @click.stop="prepararEdicion(proyecto)">
                     <span class="icon is-small"><i class="fas fa-edit"></i></span>
                   </button>
-                  <button class="button is-small is-danger is-light" @click="confirmarEliminar(proyecto)">
+                  <button class="button is-small is-danger is-light" @click.stop="prepararEliminacion(proyecto)">
                     <span class="icon is-small"><i class="fas fa-trash"></i></span>
                   </button>
                 </div>
@@ -89,11 +90,18 @@
     </div>
 
     <EditarProyectoModal 
-      v-if="isEditModalActive" 
-      :proyectoOriginal="proyectoAEditar"
-      :miembrosActuales="proyectoAEditar.integrantes || []"
-      @close="isEditModalActive = false"
-      @save="actualizarProyecto"
+      v-if="mostrarModalEditar"
+      :proyectoOriginal="proyectoSeleccionado"
+      :miembrosActuales="proyectoSeleccionado.integrantes || proyectoSeleccionado.Usuarios || []"
+      @close="mostrarModalEditar = false"
+      @actualizado="cargarProyectos" 
+    />
+
+    <ConfirmarModal 
+      :isActive="isConfirmActive"
+      :mensaje="`¿Estás seguro de eliminar el proyecto '${proyectoAEliminar?.nombre}'? Se borrará todo el backlog asociado.`"
+      @confirmar="ejecutarEliminacion"
+      @cancelar="isConfirmActive = false"
     />
   </div>
 </template>
@@ -103,19 +111,18 @@ import { ref, reactive, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import { projectService } from '../services/project.services'; 
-
-// Importación del componente especializado en CamelCase
 import EditarProyectoModal from '../components/modals/EditarProyectoModal.vue';
+import ConfirmarModal from '../components/modals/ConfirmarModal.vue'; // <-- Importado
 
 const authStore = useAuthStore();
 const router = useRouter();
 
-// --- 1. Variables de Estado de la Tabla ---
+// --- VARIABLES DE ESTADO ---
 const proyectos = ref([]);
 const cargando = ref(false);
 const errorMsg = ref('');
 
-// --- 2. Variables del Modal Nuevo y Formulario ---
+// --- VARIABLES MODAL NUEVO ---
 const isModalActive = ref(false);
 const enviando = ref(false);
 const formProyecto = reactive({
@@ -123,20 +130,18 @@ const formProyecto = reactive({
     descripcion: ''
 });
 
-// --- VARIABLES NUEVAS PARA EL CARGÓMETRO ---
-const isEditModalActive = ref(false);
-const proyectoAEditar = ref(null);
-const miembrosAEditar = ref([]);
+// --- VARIABLES MODAL EDICIÓN ---
+const mostrarModalEditar = ref(false);
+const proyectoSeleccionado = ref(null);
 
-// --- 3. Funciones de Lógica ---
+// --- VARIABLES ELIMINACIÓN ---
+const isConfirmActive = ref(false);
+const proyectoAEliminar = ref(null);
 
-const handleLogout = () => {
-    authStore.logout();
-    router.push('/login');
-};
+// --- FUNCIONES ---
 
 const irAbacklog = (id) => {
-    router.push(`/proyectos/${id}/backlog`); // Cambiamos 'tareas' por 'backlog'
+    router.push(`/proyectos/${id}/backlog`);
 };
 
 const cargarProyectos = async () => {
@@ -151,45 +156,19 @@ const cargarProyectos = async () => {
     cargando.value = false;
 };
 
-const esEdicion = ref(false);
-const idEnEdicion = ref(null);
-
 const abrirModal = () => {
-    esEdicion.value = false; 
-    idEnEdicion.value = null;
     formProyecto.nombre = '';
     formProyecto.descripcion = '';
     isModalActive.value = true;
 };
 
 const prepararEdicion = (proyecto) => {
-    proyectoAEditar.value = proyecto;
-    miembrosAEditar.value = proyecto.Usuarios || []; 
-    isEditModalActive.value = true;
-};
-
-const actualizarProyecto = async (datos) => {
-    try {
-        const { form, miembros } = datos; 
-        const payload = {
-            ...form,
-            usuariosIds: miembros.map(m => m.id)
-        };
-
-        const res = await projectService.update(form.id, payload);
-        
-        if (res) { 
-            isEditModalActive.value = false;
-            await cargarProyectos();
-        }
-    } catch (error) {
-        console.error("Error en la comunicación con la API:", error);
-        alert("No se pudo conectar con el servidor para actualizar.");
-    }
+    proyectoSeleccionado.value = proyecto;
+    mostrarModalEditar.value = true;
 };
 
 const guardarProyecto = async () => {
-    if (!formProyecto.nombre) return alert("El nombre es obligatorio");
+    if (!formProyecto.nombre) return; 
     
     enviando.value = true;
     const res = await projectService.create(formProyecto);
@@ -197,46 +176,27 @@ const guardarProyecto = async () => {
     if (res.success) {
         isModalActive.value = false;
         await cargarProyectos(); 
-    } else {
-        alert(res.error);
     }
     enviando.value = false;
 };
 
-const confirmarEliminar = async (proyecto) => {
-  if (typeof Swal === 'undefined') {
-    if (confirm(`¿Eliminar ${proyecto.nombre}?`)) {
-       const res = await projectService.delete(proyecto.id);
-       if (res.success) await cargarProyectos();
-    }
-    return;
-  }
+// --- NUEVA LÓGICA DE ELIMINACIÓN ---
+const prepararEliminacion = (proyecto) => {
+    proyectoAEliminar.value = proyecto;
+    isConfirmActive.value = true;
+};
 
-  if (!proyecto || !proyecto.id) return; 
-
-  const result = await Swal.fire({
-    title: '¿Estás seguro?',
-    text: `Vas a eliminar el proyecto "${proyecto.nombre}"`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#ff3860',
-    confirmButtonText: 'Sí, borrar',
-    cancelButtonText: 'Cancelar'
-  });
-
-  if (result.isConfirmed) {
-    try {
-      const res = await projectService.delete(proyecto.id);
-      if (res.success) {
-        Swal.fire('¡Eliminado!', 'El proyecto desapareció.', 'success');
+const ejecutarEliminacion = async () => {
+    if (!proyectoAEliminar.value) return;
+    
+    const res = await projectService.delete(proyectoAEliminar.value.id);
+    if (res.success) {
+        isConfirmActive.value = false;
+        proyectoAEliminar.value = null;
         await cargarProyectos();
-      } else {
-        Swal.fire('Error', res.error, 'error');
-      }
-    } catch (error) {
-      Swal.fire('Error', 'Error de red', 'error');
+    } else {
+        alert(res.error); // Opcional: podrías mostrarlo en el mismo modal
     }
-  }
 };
 
 const formatearFecha = (fechaRaw) => {
@@ -247,10 +207,4 @@ const formatearFecha = (fechaRaw) => {
 onMounted(() => {
     cargarProyectos();
 });
-</script>
-
-<script>
-/* Este archivo orquestación la vista principal.
-Se vincula con projectService para CRUD de proyectos.
-*/
 </script>
