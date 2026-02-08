@@ -8,7 +8,7 @@
       </header>
       
       <section class="modal-card-body">
-        <div class="columns">
+        <div class="columns mb-0">
           <div class="column is-8">
             <div class="field">
               <label class="label">Título</label>
@@ -19,7 +19,7 @@
             <div class="field">
               <label class="label">Descripción</label>
               <div class="control">
-                <textarea class="textarea" v-model="editForm.descripcion" rows="4" placeholder="Detalles de la US..."></textarea>
+                <textarea class="textarea" v-model="editForm.descripcion" rows="2" placeholder="Detalles de la US..."></textarea>
               </div>
             </div>
           </div>
@@ -48,7 +48,19 @@
           </div>
         </div>
 
-        <hr>
+        <div class="field mt-4">
+          <label class="label">Condiciones (Criterios de Aceptación)</label>
+          <div class="control">
+            <textarea 
+              class="textarea" 
+              v-model="editForm.condiciones" 
+              rows="2" 
+              placeholder="¿Qué debe cumplir esta US para considerarse terminada?"
+            ></textarea>
+          </div>
+        </div>
+
+        <hr class="my-4">
 
         <div class="level mb-2">
           <div class="level-left">
@@ -64,7 +76,7 @@
           </div>
         </div>
 
-        <div class="tareas-container" style="max-height: 300px; overflow-y: auto; border: 1px solid #dbdbdb; border-radius: 6px;">
+        <div class="tareas-container" style="max-height: 250px; overflow-y: auto; border: 1px solid #dbdbdb; border-radius: 6px;">
           <table class="table is-fullwidth is-hoverable is-striped">
             <thead style="position: sticky; top: 0; background: white; z-index: 5; box-shadow: 0 2px 2px -2px rgba(0,0,0,0.2);">
               <tr>
@@ -125,15 +137,16 @@ const emit = defineEmits(['close', 'actualizar', 'agregar-tarea', 'editar-tarea'
 const editForm = reactive({
   titulo: '',
   descripcion: '',
+  condiciones: '', 
   prioridad_id: null,
   estado_id: null
 });
 
-// Sincronizar el formulario cuando cambia la US seleccionada
 watch(() => props.userStory, (newVal) => {
   if (newVal) {
     editForm.titulo = newVal.titulo;
     editForm.descripcion = newVal.descripcion;
+    editForm.condiciones = newVal.condiciones || ''; 
     editForm.prioridad_id = newVal.prioridad_id;
     editForm.estado_id = newVal.estado_id;
   }
@@ -143,17 +156,3 @@ const guardarCambios = () => {
   emit('actualizar', { id: props.userStory.id, ...editForm });
 };
 </script>
-
-<style scoped>
-/* Estilo para que la barra de scroll sea más sutil */
-.tareas-container::-webkit-scrollbar {
-  width: 6px;
-}
-.tareas-container::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 10px;
-}
-.tareas-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-</style>

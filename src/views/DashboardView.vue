@@ -91,6 +91,7 @@
 
     <EditarProyectoModal 
       v-if="mostrarModalEditar"
+      :key="proyectoSeleccionado.id"
       :proyectoOriginal="proyectoSeleccionado"
       :miembrosActuales="proyectoSeleccionado.integrantes || proyectoSeleccionado.Usuarios || []"
       @close="mostrarModalEditar = false"
@@ -203,6 +204,9 @@ const formatearFecha = (fechaRaw) => {
     if (!fechaRaw) return '-';
     return new Date(fechaRaw).toLocaleDateString('es-AR');
 };
+
+
+
 
 onMounted(() => {
     cargarProyectos();
