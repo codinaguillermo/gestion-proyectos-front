@@ -8,6 +8,19 @@
       </header>
       
       <section class="modal-card-body">
+        <transition name="fade">
+          <div v-if="errorVisible" class="notification is-danger is-light mb-4">
+            <button class="delete" @click="errorVisible = false"></button>
+            <div class="is-flex is-align-items-center">
+              <span class="icon mr-2"><i class="fas fa-exclamation-circle"></i></span>
+              <div>
+                <strong>{{ mensajeError }}</strong>
+                <p v-if="detalleError" class="is-size-7">{{ detalleError }}</p>
+              </div>
+            </div>
+          </div>
+        </transition>
+
         <div class="columns mb-0">
           <div class="column is-8">
             <div class="field">
@@ -81,6 +94,7 @@
             <thead style="position: sticky; top: 0; background: white; z-index: 5; box-shadow: 0 2px 2px -2px rgba(0,0,0,0.2);">
               <tr>
                 <th>Tarea</th>
+                <th>Responsable</th> 
                 <th class="has-text-centered">Estado</th>
                 <th class="has-text-centered">Horas</th>
                 <th class="has-text-right">Acciones</th>
@@ -89,20 +103,30 @@
             <tbody>
               <tr v-for="tarea in userStory.tareas" :key="tarea.id">
                 <td style="vertical-align: middle;">{{ tarea.titulo }}</td>
+                <td style="vertical-align: middle;">
+                  <span class="is-size-7">{{ tarea.responsable?.nombre || 'Sin asignar' }}</span>
+                </td>
                 <td class="has-text-centered" style="vertical-align: middle;">
-                  <span class="tag is-light is-rounded">{{ tarea.estado_detalle?.nombre || tarea.estado_id }}</span>
+                  <span class="tag is-light is-rounded">
+                    {{ tarea.estado_detalle?.nombre || 'Estado ' + tarea.estado_id }}
+                  </span>
                 </td>
                 <td class="has-text-centered" style="vertical-align: middle;">
                   <span class="has-text-weight-semibold">{{ tarea.horasReales || 0 }}h</span>
                 </td>
                 <td class="has-text-right" style="vertical-align: middle;">
-                  <button class="button is-small is-info is-light" @click="$emit('editar-tarea', tarea)">
-                    <span class="icon is-small"><i class="fas fa-edit"></i></span>
-                  </button>
+                  <div class="buttons is-right">
+                    <button class="button is-small is-info is-light" @click="$emit('editar-tarea', tarea)">
+                      <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                    </button>
+                    <button class="button is-small is-danger is-light" @click="pedirConfirmacionEliminar(tarea)">
+                      <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                    </button>
+                  </div>
                 </td>
               </tr>
               <tr v-if="!userStory.tareas?.length">
-                <td colspan="4" class="has-text-centered py-5 has-text-grey">
+                <td colspan="5" class="has-text-centered py-5 has-text-grey">
                   <p>No hay tareas desglosadas aún.</p>
                 </td>
               </tr>
@@ -113,17 +137,34 @@
 
       <footer class="modal-card-foot is-justify-content-flex-end">
         <button class="button" @click="$emit('close')">Cancelar</button>
-        <button class="button is-success" @click="guardarCambios">
+        <button class="button is-success" :class="{'is-loading': enviando}" @click="guardarCambios">
           <span class="icon is-small"><i class="fas fa-save"></i></span>
           <span>Guardar Cambios</span>
         </button>
       </footer>
     </div>
+
+    <div class="modal" :class="{ 'is-active': mostrarConfirmar }">
+      <div class="modal-background" @click="cancelarEliminacion"></div>
+      <div class="modal-card" style="width: 400px;">
+        <header class="modal-card-head has-background-danger">
+          <p class="modal-card-title has-text-white is-size-6">Confirmar Eliminación</p>
+        </header>
+        <section class="modal-card-body">
+          <p>¿Estás seguro de eliminar la tarea: <br><strong>{{ tareaSeleccionada?.titulo }}</strong>?</p>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end py-2">
+          <button class="button is-small" @click="cancelarEliminacion">Cancelar</button>
+          <button class="button is-danger is-small" @click="confirmarEliminacion">Eliminar Tarea</button>
+        </footer>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { reactive, watch } from 'vue';
+import { reactive, ref, watch } from 'vue';
+import userStoryService from '../../services/userStory.service';
 
 const props = defineProps({
   isActive: Boolean,
@@ -132,27 +173,88 @@ const props = defineProps({
   estados: Array
 });
 
-const emit = defineEmits(['close', 'actualizar', 'agregar-tarea', 'editar-tarea']);
+const emit = defineEmits(['close', 'actualizar', 'agregar-tarea', 'editar-tarea', 'eliminar-tarea']);
+
+const enviando = ref(false);
+const mostrarConfirmar = ref(false);
+const tareaSeleccionada = ref(null);
+
+// Estados para el error elegante
+const errorVisible = ref(false);
+const mensajeError = ref('');
+const detalleError = ref('');
 
 const editForm = reactive({
+  id: null,
   titulo: '',
   descripcion: '',
-  condiciones: '', 
+  condiciones: '',
   prioridad_id: null,
   estado_id: null
 });
 
+// Sincronizar el formulario cuando cambia la US seleccionada
 watch(() => props.userStory, (newVal) => {
   if (newVal) {
+    editForm.id = newVal.id;
     editForm.titulo = newVal.titulo;
     editForm.descripcion = newVal.descripcion;
-    editForm.condiciones = newVal.condiciones || ''; 
+    editForm.condiciones = newVal.condiciones;
     editForm.prioridad_id = newVal.prioridad_id;
     editForm.estado_id = newVal.estado_id;
+    // Limpiamos errores al cambiar de US
+    errorVisible.value = false;
   }
 }, { immediate: true });
 
-const guardarCambios = () => {
-  emit('actualizar', { id: props.userStory.id, ...editForm });
+const guardarCambios = async () => {
+  enviando.value = true;
+  errorVisible.value = false;
+  
+  try {
+    // Llamamos al servicio para actualizar
+    await userStoryService.update(editForm.id, { ...editForm });
+    // Si sale bien, avisamos al padre para refrescar la lista y cerramos
+    emit('actualizar', { ...editForm });
+    emit('close');
+  } catch (error) {
+    // CAPTURAMOS EL ERROR 400 DEL BACKEND
+    mensajeError.value = error.response?.data?.mensaje || "Error al actualizar";
+    detalleError.value = error.response?.data?.detalle || "";
+    errorVisible.value = true;
+  } finally {
+    enviando.value = false;
+  }
+};
+
+const pedirConfirmacionEliminar = (tarea) => {
+  tareaSeleccionada.value = tarea;
+  mostrarConfirmar.value = true;
+};
+
+const cancelarEliminacion = () => {
+  mostrarConfirmar.value = false;
+  tareaSeleccionada.value = null;
+};
+
+const confirmarEliminacion = () => {
+  emit('eliminar-tarea', tareaSeleccionada.value.id);
+  mostrarConfirmar.value = false;
 };
 </script>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+.tareas-container::-webkit-scrollbar {
+  width: 6px;
+}
+.tareas-container::-webkit-scrollbar-thumb {
+  background: #dbdbdb;
+  border-radius: 10px;
+}
+</style>

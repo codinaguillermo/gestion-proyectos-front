@@ -9,12 +9,12 @@
           </button>
           <h1 class="title">Product Backlog</h1>          
           <h2 class="subtitle is-6 has-text-grey">
-            Proyecto: {{ nombreProyecto || 'Cargando...' }}
+            Proyecto: {{ proyectoData?.nombre || 'Cargando...' }}
           </h2>
         </div>
       </div>
       <div class="level-right">
-        <button class="button is-primary" @click="isModalActive = true">
+        <button v-if="puedeGestionarProyecto" class="button is-primary" @click="isModalActive = true">
           <span class="icon"><i class="fas fa-plus"></i></span>
           <span>Nueva User Story (US)</span>
         </button>
@@ -34,8 +34,9 @@
         :userStory="us" 
         @click="abrirDetalleUS(us)" 
         @eliminar="prepararEliminacion" 
+        :showDelete="puedeGestionarProyecto" 
+        :class="{ 'can-delete': puedeGestionarProyecto }"
       />
-     
     </div>
 
     <div v-else class="box has-text-centered py-6">
@@ -59,25 +60,18 @@
               <input class="input" type="text" v-model="formUS.titulo" placeholder="Ej: Registro de Usuarios">
             </div>
           </div>
-          
           <div class="field">
             <label class="label">Descripción</label>
             <div class="control">
               <textarea class="textarea" v-model="formUS.descripcion" placeholder="Como... quiero... para..."></textarea>
             </div>
           </div>
-
           <div class="field">
-            <label class="label">Condiciones (Criterios de Aceptación)</label>
+            <label class="label">Condiciones</label>
             <div class="control">
-              <textarea 
-                class="textarea" 
-                v-model="formUS.condiciones" 
-                placeholder="¿Qué debe cumplir esta US para estar terminada?"
-              ></textarea>
+              <textarea class="textarea" v-model="formUS.condiciones" placeholder="Criterios de aceptación"></textarea>
             </div>
           </div>
-
           <div class="field">
             <label class="label">Prioridad Inicial</label>
             <div class="control">
@@ -107,14 +101,20 @@
       @close="isDetalleModalActive = false"
       @actualizar="actualizarUS"
       @agregar-tarea="prepararNuevaTarea"
+      @editar-tarea="prepararEdicionTarea($event, usSeleccionada)"
+      @eliminar-tarea="eliminarTareaDeBD" 
     />
 
     <CrearTareaModal 
       v-if="usSeleccionada"
       :isActive="isTareaModalActive"
       :userStory="usSeleccionada"
-      @close="isTareaModalActive = false"
+      :tareaEdit="tareaParaEditar" 
+      :integrantes="proyectoData?.integrantes || []" 
+      :proyectoOwnerId="proyectoData?.docente_owner_id"
       @tarea-creada="refrescarTodo"
+      @tarea-actualizada="refrescarTodo"
+      @close="isTareaModalActive = false; isDetalleModalActive = true;"
     />
 
     <ConfirmarModal 
@@ -123,12 +123,11 @@
       @confirmar="ejecutarEliminacion"
       @cancelar="isConfirmActive = false"
     />
-
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed} from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../services/api';
 import userStoryService from '../services/userStory.service';
@@ -136,6 +135,7 @@ import UserStoryCard from '../components/userStoryCard.vue';
 import DetalleUserStoryModal from '../components/modals/DetalleUserStoryModal.vue';
 import CrearTareaModal from '../components/modals/crearTareaModal.vue'; 
 import ConfirmarModal from '../components/modals/ConfirmarModal.vue';
+import { useAuthStore } from '../stores/auth';
 
 const route = useRoute();
 const proyectoId = ref(null);
@@ -149,17 +149,35 @@ const isTareaModalActive = ref(false);
 const isConfirmActive = ref(false);
 
 const usSeleccionada = ref(null);
+const tareaParaEditar = ref(null);
 const usAEliminar = ref(null);
 const prioridades = ref([]);
 const estados = ref([]);
-const nombreProyecto = ref(''); // variable para el título del proyecto
+const proyectoData = ref(null);
+const authStore = useAuthStore();
 
-// Reactive form actualizado con el nuevo campo
+const mensajeError = ref(''); // Guardará el texto del error
+const mostrarError = ref(false); // Controlará la visibilidad
+
 const formUS = reactive({
   titulo: '',
   descripcion: '',
-  condiciones: '', // <--- Agregado
+  condiciones: '',
   prioridad_id: 2
+});
+
+/**
+ * LÓGICA DE PERMISOS BLINDADA
+ */
+const puedeGestionarProyecto = computed(() => {
+  const user = authStore.usuario;
+  if (!user || !proyectoData.value) return false;
+
+  // 1. REGLA DE ORO: El Admin (Rol 1) puede todo.
+  if (Number(user.rol_id) === 1) return true;
+
+  // 2. REGLA DOCENTE: Solo si es el dueño del proyecto.
+  return Number(proyectoData.value.docente_owner_id) === Number(user.id);
 });
 
 const cargarMaestros = async () => {
@@ -195,18 +213,15 @@ const crearUserStory = async () => {
       proyecto_id: Number(proyectoId.value),
       titulo: formUS.titulo.trim(),
       descripcion: formUS.descripcion.trim(),
-      condiciones: formUS.condiciones.trim(), // <--- Se envía al backend
+      condiciones: formUS.condiciones.trim(),
       prioridad_id: formUS.prioridad_id,
       estado_id: 1 
     };
     await userStoryService.create(payload);
     isModalActive.value = false;
-    
-    // Reset del formulario
     formUS.titulo = '';
     formUS.descripcion = '';
-    formUS.condiciones = ''; // <--- Reset campo nuevo
-    
+    formUS.condiciones = '';
     await cargarUserStories();
   } catch (error) {
     console.error("Error al crear US");
@@ -215,25 +230,43 @@ const crearUserStory = async () => {
   }
 };
 
-// ... resto de las funciones (abrirDetalleUS, actualizarUS, etc.) se mantienen igual ...
-
 const abrirDetalleUS = (us) => {
-  usSeleccionada.value = us;
+  const usFresca = userStories.value.find(item => item.id === us.id);
+  usSeleccionada.value = { ...usFresca }; 
   isDetalleModalActive.value = true;
 };
 
 const prepararNuevaTarea = (us) => {
-  isDetalleModalActive.value = false;
+  tareaParaEditar.value = null; 
+  usSeleccionada.value = us;
+  isDetalleModalActive.value = false; 
+  isTareaModalActive.value = true;
+};
+
+const prepararEdicionTarea = (tarea, us) => {
+  tareaParaEditar.value = tarea;
+  usSeleccionada.value = us;
+  isDetalleModalActive.value = false; 
   isTareaModalActive.value = true;
 };
 
 const actualizarUS = async (datos) => {
+  mensajeError.value = '';
+  mostrarError.value = false;
+
   try {
     await userStoryService.update(datos.id, datos);
     isDetalleModalActive.value = false;
     await cargarUserStories();
   } catch (error) {
-    console.error("Error al actualizar");
+    // Capturamos el mensaje que viene del Backend
+    mensajeError.value = error.response?.data?.detalle || error.response?.data?.mensaje || "Error inesperado";
+    mostrarError.value = true;
+
+    // Opcional: Desaparecer el error después de 5 segundos
+    setTimeout(() => {
+      mostrarError.value = false;
+    }, 5000);
   }
 };
 
@@ -254,30 +287,33 @@ const ejecutarEliminacion = async () => {
   }
 };
 
+const eliminarTareaDeBD = async (tareaId) => {
+  try {
+    await api.delete(`/tareas/${tareaId}`);
+    await refrescarTodo();
+  } catch (error) {
+    console.error("Error al borrar tarea:", error);
+  }
+};
+
 const refrescarTodo = async () => {
-  await cargarUserStories();
-  isTareaModalActive.value = false;
+  await cargarUserStories(); 
+  isTareaModalActive.value = false; 
+  const usActualizada = userStories.value.find(u => u.id === usSeleccionada.value.id);
+  if (usActualizada) {
+    usSeleccionada.value = { ...usActualizada };
+    isDetalleModalActive.value = true; 
+  }
 };
 
 const cargarDatosProyecto = async () => {
   try {
     const res = await api.get(`/proyectos/${proyectoId.value}`);
-    
-    // Agregamos un log pequeño para que VOS veas en consola qué llega
-    console.log("Datos del proyecto recibidos:", res.data);
-
-    if (res.data && res.data.nombre) {
-      nombreProyecto.value = res.data.nombre;
-    } else {
-      // Si por alguna razón no viene el nombre, ponemos un texto genérico
-      nombreProyecto.value = "Nombre no disponible";
-    }
+    proyectoData.value = res.data; 
   } catch (error) {
-    console.error("Error al obtener nombre del proyecto:", error);
-    nombreProyecto.value = "Error al cargar nombre";
+    console.error("Error al obtener datos del proyecto:", error);
   }
 };
-
 
 onMounted(() => {
   proyectoId.value = route.params.id;

@@ -15,13 +15,13 @@
             <h3 class="title is-6 border-bottom has-text-grey">Información General</h3>
             <div class="field">
               <label class="label is-small">Nombre del Proyecto</label>
-              <input class="input is-small" type="text" v-model="form.nombre">
+              <input class="input is-small" type="text" v-model="form.nombre" :disabled="!esAdminOOwner">
             </div>
             
             <div class="field">
               <label class="label is-small">Estado Global</label>
               <div class="select is-fullwidth is-small">
-                <select v-model="form.estado_id">
+                <select v-model="form.estado_id" :disabled="!esAdminOOwner">
                   <option v-for="est in estadosProyecto" :key="est.id" :value="est.id">
                     {{ est.nombre }}
                   </option>
@@ -53,7 +53,7 @@
                         <span :class="['tag is-rounded is-small mr-1', obtenerColorCarga(miembro.cargaTotal)]">
                           {{ miembro.cargaTotal }}
                         </span>
-                        <button class="delete is-small" @click="quitarMiembro(miembro.id)"></button>
+                        <button v-if="esAdminOOwner" class="delete is-small" @click="quitarMiembro(miembro.id)"></button>
                       </div>
                     </article>
                   </div>
@@ -61,7 +61,7 @@
               </div>
             </div>
 
-            <div class="field mt-4">
+            <div v-if="esAdminOOwner" class="field mt-4">
               <label class="label is-small">Asignar nuevo integrante</label>
               <div class="control has-icons-left">
                 <input class="input is-rounded is-small" type="text" v-model="busqueda" @input="buscarUsuarios" placeholder="Escribe nombre o email...">
@@ -73,7 +73,9 @@
                       <li v-for="u in resultadosBusqueda" :key="u.id">
                         <a @click="seleccionarUsuario(u)" class="is-size-7 p-2">
                           <strong>{{ u.nombre }}</strong> 
-                          <span class="tag is-light is-pulled-right">{{ u.Rol?.nombre || 'Alumno' }}</span>
+                          <span class="tag is-light is-pulled-right">
+                            {{ u.Rol?.nombre || u.rol?.nombre || 'Alumno' }}
+                          </span>
                         </a>
                       </li>
                     </ul>
@@ -87,8 +89,10 @@
       </section>
 
       <footer class="modal-card-foot is-justify-content-flex-end p-3">
-        <button class="button is-small" @click="$emit('close')">Cancelar</button>
-        <button class="button is-success is-small" @click="confirmarCambios">Guardar Cambios</button>
+        <button class="button is-small" @click="$emit('close')">
+          {{ esAdminOOwner ? 'Cancelar' : 'Cerrar' }}
+        </button>
+        <button v-if="esAdminOOwner" class="button is-success is-small" @click="confirmarCambios">Guardar Cambios</button>
       </footer>
 
     </div>
@@ -115,6 +119,27 @@ export default {
       resultadosBusqueda: []
     }
   },
+  computed: {
+    esAdminOOwner() {
+      const authStore = useAuthStore();
+      const user = authStore.usuario;
+      if (!user) return false;
+
+      // Buscamos el ROL ID con tolerancia a diferentes nombres de propiedad
+      const rawRolId = user.rol_id || user.rolId || (user.Rol ? user.Rol.id : null);
+      const rolId = Number(rawRolId);
+      
+      const usuarioId = Number(user.id);
+      const ownerId = Number(this.proyectoOriginal?.docente_owner_id);
+
+      // Si el rolId es 1 (Admin según tu imagen de BD), devolvemos true directamente
+      if (rolId === 1) return true;
+      
+      // Si no es admin, verificamos si es el dueño
+      return usuarioId === ownerId;
+    }
+  },
+  // ... resto de los métodos se mantienen igual ...
   watch: {
     proyectoOriginal: {
       handler(newVal) {
@@ -141,42 +166,23 @@ export default {
         console.error("Error cargando maestros", e);
       }
     },
-    
     prepararMiembros() {
-      const listaSucia = 
-        this.proyectoOriginal?.integrantes || 
-        this.proyectoOriginal?.Usuarios || 
-        this.proyectoOriginal?.usuarios || 
-        this.miembrosActuales || 
-        [];
-
+      const listaSucia = this.proyectoOriginal?.integrantes || this.proyectoOriginal?.Usuarios || [];
       const integrantes = Array.isArray(listaSucia) ? [...listaSucia] : [];
-
-      this.miembrosAsignados = integrantes.map(m => {
-        // EXTRAEMOS SOLO EL TEXTO DEL ROL
-        let nombreRol = 'Alumno';
-        if (m.Rol?.nombre) nombreRol = m.Rol.nombre;
-        else if (m.rol?.nombre) nombreRol = m.rol.nombre;
-        else if (typeof m.rol === 'string') nombreRol = m.rol;
-
-        return {
-          id: m.id,
-          nombre: m.nombre || 'Sin nombre',
-          email: m.email || '',
-          rol: nombreRol,
-          cargaTotal: this.calcularCargaAlumno(m.tareas || [])
-        };
-      });
+      this.miembrosAsignados = integrantes.map(m => ({
+        id: m.id,
+        nombre: m.nombre || 'Sin nombre',
+        email: m.email || '',
+        rol: m.Rol?.nombre || m.rol?.nombre || 'Alumno',
+        cargaTotal: this.calcularCargaAlumno(m.tareas || [])
+      }));
     },
-
     obtenerColorAvatar(rol) {
       const r = (typeof rol === 'string') ? rol.toLowerCase() : '';
-      if (r.includes('docente') || r.includes('profesor') || r.includes('admin')) {
-        return 'has-background-link-light has-text-link';
-      }
-      return 'has-background-success-light has-text-success';
+      return (r.includes('docente') || r.includes('profesor') || r.includes('admin')) 
+        ? 'has-background-link-light has-text-link' 
+        : 'has-background-success-light has-text-success';
     },
-    
     calcularCargaAlumno(tareas) {
       if (!tareas || !Array.isArray(tareas)) return 0;
       return tareas.reduce((total, tarea) => {
@@ -197,6 +203,7 @@ export default {
       this.miembrosAsignados = this.miembrosAsignados.filter(m => m.id !== id); 
     },
     async confirmarCambios() {
+      if(!this.esAdminOOwner) return;
       await this.actualizarProyecto();
     },
     async actualizarProyecto() {
@@ -233,16 +240,10 @@ export default {
       }
     },
     seleccionarUsuario(u) {
-      const yaExiste = this.miembrosAsignados.some(m => m.id === u.id);
-      if (yaExiste) {
-        alert("Este usuario ya está en el equipo");
-        return;
-      }
+      if (this.miembrosAsignados.some(m => m.id === u.id)) return alert("Ya está en el equipo");
       this.miembrosAsignados.push({
-        id: u.id,
-        nombre: u.nombre,
-        email: u.email,
-        rol: u.Rol?.nombre || 'Alumno',
+        id: u.id, nombre: u.nombre, email: u.email,
+        rol: u.Rol?.nombre || u.rol?.nombre || 'Alumno',
         cargaTotal: 0 
       });
       this.busqueda = '';
@@ -256,35 +257,9 @@ export default {
 .border-bottom { border-bottom: 1px solid #dbdbdb; margin-bottom: 1rem; padding-bottom: 0.5rem; }
 .border-slack { border: 1px solid #edf0f3; border-radius: 8px; transition: all 0.2s; }
 .border-slack:hover { border-color: #cbd5e0; background-color: #f8fafc; }
-
-/* 1. Modal más alto y con scroll interno si es necesario */
-.modal-card {
-  height: 80vh; /* 80% del alto de la pantalla */
-  max-height: 700px;
-}
-
-.modal-card-body {
-  overflow-y: auto;
-  min-height: 500px; /* Asegura un mínimo de altura */
-}
-
-.avatar-circle {
-  width: 32px; height: 32px; border-radius: 6px; 
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.75rem; font-weight: bold;
-}
-
-/* 2. Resultados de búsqueda que no rompan el layout */
-.search-results {
-  position: absolute; 
-  z-index: 1000; /* Bien arriba */
-  width: 100%; 
-  max-height: 250px; 
-  overflow-y: auto;
-  border: 1px solid #dbdbdb; 
-  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-  background: white;
-}
-
+.modal-card { height: 80vh; max-height: 700px; }
+.modal-card-body { overflow-y: auto; min-height: 500px; }
+.avatar-circle { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; }
+.search-results { position: absolute; z-index: 1000; width: 100%; max-height: 250px; overflow-y: auto; border: 1px solid #dbdbdb; box-shadow: 0 8px 16px rgba(0,0,0,0.1); background: white; }
 .is-truncated { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>

@@ -6,7 +6,7 @@
           <h1 class="title">Mis Proyectos</h1>
         </div>
         <div class="level-right">
-          <button class="button is-primary" @click="abrirModal">
+          <button v-if="esAdminODocente" class="button is-primary" @click="abrirModal">
             <span class="icon"><i class="fas fa-plus"></i></span>
             <span>Nuevo Proyecto</span>
           </button>
@@ -44,7 +44,7 @@
               <td>{{ formatearFecha(proyecto.created_at) }}</td>
               
               <td class="has-text-right">
-                <div class="buttons is-right">
+                <div v-if="puedeGestionar(proyecto)" class="buttons is-right">
                   <button class="button is-small is-warning is-light" @click.stop="prepararEdicion(proyecto)">
                     <span class="icon is-small"><i class="fas fa-edit"></i></span>
                   </button>
@@ -52,6 +52,7 @@
                     <span class="icon is-small"><i class="fas fa-trash"></i></span>
                   </button>
                 </div>
+                <span v-else class="tag is-white has-text-grey-light">Solo lectura</span>
               </td>
             </tr>
           </tbody>
@@ -108,22 +109,20 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import { projectService } from '../services/project.services'; 
 import EditarProyectoModal from '../components/modals/EditarProyectoModal.vue';
-import ConfirmarModal from '../components/modals/ConfirmarModal.vue'; // <-- Importado
+import ConfirmarModal from '../components/modals/ConfirmarModal.vue';
 
 const authStore = useAuthStore();
 const router = useRouter();
 
-// --- VARIABLES DE ESTADO ---
 const proyectos = ref([]);
 const cargando = ref(false);
 const errorMsg = ref('');
 
-// --- VARIABLES MODAL NUEVO ---
 const isModalActive = ref(false);
 const enviando = ref(false);
 const formProyecto = reactive({
@@ -131,13 +130,35 @@ const formProyecto = reactive({
     descripcion: ''
 });
 
-// --- VARIABLES MODAL EDICIÓN ---
 const mostrarModalEditar = ref(false);
 const proyectoSeleccionado = ref(null);
 
-// --- VARIABLES ELIMINACIÓN ---
 const isConfirmActive = ref(false);
 const proyectoAEliminar = ref(null);
+
+// --- LÓGICA DE PERMISOS ---
+
+const esAdminODocente = computed(() => {
+    const rol = Number(authStore.usuario?.rol_id);
+    return rol === 1 || rol === 2; // 1: Admin, 2: Docente
+});
+
+const puedeGestionar = (proyecto) => {
+    const user = authStore.usuario;
+    
+    // Si no hay usuario, nadie gestiona nada
+    if (!user) return false;
+
+    // 1. REGLA DE ORO: El Admin (Rol 1) puede todo.
+    // Usamos Number() por si el ID viene como String desde el localStorage
+    if (Number(user.rol_id) === 1) return true;
+
+    // 2. REGLA DOCENTE: Solo si es el creador del proyecto.
+    // Ahora que corregimos el controlador, 'docente_owner_id' ya no vendrá vacío.
+    const esDuenio = Number(user.id) === Number(proyecto.docente_owner_id);
+
+    return esDuenio;
+};
 
 // --- FUNCIONES ---
 
@@ -170,10 +191,8 @@ const prepararEdicion = (proyecto) => {
 
 const guardarProyecto = async () => {
     if (!formProyecto.nombre) return; 
-    
     enviando.value = true;
     const res = await projectService.create(formProyecto);
-    
     if (res.success) {
         isModalActive.value = false;
         await cargarProyectos(); 
@@ -181,7 +200,6 @@ const guardarProyecto = async () => {
     enviando.value = false;
 };
 
-// --- NUEVA LÓGICA DE ELIMINACIÓN ---
 const prepararEliminacion = (proyecto) => {
     proyectoAEliminar.value = proyecto;
     isConfirmActive.value = true;
@@ -189,14 +207,13 @@ const prepararEliminacion = (proyecto) => {
 
 const ejecutarEliminacion = async () => {
     if (!proyectoAEliminar.value) return;
-    
     const res = await projectService.delete(proyectoAEliminar.value.id);
     if (res.success) {
         isConfirmActive.value = false;
         proyectoAEliminar.value = null;
         await cargarProyectos();
     } else {
-        alert(res.error); // Opcional: podrías mostrarlo en el mismo modal
+        alert(res.error);
     }
 };
 
@@ -204,9 +221,6 @@ const formatearFecha = (fechaRaw) => {
     if (!fechaRaw) return '-';
     return new Date(fechaRaw).toLocaleDateString('es-AR');
 };
-
-
-
 
 onMounted(() => {
     cargarProyectos();
