@@ -1,4 +1,4 @@
-<template>
+<template>  
   <div>   
     <div class="container mt-5 px-4">
       <div class="level">
@@ -29,7 +29,7 @@
           </thead>
           <tbody>
             <tr 
-              v-for="proyecto in proyectos" 
+              v-for="proyecto in proyectosVisibles" 
               :key="proyecto.id" 
               @click="irAbacklog(proyecto.id)" 
               style="cursor: pointer;"
@@ -52,7 +52,11 @@
                     <span class="icon is-small"><i class="fas fa-trash"></i></span>
                   </button>
                 </div>
-                <span v-else class="tag is-white has-text-grey-light">Solo lectura</span>
+              </td>
+            </tr>
+            <tr v-if="proyectosVisibles.length === 0">
+              <td colspan="5" class="has-text-centered has-text-grey py-5">
+                No tienes proyectos asignados actualmente.
               </td>
             </tr>
           </tbody>
@@ -136,28 +140,59 @@ const proyectoSeleccionado = ref(null);
 const isConfirmActive = ref(false);
 const proyectoAEliminar = ref(null);
 
-// --- LÓGICA DE PERMISOS ---
+// --- LÓGICA DE PERMISOS Y VISIBILIDAD ---
 
 const esAdminODocente = computed(() => {
     const rol = Number(authStore.usuario?.rol_id);
-    return rol === 1 || rol === 2; // 1: Admin, 2: Docente
+    return rol === 1 || rol === 2;
+});
+
+// REGLA DE NEGOCIO: Filtrado estricto de visibilidad
+const proyectosVisibles = computed(() => {
+    const user = authStore.usuario;
+    if (!user) return [];
+
+    const miId = Number(user.id);
+    const miRol = Number(user.rol_id);
+
+    // 1. Admin ve todo
+    if (miRol === 1) return proyectos.value;
+
+    // 2. Filtrado para Docentes (Alejandra) y Alumnos
+    return proyectos.value.filter(p => {
+        // ¿Soy el dueño?
+        const esDuenio = Number(p.docente_owner_id) === miId;
+        
+        // ¿Soy un integrante? (Chequeamos todos los posibles alias de la relación)
+        const listaIntegrantes = p.Usuarios || p.integrantes || p.usuarios || [];
+        const esParticipante = listaIntegrantes.some(i => Number(i.id) === miId);
+        
+        // Solo incluimos si cumple alguna de las dos
+        return esDuenio || esParticipante;
+    });
 });
 
 const puedeGestionar = (proyecto) => {
     const user = authStore.usuario;
-    
-    // Si no hay usuario, nadie gestiona nada
     if (!user) return false;
 
-    // 1. REGLA DE ORO: El Admin (Rol 1) puede todo.
-    // Usamos Number() por si el ID viene como String desde el localStorage
-    if (Number(user.rol_id) === 1) return true;
+    const miId = Number(user.id);
+    const miRol = Number(user.rol_id);
 
-    // 2. REGLA DOCENTE: Solo si es el creador del proyecto.
-    // Ahora que corregimos el controlador, 'docente_owner_id' ya no vendrá vacío.
-    const esDuenio = Number(user.id) === Number(proyecto.docente_owner_id);
+    // 1. El Admin (Rol 1) gestiona todo lo que ve.
+    if (miRol === 1) return true;
 
-    return esDuenio;
+    // 2. REGLA PARA DOCENTES: 
+    // Si es Docente (Rol 2) Y es miembro del proyecto, puede gestionarlo.
+    if (miRol === 2) {
+        const integrantes = proyecto.Usuarios || proyecto.integrantes || [];
+        const esMiembro = integrantes.some(i => Number(i.id) === miId);
+        return esMiembro;
+    }
+
+    // 3. PARA ALUMNOS (u otros): 
+    // No gestionan proyectos (solo entran al backlog), devolvemos false.
+    return false;
 };
 
 // --- FUNCIONES ---
@@ -169,13 +204,38 @@ const irAbacklog = (id) => {
 const cargarProyectos = async () => {
     cargando.value = true;
     errorMsg.value = ''; 
-    const res = await projectService.getAll();
-    if (res.success) {
-        proyectos.value = res.data;
-    } else {
-        errorMsg.value = res.error;
+    
+    try {
+        const res = await projectService.getAll();
+        
+        if (res.success) {
+            const user = authStore.usuario;
+            const miId = Number(user.id);
+            const miRol = Number(user.rol_id);
+
+            // 1. El Admin sigue viendo todo por ser Dios en el sistema.
+            if (miRol === 1) {
+                proyectos.value = res.data;
+            } else {
+                // 2. REGLA DE ORO: La verdad está en la membresía.
+                // Filtramos para quedarnos SOLO con proyectos donde el ID 
+                // del usuario esté en la lista de integrantes.
+                proyectos.value = res.data.filter(p => {
+                    // Buscamos en 'Usuarios' o 'integrantes' (según cómo lo mande tu Sequelize)
+                    const integrantes = p.Usuarios || p.integrantes || [];
+                    
+                    // Si el ID del usuario está en esa lista, el proyecto es suyo.
+                    return integrantes.some(i => Number(i.id) === miId);
+                });
+            }
+        } else {
+            errorMsg.value = res.error;
+        }
+    } catch (e) {
+        errorMsg.value = "Error al conectar con el servidor";
+    } finally {
+        cargando.value = false;
     }
-    cargando.value = false;
 };
 
 const abrirModal = () => {

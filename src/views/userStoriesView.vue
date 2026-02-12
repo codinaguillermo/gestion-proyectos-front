@@ -14,7 +14,7 @@
         </div>
       </div>
       <div class="level-right">
-        <button v-if="puedeGestionarProyecto" class="button is-primary" @click="isModalActive = true">
+        <button v-if="puedeGestionarBacklog" class="button is-primary" @click="isModalActive = true">
           <span class="icon"><i class="fas fa-plus"></i></span>
           <span>Nueva User Story (US)</span>
         </button>
@@ -28,15 +28,21 @@
     </div>
 
     <div v-else-if="userStories && userStories.length > 0">
-      <UserStoryCard 
-        v-for="us in userStories" 
-        :key="us.id" 
-        :userStory="us" 
-        @click="abrirDetalleUS(us)" 
-        @eliminar="prepararEliminacion" 
-        :showDelete="puedeGestionarProyecto" 
-        :class="{ 'can-delete': puedeGestionarProyecto }"
-      />
+      <div class="columns is-multiline">
+        <div 
+          v-for="us in userStories" 
+          :key="'card-us-' + us.id" 
+          class="column is-4"
+        >
+          <UserStoryCard 
+            :userStory="us" 
+            @click="abrirDetalleUS(us)" 
+            @eliminar="prepararEliminacion" 
+            :showDelete="puedeGestionarBacklog" 
+            :class="{ 'can-delete': puedeGestionarBacklog }"
+          />
+        </div>
+      </div>
     </div>
 
     <div v-else class="box has-text-centered py-6">
@@ -77,7 +83,7 @@
             <div class="control">
               <div class="select is-fullwidth">
                 <select v-model="formUS.prioridad_id">
-                  <option v-for="p in prioridades" :key="p.id" :value="p.id">{{ p.nombre }}</option>
+                  <option v-for="p in prioridades" :key="'p-opt-' + p.id" :value="p.id">{{ p.nombre }}</option>
                 </select>
               </div>
             </div>
@@ -93,12 +99,12 @@
     </div>
 
     <DetalleUserStoryModal 
-      v-if="usSeleccionada"
+      v-if="isDetalleModalActive && usSeleccionada"
       :isActive="isDetalleModalActive"
       :userStory="usSeleccionada"
       :prioridades="prioridades"
       :estados="estados"
-      @close="isDetalleModalActive = false"
+      @close="cerrarDetalleUS"
       @actualizar="actualizarUS"
       @agregar-tarea="prepararNuevaTarea"
       @editar-tarea="prepararEdicionTarea($event, usSeleccionada)"
@@ -106,11 +112,11 @@
     />
 
     <CrearTareaModal 
-      v-if="usSeleccionada"
+      v-if="isTareaModalActive && usSeleccionada"
       :isActive="isTareaModalActive"
       :userStory="usSeleccionada"
       :tareaEdit="tareaParaEditar" 
-      :integrantes="proyectoData?.integrantes || []" 
+      :integrantes="proyectoData?.integrantes || proyectoData?.Usuarios || []" 
       :proyectoOwnerId="proyectoData?.docente_owner_id"
       @tarea-creada="refrescarTodo"
       @tarea-actualizada="refrescarTodo"
@@ -127,7 +133,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed} from 'vue';
+import { ref, reactive, onMounted, computed, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../services/api';
 import userStoryService from '../services/userStory.service';
@@ -156,8 +162,8 @@ const estados = ref([]);
 const proyectoData = ref(null);
 const authStore = useAuthStore();
 
-const mensajeError = ref(''); // Guardará el texto del error
-const mostrarError = ref(false); // Controlará la visibilidad
+const mensajeError = ref(''); 
+const mostrarError = ref(false); 
 
 const formUS = reactive({
   titulo: '',
@@ -166,18 +172,17 @@ const formUS = reactive({
   prioridad_id: 2
 });
 
-/**
- * LÓGICA DE PERMISOS BLINDADA
- */
-const puedeGestionarProyecto = computed(() => {
+const puedeGestionarBacklog = computed(() => {
   const user = authStore.usuario;
   if (!user || !proyectoData.value) return false;
-
-  // 1. REGLA DE ORO: El Admin (Rol 1) puede todo.
-  if (Number(user.rol_id) === 1) return true;
-
-  // 2. REGLA DOCENTE: Solo si es el dueño del proyecto.
-  return Number(proyectoData.value.docente_owner_id) === Number(user.id);
+  const miId = Number(user.id);
+  const miRol = Number(user.rol_id);
+  if (miRol === 1) return true;
+  if (miRol === 2) {
+    const integrantes = proyectoData.value.Usuarios || proyectoData.value.integrantes || [];
+    return integrantes.some(i => Number(i.id) === miId);
+  }
+  return false;
 });
 
 const cargarMaestros = async () => {
@@ -219,9 +224,7 @@ const crearUserStory = async () => {
     };
     await userStoryService.create(payload);
     isModalActive.value = false;
-    formUS.titulo = '';
-    formUS.descripcion = '';
-    formUS.condiciones = '';
+    formUS.titulo = ''; formUS.descripcion = ''; formUS.condiciones = '';
     await cargarUserStories();
   } catch (error) {
     console.error("Error al crear US");
@@ -230,51 +233,71 @@ const crearUserStory = async () => {
   }
 };
 
-const abrirDetalleUS = (us) => {
+const abrirDetalleUS = async (us) => {
+  // Estabilización: Limpiamos antes de asignar para resetear el v-if
+  isDetalleModalActive.value = false;
+  usSeleccionada.value = null;
+  await nextTick();
+
   const usFresca = userStories.value.find(item => item.id === us.id);
-  usSeleccionada.value = { ...usFresca }; 
-  isDetalleModalActive.value = true;
+  if (usFresca) {
+    usSeleccionada.value = { ...usFresca }; 
+    isDetalleModalActive.value = true;
+  }
 };
 
-const prepararNuevaTarea = (us) => {
+const cerrarDetalleUS = () => {
+  isDetalleModalActive.value = false;
+  usSeleccionada.value = null;
+};
+
+const prepararNuevaTarea = async (us) => {
   tareaParaEditar.value = null; 
-  usSeleccionada.value = us;
   isDetalleModalActive.value = false; 
+  await nextTick();
   isTareaModalActive.value = true;
 };
 
-const prepararEdicionTarea = (tarea, us) => {
+const prepararEdicionTarea = async (tarea, us) => {
   tareaParaEditar.value = tarea;
-  usSeleccionada.value = us;
   isDetalleModalActive.value = false; 
+  await nextTick();
   isTareaModalActive.value = true;
 };
 
 const actualizarUS = async (datos) => {
   mensajeError.value = '';
   mostrarError.value = false;
-
   try {
     await userStoryService.update(datos.id, datos);
-    isDetalleModalActive.value = false;
+    cerrarDetalleUS();
     await cargarUserStories();
   } catch (error) {
-    // Capturamos el mensaje que viene del Backend
     mensajeError.value = error.response?.data?.detalle || error.response?.data?.mensaje || "Error inesperado";
     mostrarError.value = true;
-
-    // Opcional: Desaparecer el error después de 5 segundos
-    setTimeout(() => {
-      mostrarError.value = false;
-    }, 5000);
   }
 };
 
+const refrescarTodo = async () => {
+  const currentId = usSeleccionada.value?.id;
+  await cargarUserStories(); 
+  isTareaModalActive.value = false; 
+  
+  if (currentId) {
+    const usActualizada = userStories.value.find(u => u.id === currentId);
+    if (usActualizada) {
+      usSeleccionada.value = { ...usActualizada };
+      await nextTick();
+      isDetalleModalActive.value = true; 
+    }
+  }
+};
+
+// ... Resto de funciones auxiliares ...
 const prepararEliminacion = (usId) => {
   usAEliminar.value = userStories.value.find(u => u.id === usId);
   isConfirmActive.value = true;
 };
-
 const ejecutarEliminacion = async () => {
   if (!usAEliminar.value) return;
   try {
@@ -282,37 +305,19 @@ const ejecutarEliminacion = async () => {
     isConfirmActive.value = false;
     usAEliminar.value = null;
     await cargarUserStories(); 
-  } catch (error) {
-    console.error("Error al eliminar:", error);
-  }
+  } catch (error) { console.error(error); }
 };
-
 const eliminarTareaDeBD = async (tareaId) => {
   try {
     await api.delete(`/tareas/${tareaId}`);
     await refrescarTodo();
-  } catch (error) {
-    console.error("Error al borrar tarea:", error);
-  }
+  } catch (error) { console.error(error); }
 };
-
-const refrescarTodo = async () => {
-  await cargarUserStories(); 
-  isTareaModalActive.value = false; 
-  const usActualizada = userStories.value.find(u => u.id === usSeleccionada.value.id);
-  if (usActualizada) {
-    usSeleccionada.value = { ...usActualizada };
-    isDetalleModalActive.value = true; 
-  }
-};
-
 const cargarDatosProyecto = async () => {
   try {
     const res = await api.get(`/proyectos/${proyectoId.value}`);
     proyectoData.value = res.data; 
-  } catch (error) {
-    console.error("Error al obtener datos del proyecto:", error);
-  }
+  } catch (error) { console.error(error); }
 };
 
 onMounted(() => {
