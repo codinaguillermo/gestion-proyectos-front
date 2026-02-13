@@ -44,9 +44,14 @@
           </div>
 
           <div class="column is-12-mobile is-8-tablet">
-            <h3 class="title is-6 border-bottom has-text-grey uppercase-label">
-              Integrantes ({{ miembrosAsignados.length }})
-            </h3>
+            <div class="is-flex is-justify-content-between is-align-items-center border-bottom mb-2">
+              <h3 class="title is-6 has-text-grey uppercase-label mb-0">
+                Integrantes ({{ miembrosAsignados.length }})
+              </h3>
+              <span class="icon has-text-info is-clickable help-tooltip-down" :data-tooltip="leyendaPrioridades">
+                <i class="fas fa-info-circle"></i>
+              </span>
+            </div>
             
             <div class="miembros-scroll-area mb-4">
               <div class="columns is-multiline is-mobile px-2">
@@ -70,7 +75,13 @@
                         </p>
                       </div>
 
-                      <div class="media-right">
+                      <div class="media-right is-flex is-align-items-center">
+                        <div v-if="calcularPuntos(miembro.id) > 0" 
+                             class="workload-badge mr-3" 
+                             :class="getColorCarga(calcularPuntos(miembro.id))">
+                          {{ calcularPuntos(miembro.id) }}
+                        </div>
+
                         <button v-if="esAdminOOwner" class="button is-white is-small" @click="quitarMiembro(miembro.id)">
                           <span class="icon has-text-danger"><i class="fas fa-user-minus"></i></span>
                         </button>
@@ -136,12 +147,14 @@ import { useAuthStore } from '../../stores/auth';
 
 export default {
   props: {
-    proyectoOriginal: { type: Object, required: true }
+    proyectoOriginal: { type: Object, required: true },
+    todasLasTareas: { type: Array, default: () => [] } 
   },
   data() {
     return {
       form: { ...this.proyectoOriginal, escuela_id: this.proyectoOriginal.escuela_id },
       estadosProyecto: [],
+      prioridades: [], 
       miembrosAsignados: [],
       busqueda: '',
       resultadosBusqueda: []
@@ -152,6 +165,20 @@ export default {
       const authStore = useAuthStore();
       const user = authStore.usuario;
       return user && (Number(user.rol_id) === 1 || Number(user.id) === Number(this.proyectoOriginal?.docente_owner_id));
+    },
+    /**
+     * Genera dinámicamente el texto del tooltip basado en las prioridades/importancias 
+     * cargadas desde la base de datos.
+     */
+    leyendaPrioridades() {
+      if (!this.prioridades || this.prioridades.length === 0) {
+        return "Cargando escala de puntos...";
+      }
+      const escala = this.prioridades
+        .map(p => `• ${p.nombre}: ${p.peso} pts`)
+        .join('\n');
+
+      return `Puntos por tarea (según importancia):\n${escala}\n\n(Solo suma tareas en 'In Progress' o 'Testing')`;
     }
   },
   async mounted() {
@@ -163,18 +190,43 @@ export default {
       try {
         const data = await configService.getTablasMaestras();
         this.estadosProyecto = data.estadosProyecto || [];
-      } catch (e) { console.error(e); }
+        this.prioridades = data.prioridades || [];
+      } catch (e) { console.error("Error cargando configuraciones en modal:", e); }
     },
+
     prepararMiembros() {
       const lista = this.proyectoOriginal?.integrantes || this.proyectoOriginal?.Usuarios || [];
       this.miembrosAsignados = lista.map(m => ({ ...m }));
     },
+
+    calcularPuntos(usuarioId) {
+      if (!this.todasLasTareas.length) return 0;
+      
+      return this.todasLasTareas
+        .filter(t => 
+          Number(t.responsable_id) === Number(usuarioId) && 
+          (Number(t.estado_id) === 2 || Number(t.estado_id) === 3) 
+        )
+        .reduce((acc, tarea) => {
+          const prio = this.prioridades.find(p => p.id === tarea.prioridad_id);
+          return acc + (prio ? Number(prio.peso) : 0);
+        }, 0);
+    },
+
+    getColorCarga(puntos) {
+      if (puntos >= 100) return 'is-danger-badge'; 
+      if (puntos >= 50) return 'is-warning-badge'; 
+      return 'is-success-badge'; 
+    },
+
     obtenerColorAvatar(rolId) {
       return Number(rolId) === 3 ? 'has-background-success-light has-text-success' : 'has-background-link-light has-text-link';
     },
+
     obtenerIniciales(n) {
       return n ? n.split(' ').map(x => x[0]).join('').toUpperCase().substring(0, 2) : '?';
     },
+
     quitarMiembro(id) {
       this.miembrosAsignados = this.miembrosAsignados.filter(m => m.id !== id);
     },
@@ -184,37 +236,21 @@ export default {
             this.resultadosBusqueda = [];
             return;
         }
-        
         try {
             const authStore = useAuthStore();
             const res = await axios.get(`http://localhost:3000/api/usuarios?q=${this.busqueda}`, {
                 headers: { 'Authorization': `Bearer ${authStore.token}` }
             });
-
             const idEscuelaProyecto = Number(this.proyectoOriginal.escuela_id);
-
             this.resultadosBusqueda = res.data.filter(u => {
                 const rolId = Number(u.rol_id);
-
-                // 1. Docentes y Admins pasan siempre
                 if (rolId !== 3) return true;
-
-                // 2. Lógica para Alumnos: Buscamos el ID en el array de relaciones
-                // Probamos todas las variantes de nombre que Sequelize pudo haberle puesto
                 const arrayEscuelas = u.usuario_escuelas || u.UsuarioEscuelas || u.Escuelas || u.escuelas || [];
-                
-                // Si el array existe, buscamos el ID
                 const coincideEnRelacion = arrayEscuelas.some(rel => Number(rel.escuela_id || rel.id) === idEscuelaProyecto);
-                
-                // Por las dudas, chequeamos también si el ID está directo en la raíz
                 const coincideDirecto = Number(u.escuela_id || u.escuelaId) === idEscuelaProyecto;
-
                 return coincideEnRelacion || coincideDirecto;
             });
-
-        } catch (e) {
-            console.error("Error en la búsqueda:", e);
-        }
+        } catch (e) { console.error("Error en la búsqueda:", e); }
     },
 
     seleccionarUsuario(u) {
@@ -223,6 +259,7 @@ export default {
       this.busqueda = '';
       this.resultadosBusqueda = [];
     },
+
     async confirmarCambios() {
       try {
         const authStore = useAuthStore();
@@ -247,6 +284,80 @@ export default {
 .border-right-tablet { border-right: 1px solid #dbdbdb; }
 .border-slack { border: 1px solid #e1e4e8; border-radius: 10px; background: white; }
 .uppercase-label { text-transform: uppercase; font-size: 0.7rem; font-weight: 700; }
+
+/* Estilos para el Globito de Carga */
+.workload-badge {
+  min-width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.is-success-badge { background-color: #48c78e; }
+.is-warning-badge { background-color: #ffe08a; color: #947600; }
+.is-danger-badge { background-color: #f14668; }
+
+/* Tooltip dinámico hacia abajo */
+.help-tooltip-down { position: relative; }
+
+.help-tooltip-down:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 130%; /* Desplazamiento hacia abajo */
+  right: 0;
+  background: #2c3e50;
+  color: white;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  white-space: pre;
+  z-index: 1000;
+  width: 250px;
+  line-height: 1.4;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  text-align: left;
+}
+
+/* Tooltip dinámico hacia abajo REFORZADO */
+.help-tooltip-down { 
+  position: relative; 
+}
+
+.help-tooltip-down:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 130%; 
+  right: 0;
+  background: #2c3e50;
+  color: white;
+  padding: 14px; /* Un poco más de aire interno */
+  border-radius: 8px;
+  font-size: 0.85rem;
+  white-space: pre-wrap; /* CAMBIO CLAVE: permite que el texto baje y el fondo crezca */
+  z-index: 1000;
+  width: 280px; /* Un poco más ancho para que respire */
+  line-height: 1.5;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  text-align: left;
+  display: block; /* Asegura comportamiento de bloque */
+}
+
+/* Triangulito del tooltip */
+.help-tooltip-down:hover::before {
+  content: '';
+  position: absolute;
+  top: 110%;
+  right: 6px;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid #2c3e50;
+  z-index: 1001;
+}
 
 .search-results-down { 
   position: absolute; 

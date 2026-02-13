@@ -1,6 +1,4 @@
 <template>  
-
-
   <div>   
     <div class="container mt-5 px-4">
       <div class="level">
@@ -120,7 +118,7 @@
       v-if="mostrarModalEditar"
       :key="proyectoSeleccionado.id"
       :proyectoOriginal="proyectoSeleccionado"
-      :miembrosActuales="proyectoSeleccionado.integrantes || proyectoSeleccionado.Usuarios || []"
+      :todasLasTareas="todasLasTareas"
       @close="mostrarModalEditar = false"
       @actualizado="cargarProyectos" 
     />
@@ -139,11 +137,12 @@ import { ref, reactive, onMounted, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import { projectService } from '../services/project.services'; 
-// CORREGIDO: Import named para evitar que configService sea undefined
 import { configService } from '../services/config.service'; 
+import { tareaService } from '../services/tarea.service'; 
 import EditarProyectoModal from '../components/modals/EditarProyectoModal.vue';
 import ConfirmarModal from '../components/modals/ConfirmarModal.vue';
 
+// --- ESTADOS REACTIVOS (Declarados al principio para evitar Warns) ---
 const authStore = useAuthStore();
 const router = useRouter();
 
@@ -151,7 +150,6 @@ const proyectos = ref([]);
 const escuelasMaestras = ref([]); 
 const cargando = ref(false);
 const errorMsg = ref('');
-
 
 const isModalActive = ref(false);
 const enviando = ref(false);
@@ -163,13 +161,14 @@ const formProyecto = reactive({
 
 const mostrarModalEditar = ref(false);
 const proyectoSeleccionado = ref(null);
+const todasLasTareas = ref([]); 
 
+// Variables para eliminación (Movidas arriba para que las funciones las encuentren)
 const isConfirmActive = ref(false);
 const proyectoAEliminar = ref(null);
 
-// --- PERMISOS ---
+// --- COMPUTED / PERMISOS ---
 const esAdminODocente = computed(() => {
-    // Aseguramos que tomamos el rol_id correcto del authStore
     const rol = Number(authStore.usuario?.rol_id || authStore.usuario?.rolId);
     return rol === 1 || rol === 2;
 });
@@ -198,7 +197,6 @@ const puedeGestionar = (proyecto) => {
 
     if (miRol === 1) return true;
     if (miRol === 2) {
-        // CORREGIDO: Un docente gestiona si es el DUEÑO o si es integrante con rol docente
         const esDuenio = Number(proyecto.docente_owner_id) === miId;
         const integrantes = proyecto.Usuarios || proyecto.integrantes || [];
         const esMiembroDocente = integrantes.some(i => Number(i.id) === miId);
@@ -212,6 +210,11 @@ const irAbacklog = (id) => {
     router.push(`/proyectos/${id}/backlog`);
 };
 
+/**
+ * Función: cargarProyectos
+ * Qué hace: Trae la lista de proyectos desde el service.
+ * Alimenta: Al listado principal (proyectosVisibles).
+ */
 const cargarProyectos = async () => {
     cargando.value = true;
     errorMsg.value = ''; 
@@ -229,18 +232,19 @@ const cargarProyectos = async () => {
     }
 };
 
-
+/**
+ * Función: cargarMaestras
+ * Qué hace: Trae escuelas y otros diccionarios.
+ * Alimenta: Al select de creación de proyectos.
+ */
 const cargarMaestras = async () => {
     try {
         const data = await configService.getTablasMaestras();
-        // Ahora 'data' ya tiene la propiedad 'escuelas' unificada por el servicio
         escuelasMaestras.value = data.escuelas || [];
     } catch (e) {
         console.error("Error al cargar escuelas:", e);
     }
 };
-
-
 
 const abrirModal = () => {
     formProyecto.nombre = '';
@@ -249,9 +253,21 @@ const abrirModal = () => {
     isModalActive.value = true;
 };
 
-const prepararEdicion = (proyecto) => {
+/**
+ * Función: prepararEdicion
+ * Qué hace: Carga tareas globales y abre el modal de edición.
+ */
+const prepararEdicion = async (proyecto) => {
     proyectoSeleccionado.value = proyecto;
-    mostrarModalEditar.value = true;
+    try {
+        const res = await tareaService.getAll();
+        todasLasTareas.value = res.data || res;
+    } catch (error) {
+        console.error("Error cargando tareas globales:", error);
+        todasLasTareas.value = [];
+    } finally {
+        mostrarModalEditar.value = true;
+    }
 };
 
 const guardarProyecto = async () => {
@@ -270,11 +286,19 @@ const guardarProyecto = async () => {
     }
 };
 
+/**
+ * Función: prepararEliminacion
+ * Qué hace: Setea el proyecto a borrar y activa el modal de confirmación.
+ */
 const prepararEliminacion = (proyecto) => {
     proyectoAEliminar.value = proyecto;
     isConfirmActive.value = true;
 };
 
+/**
+ * Función: ejecutarEliminacion
+ * Qué hace: Llama al service para borrar y actualiza la lista.
+ */
 const ejecutarEliminacion = async () => {
     if (!proyectoAEliminar.value) return;
     const res = await projectService.delete(proyectoAEliminar.value.id);
