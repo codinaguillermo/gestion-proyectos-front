@@ -4,13 +4,22 @@ import api from './api';
 export const configService = {
     async getTablasMaestras() {
         try {
-            const response = await api.get('/tareas/config/maestras');
-            return response.data;
+            // Hacemos las dos peticiones en paralelo para que sea rápido
+            const [resMaestras, resEscuelas] = await Promise.all([
+                api.get('/tareas/config/maestras'),
+                api.get('/escuelas')
+            ]);
+
+            // Unificamos todo en un solo objeto
+            return {
+                ...resMaestras.data,          // Trae prioridades, estados, tipos
+                escuelas: resEscuelas.data.data || resEscuelas.data // Agrega las escuelas
+            };
         } catch (error) {
-            console.error("Error en config.service:", error);
+            console.error("Error en config.service unificando maestras:", error);
             throw error;
         }
     }
 };
 
-export default configService; // Agregamos el default para que sea fácil de importar
+export default configService;

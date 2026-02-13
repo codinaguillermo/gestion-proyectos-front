@@ -1,6 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted, watch, computed } from 'vue';
-import configService from '../../services/config.service';
+// Usamos llaves {} porque en tu config.service.js exportamos 'const configService'
+import { configService } from '../../services/config.service';
 import tareaService from '../../services/tarea.service';
 import { useAuthStore } from '../../stores/auth';
 
@@ -26,9 +27,9 @@ const form = reactive({
   id: null,
   titulo: '',
   descripcion: '',
-  tipo_id: '',
-  prioridad_id: '',
-  estado_id: '',
+  tipo_id: null,      // Cambiado de '' a null para evitar error MySQL
+  prioridad_id: null, // Cambiado de '' a null para evitar error MySQL
+  estado_id: null,    // Cambiado de '' a null para evitar error MySQL
   responsable_id: null,
   horas_estimadas: 0,
   horas_reales: 0,
@@ -49,15 +50,13 @@ const esJefe = computed(() => {
   return u && (String(u.rol_id) === '1' || String(u.rol_id) === '2');
 });
 
-// Importante: comparar IDs como String para evitar errores de tipo
 const esMiTarea = computed(() => {
   return String(usuarioLogueado.value?.id) === String(form.responsable_id);
 });
 
-// El botón "Guardar" se habilita si es Jefe O si el alumno es el responsable de la tarea
 const puedeGuardar = computed(() => {
-  if (!form.id) return esJefe.value; // Solo jefes crean tareas
-  return esJefe.value || esMiTarea.value; // Jefes o Responsable editan
+  if (!form.id) return esJefe.value;
+  return esJefe.value || esMiTarea.value;
 });
 
 const mostrarRegistroHoras = computed(() => {
@@ -73,12 +72,6 @@ const intentarCerrar = () => {
   }
 };
 
-const vincularUsuario = () => {
-  const encontrado = props.integrantes.find(u => u.nombre === nombreResponsable.value);
-  form.responsable_id = encontrado ? encontrado.id : null;
-};
-
-// RESET FORM: Limpia todo a valores iniciales
 const resetForm = () => {
   form.id = null;
   form.titulo = '';
@@ -95,12 +88,12 @@ const resetForm = () => {
   form.link_evidencia = '';
   nombreResponsable.value = '';
   
+  // Seteamos por defecto la primera opción de las tablas maestras
   if (maestras.value.estados?.length) form.estado_id = maestras.value.estados[0].id;
   if (maestras.value.prioridades?.length) form.prioridad_id = maestras.value.prioridades[0].id;
   if (maestras.value.tipos?.length) form.tipo_id = maestras.value.tipos[0].id;
 };
 
-// WATCH: Detecta apertura y carga datos o resetea
 watch(() => props.isActive, (val) => {
   if (val) {
     mostrandoConfirmacionSalida.value = false;
@@ -108,7 +101,6 @@ watch(() => props.isActive, (val) => {
     horasNuevasDeHoy.value = 0;
     
     if (props.tareaEdit && props.tareaEdit.id) {     
-      // CARGAR DATOS DE TAREA EXISTENTE
       form.id = props.tareaEdit.id;
       form.titulo = props.tareaEdit.titulo || '';
       form.descripcion = props.tareaEdit.descripcion || '';
@@ -126,11 +118,7 @@ watch(() => props.isActive, (val) => {
       form.criterios_aceptacion = props.tareaEdit.criterios_aceptacion || '';
       form.comentario_cierre = props.tareaEdit.comentario_cierre || '';
       form.link_evidencia = props.tareaEdit.linkEvidencia || props.tareaEdit.link_evidencia || '';
-
-      const resp = props.integrantes.find(u => u.id === props.tareaEdit.responsable_id);
-      nombreResponsable.value = resp ? resp.nombre : '';
     } else {
-      // MODO NUEVA TAREA
       resetForm();
     }
   }
@@ -139,10 +127,17 @@ watch(() => props.isActive, (val) => {
 onMounted(async () => {
   const data = await configService.getTablasMaestras();
   maestras.value = {
-    estados: data.estados || [],
+    estados: data.estados || data.estadosProyecto || [],
     prioridades: data.prioridades || [],
     tipos: data.tipos || []
   };
+
+  // Aseguramos carga inicial si es nueva tarea y las maestras ya llegaron
+  if (!form.id && props.isActive) {
+    if (maestras.value.estados?.length) form.estado_id = maestras.value.estados[0].id;
+    if (maestras.value.prioridades?.length) form.prioridad_id = maestras.value.prioridades[0].id;
+    if (maestras.value.tipos?.length) form.tipo_id = maestras.value.tipos[0].id;
+  }
 });
 
 const guardarTarea = async () => {
@@ -154,11 +149,23 @@ const guardarTarea = async () => {
   }
   
   if (props.tareaEdit) {
-    const estadoInicial = Number(props.tareaEdit.estado_id);
+    const estadoAnterior = Number(props.tareaEdit.estado_id);
     const estadoNuevo = Number(form.estado_id);
-    if (estadoInicial !== estadoNuevo && estadoInicial !== 1 && Number(horasNuevasDeHoy.value) <= 0) {
+
+    if (estadoAnterior === 1 && estadoNuevo === 4) {
+      errorValidacion.value = "No puedes pasar de To Do a Done directamente. La tarea debe ser procesada.";
+      return;
+    }
+
+    const esCambioSinEsfuerzo = (estadoAnterior === 1 || estadoAnterior === 4 || estadoNuevo === 1);
+
+    if (!esCambioSinEsfuerzo && estadoAnterior !== estadoNuevo && Number(horasNuevasDeHoy.value) <= 0) {
       errorValidacion.value = "Debes registrar las horas trabajadas antes de cambiar el estado.";
       return;
+    }
+    
+    if (esCambioSinEsfuerzo) {
+      horasNuevasDeHoy.value = 0;
     }
   }
 
@@ -171,10 +178,10 @@ const guardarTarea = async () => {
     const payload = {
       titulo: form.titulo,
       descripcion: form.descripcion,
-      estado_id: form.estado_id,
-      prioridad_id: form.prioridad_id,
-      responsable_id: form.responsable_id,
-      tipo_id: form.tipo_id,      
+      estado_id: form.estado_id || null,
+      prioridad_id: form.prioridad_id || null,
+      responsable_id: form.responsable_id || null,
+      tipo_id: form.tipo_id || null,      
       horas_estimadas: Number(form.horas_estimadas),
       proyecto_id: props.userStory.proyecto_id || props.userStory.Proyecto?.id,
       horasReales: acumuladoFinal, 
@@ -204,7 +211,7 @@ const guardarTarea = async () => {
 };
 </script>
 
-<template>
+<template>  
   <div :class="['modal', { 'is-active': isActive }]">
     <div class="modal-background" @click="intentarCerrar"></div>
     <div class="modal-card">
@@ -238,10 +245,14 @@ const guardarTarea = async () => {
           <div class="column">
             <label class="label">Responsable</label>
             <div class="control">
-              <input list="u-modal" v-model="nombreResponsable" class="input" :disabled="form.id && !esJefe" @input="vincularUsuario">
-              <datalist id="u-modal">
-                <option v-for="u in integrantes" :key="u.id" :value="u.nombre"></option>
-              </datalist>
+              <div class="select is-fullwidth">
+                <select v-model="form.responsable_id" :disabled="form.id && !esJefe">
+                  <option :value="null">Seleccionar integrante...</option>
+                  <option v-for="u in integrantes" :key="u.id" :value="u.id">
+                    {{ u.apellido ? u.apellido.toUpperCase() + ', ' : '' }}{{ u.nombre }}
+                  </option>
+                </select>
+              </div>
             </div>
           </div>
           <div class="column">
@@ -256,15 +267,33 @@ const guardarTarea = async () => {
           </div>
         </div>
 
+        <div class="columns">
+          <div class="column">
+            <label class="label">Tipo</label>
+            <div class="select is-fullwidth">
+              <select v-model="form.tipo_id" :disabled="form.id && !esJefe">
+                <option v-for="t in maestras.tipos" :key="t.id" :value="t.id">
+                  {{ t.nombre }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <div class="column">
+            <label class="label">Prioridad</label>
+            <div class="select is-fullwidth">
+              <select v-model="form.prioridad_id" :disabled="form.id && !esJefe">
+                <option v-for="p in maestras.prioridades" :key="p.id" :value="p.id">
+                  {{ p.nombre }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div class="field mt-2" v-if="form.id || esJefe">
           <label class="label is-size-7 has-text-info">Criterios de Aceptación (Definidos por Docente)</label>
           <div class="control">
-            <textarea 
-              v-model="form.criterios_aceptacion" 
-              class="textarea is-small has-background-white-bis" 
-              rows="2" 
-              :disabled="!esJefe">
-            </textarea>
+            <textarea v-model="form.criterios_aceptacion" class="textarea is-small has-background-white-bis" rows="2" :disabled="!esJefe"></textarea>
           </div>
         </div>
 
@@ -272,14 +301,9 @@ const guardarTarea = async () => {
           <div class="column">
             <label class="label">Horas Estimadas</label>
             <div class="control">
-              <input 
-                v-model="form.horas_estimadas" 
-                class="input" 
-                type="number" 
-                :disabled="form.id && !esJefe">
+              <input v-model="form.horas_estimadas" class="input" type="number" :disabled="form.id && !esJefe">
             </div>
           </div>
-          
           <div class="column" v-if="form.id && mostrarRegistroHoras">
             <label class="label has-text-link">Cargar horas hoy</label>
             <div class="control">
@@ -318,9 +342,8 @@ const guardarTarea = async () => {
         <div class="box is-info is-light p-3 mt-2" v-if="form.documentado">
           <div class="field">
             <label class="label is-size-7">Link de Evidencia <span class="has-text-danger">*</span></label>
-            <div class="control has-icons-left">
+            <div class="control">
               <input v-model="form.link_evidencia" class="input is-small" type="url" :disabled="!puedeGuardar">
-              <span class="icon is-small is-left"><i class="fas fa-link"></i></span>
             </div>
           </div>
           <div class="field mt-2">
@@ -350,10 +373,15 @@ const guardarTarea = async () => {
 </template>
 
 <style scoped>
-.confirm-overlay { 
-  position: absolute; top: 0; left: 0; right: 0; bottom: 0; 
-  z-index: 100; display: flex; flex-direction: column; 
-  justify-content: center; align-items: center; 
-  background: rgba(255, 221, 87, 0.98); 
+.confirm-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 221, 87, 0.95);
+  border-radius: 6px;
 }
 </style>

@@ -13,17 +13,27 @@ const router = createRouter({
     {
       path: '/dashboard',
       name: 'dashboard',
-      // Esto es "lazy loading": solo carga el código del Dashboard cuando vas ahí
       component: () => import('../views/DashboardView.vue'),
-      meta: { requiresAuth: true } // Etiqueta para saber que esta ruta es privada
+      meta: { requiresAuth: true }
     },
     {
-    // RUTA: el Backlog de US
-    path: '/proyectos/:id/backlog', 
-    name: 'backlog-proyecto',
-    component: () => import('../views/userStoriesView.vue'),
-    meta: { requiresAuth: true }
-  },
+      path: '/proyectos/:id/backlog', 
+      name: 'backlog-proyecto',
+      component: () => import('../views/userStoriesView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/usuarios',
+      name: 'usuarios',
+      component: () => import('../views/usuariosView.vue'),
+      meta: { requiresAuth: true, roles: [1, 2] } // 1: Admin, 2: Docente
+    },
+    {
+      path: '/escuelas',
+      name: 'escuelas',
+      component: () => import('../views/EscuelasLista.vue'), 
+      meta: { requiresAuth: true, roles: [1, 2] } 
+    },
     {
       path: '/',
       redirect: '/dashboard'
@@ -31,16 +41,23 @@ const router = createRouter({
   ]
 });
 
-// EL GUARDIÁN: Se ejecuta antes de cada cambio de ruta
+// EL GUARDIÁN: Protege las rutas por Token y por Rol
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
   
-  // Si la ruta pide estar logueado y no hay token, te mando al login
   if (to.meta.requiresAuth && !authStore.token) {
-    next('/login');
-  } else {
-    next();
+    return next('/login');
   }
+
+  if (to.meta.roles) {
+    const rolUsuario = Number(authStore.usuario?.rol_id);
+    if (!to.meta.roles.includes(rolUsuario)) {
+      console.warn("Acceso denegado por rol insuficiente");
+      return next('/dashboard');
+    }
+  }
+
+  next();
 });
 
 export default router;

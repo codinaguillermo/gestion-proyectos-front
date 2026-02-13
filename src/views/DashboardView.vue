@@ -1,4 +1,6 @@
 <template>  
+
+
   <div>   
     <div class="container mt-5 px-4">
       <div class="level">
@@ -20,7 +22,7 @@
         <table class="table is-fullwidth is-hoverable is-striped">
           <thead>
             <tr>
-              <th>Nombre</th>
+              <th>Escuela</th> <th>Nombre</th>
               <th>Descripción</th>
               <th>Estado</th>
               <th>Creado</th>
@@ -34,6 +36,11 @@
               @click="irAbacklog(proyecto.id)" 
               style="cursor: pointer;"
             >
+              <td>
+                <span class="tag is-info is-light has-text-weight-bold">
+                  {{ proyecto.escuela?.nombre_corto || 'Global' }}
+                </span>
+              </td>
               <td><strong>{{ proyecto.nombre }}</strong></td>
               <td>{{ proyecto.descripcion }}</td>
               <td>
@@ -55,7 +62,7 @@
               </td>
             </tr>
             <tr v-if="proyectosVisibles.length === 0">
-              <td colspan="5" class="has-text-centered has-text-grey py-5">
+              <td colspan="6" class="has-text-centered has-text-grey py-5">
                 No tienes proyectos asignados actualmente.
               </td>
             </tr>
@@ -73,11 +80,26 @@
         </header>
         <section class="modal-card-body">
           <div class="field">
+            <label class="label">Escuela Perteneciente</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select v-model="formProyecto.escuela_id">
+                  <option :value="null">Seleccionar Escuela...</option>
+                  <option v-for="esc in escuelasMaestras" :key="esc.id" :value="esc.id">
+                      {{ esc.nombre_corto }} - {{ esc.nombre_largo }}
+                  </option>
+              </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
             <label class="label">Nombre del Proyecto</label>
             <div class="control">
               <input class="input" type="text" v-model="formProyecto.nombre" placeholder="Ej: App de Asistencia">
             </div>
           </div>
+
           <div class="field">
             <label class="label">Descripción</label>
             <div class="control">
@@ -86,7 +108,7 @@
           </div>
         </section>
         <footer class="modal-card-foot">
-          <button class="button is-success" @click="guardarProyecto" :class="{ 'is-loading': enviando }">
+          <button class="button is-success" @click="guardarProyecto" :class="{ 'is-loading': enviando }" :disabled="!formProyecto.escuela_id">
             Guardar Proyecto
           </button>
           <button class="button" @click="isModalActive = false">Cancelar</button>
@@ -117,6 +139,8 @@ import { ref, reactive, onMounted, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import { projectService } from '../services/project.services'; 
+// CORREGIDO: Import named para evitar que configService sea undefined
+import { configService } from '../services/config.service'; 
 import EditarProyectoModal from '../components/modals/EditarProyectoModal.vue';
 import ConfirmarModal from '../components/modals/ConfirmarModal.vue';
 
@@ -124,14 +148,17 @@ const authStore = useAuthStore();
 const router = useRouter();
 
 const proyectos = ref([]);
+const escuelasMaestras = ref([]); 
 const cargando = ref(false);
 const errorMsg = ref('');
+
 
 const isModalActive = ref(false);
 const enviando = ref(false);
 const formProyecto = reactive({
     nombre: '',
-    descripcion: ''
+    descripcion: '',
+    escuela_id: null 
 });
 
 const mostrarModalEditar = ref(false);
@@ -140,34 +167,25 @@ const proyectoSeleccionado = ref(null);
 const isConfirmActive = ref(false);
 const proyectoAEliminar = ref(null);
 
-// --- LÓGICA DE PERMISOS Y VISIBILIDAD ---
-
+// --- PERMISOS ---
 const esAdminODocente = computed(() => {
-    const rol = Number(authStore.usuario?.rol_id);
+    // Aseguramos que tomamos el rol_id correcto del authStore
+    const rol = Number(authStore.usuario?.rol_id || authStore.usuario?.rolId);
     return rol === 1 || rol === 2;
 });
 
-// REGLA DE NEGOCIO: Filtrado estricto de visibilidad
 const proyectosVisibles = computed(() => {
     const user = authStore.usuario;
     if (!user) return [];
-
     const miId = Number(user.id);
-    const miRol = Number(user.rol_id);
+    const miRol = Number(user.rol_id || user.rolId);
 
-    // 1. Admin ve todo
     if (miRol === 1) return proyectos.value;
 
-    // 2. Filtrado para Docentes (Alejandra) y Alumnos
     return proyectos.value.filter(p => {
-        // ¿Soy el dueño?
         const esDuenio = Number(p.docente_owner_id) === miId;
-        
-        // ¿Soy un integrante? (Chequeamos todos los posibles alias de la relación)
-        const listaIntegrantes = p.Usuarios || p.integrantes || p.usuarios || [];
-        const esParticipante = listaIntegrantes.some(i => Number(i.id) === miId);
-        
-        // Solo incluimos si cumple alguna de las dos
+        const integrantes = p.Usuarios || p.integrantes || p.usuarios || [];
+        const esParticipante = integrantes.some(i => Number(i.id) === miId);
         return esDuenio || esParticipante;
     });
 });
@@ -175,28 +193,21 @@ const proyectosVisibles = computed(() => {
 const puedeGestionar = (proyecto) => {
     const user = authStore.usuario;
     if (!user) return false;
-
     const miId = Number(user.id);
-    const miRol = Number(user.rol_id);
+    const miRol = Number(user.rol_id || user.rolId);
 
-    // 1. El Admin (Rol 1) gestiona todo lo que ve.
     if (miRol === 1) return true;
-
-    // 2. REGLA PARA DOCENTES: 
-    // Si es Docente (Rol 2) Y es miembro del proyecto, puede gestionarlo.
     if (miRol === 2) {
+        // CORREGIDO: Un docente gestiona si es el DUEÑO o si es integrante con rol docente
+        const esDuenio = Number(proyecto.docente_owner_id) === miId;
         const integrantes = proyecto.Usuarios || proyecto.integrantes || [];
-        const esMiembro = integrantes.some(i => Number(i.id) === miId);
-        return esMiembro;
+        const esMiembroDocente = integrantes.some(i => Number(i.id) === miId);
+        return esDuenio || esMiembroDocente;
     }
-
-    // 3. PARA ALUMNOS (u otros): 
-    // No gestionan proyectos (solo entran al backlog), devolvemos false.
     return false;
 };
 
 // --- FUNCIONES ---
-
 const irAbacklog = (id) => {
     router.push(`/proyectos/${id}/backlog`);
 };
@@ -204,30 +215,10 @@ const irAbacklog = (id) => {
 const cargarProyectos = async () => {
     cargando.value = true;
     errorMsg.value = ''; 
-    
     try {
         const res = await projectService.getAll();
-        
         if (res.success) {
-            const user = authStore.usuario;
-            const miId = Number(user.id);
-            const miRol = Number(user.rol_id);
-
-            // 1. El Admin sigue viendo todo por ser Dios en el sistema.
-            if (miRol === 1) {
-                proyectos.value = res.data;
-            } else {
-                // 2. REGLA DE ORO: La verdad está en la membresía.
-                // Filtramos para quedarnos SOLO con proyectos donde el ID 
-                // del usuario esté en la lista de integrantes.
-                proyectos.value = res.data.filter(p => {
-                    // Buscamos en 'Usuarios' o 'integrantes' (según cómo lo mande tu Sequelize)
-                    const integrantes = p.Usuarios || p.integrantes || [];
-                    
-                    // Si el ID del usuario está en esa lista, el proyecto es suyo.
-                    return integrantes.some(i => Number(i.id) === miId);
-                });
-            }
+            proyectos.value = res.data;
         } else {
             errorMsg.value = res.error;
         }
@@ -238,9 +229,23 @@ const cargarProyectos = async () => {
     }
 };
 
+
+const cargarMaestras = async () => {
+    try {
+        const data = await configService.getTablasMaestras();
+        // Ahora 'data' ya tiene la propiedad 'escuelas' unificada por el servicio
+        escuelasMaestras.value = data.escuelas || [];
+    } catch (e) {
+        console.error("Error al cargar escuelas:", e);
+    }
+};
+
+
+
 const abrirModal = () => {
     formProyecto.nombre = '';
     formProyecto.descripcion = '';
+    formProyecto.escuela_id = null; 
     isModalActive.value = true;
 };
 
@@ -250,14 +255,19 @@ const prepararEdicion = (proyecto) => {
 };
 
 const guardarProyecto = async () => {
-    if (!formProyecto.nombre) return; 
+    if (!formProyecto.nombre || !formProyecto.escuela_id) return; 
     enviando.value = true;
-    const res = await projectService.create(formProyecto);
-    if (res.success) {
-        isModalActive.value = false;
-        await cargarProyectos(); 
+    try {
+        const res = await projectService.create(formProyecto);
+        if (res.success) {
+            isModalActive.value = false;
+            await cargarProyectos(); 
+        }
+    } catch (e) {
+        console.error("Error guardando proyecto", e);
+    } finally {
+        enviando.value = false;
     }
-    enviando.value = false;
 };
 
 const prepararEliminacion = (proyecto) => {
@@ -284,5 +294,6 @@ const formatearFecha = (fechaRaw) => {
 
 onMounted(() => {
     cargarProyectos();
+    cargarMaestras(); 
 });
 </script>
