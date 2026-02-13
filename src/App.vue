@@ -9,7 +9,23 @@
 
       <div class="navbar-menu is-active">
         <div class="navbar-end">
-          <div class="navbar-item">
+          <div class="navbar-item is-flex is-align-items-center">
+            <figure class="image is-32x32 mr-3">
+              <img 
+                v-if="authStore.usuario?.avatar && authStore.usuario.avatar !== ''"
+                :src="`http://localhost:3000/uploads/avatars/${authStore.usuario.avatar}`"
+                class="is-rounded"
+                style="object-fit: cover; width: 32px; height: 32px; min-width: 32px; border: 1px solid #fff;"
+              >
+              <div 
+                v-else 
+                class="is-rounded has-background-primary has-text-white is-flex is-justify-content-center is-align-items-center"
+                style="width: 32px; height: 32px; font-size: 0.75rem; font-weight: bold; border-radius: 50% !important;"
+              >
+                {{ nombreUsuario.substring(0, 2).toUpperCase() }}
+              </div>
+            </figure>
+            
             <span class="has-text-white">
               Hola, <strong class="has-text-white">{{ nombreUsuario }}</strong>
             </span>
@@ -18,7 +34,8 @@
           <div class="navbar-item has-dropdown is-hoverable">
             <a class="navbar-link is-arrowless">
               <span class="icon has-text-white">
-                <i class="fas fa-cog"></i> </span>
+                <i class="fas fa-cog"></i> 
+              </span>
             </a>
 
             <div class="navbar-dropdown is-right">
@@ -76,9 +93,8 @@ const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 
-// Estados para el modal de perfil
 const modalPerfilActivo = ref(false);
-const usuarioParaEditar = ref(null); // <--- Variable para guardar el usuario completo de la BD
+const usuarioParaEditar = ref(null); 
 const escuelas = ref([]);
 const roles = ref([]);
 
@@ -115,35 +131,34 @@ const cargarMaestras = async () => {
 
 const abrirPerfil = async () => {
   try {
-    // 1. Buscamos los datos REALES y COMPLETOS del usuario logueado
     const res = await api.get(`/usuarios/${authStore.usuario.id}`);
-    // ESTE LOG ES CLAVE: Miralo en la consola del navegador (F12)
-    console.log("DATOS DESDE BD:", res.data);
-
-    // Si res.data es un array, tomamos el primer elemento, sino el objeto
     usuarioParaEditar.value = res.data;
-    
-    // 2. Cargamos escuelas/roles si no están
     if (escuelas.value.length === 0) await cargarMaestras();
-    
-    // 3. Abrimos el modal
     modalPerfilActivo.value = true;
   } catch (err) {
     console.error("Error al abrir perfil:", err);
-    // Fallback: si falla la API, usamos lo que tenemos en el store
     usuarioParaEditar.value = authStore.usuario;
     modalPerfilActivo.value = true;
   }
 };
 
-const refrescarDatos = () => {
+const refrescarDatos = async () => {
   modalPerfilActivo.value = false;
-  // Si el usuario cambió su nombre, podrías actualizar el authStore aquí
+  try {
+    const res = await api.get(`/usuarios/${authStore.usuario.id}`);
+    authStore.actualizarDatosUsuario(res.data);
+    console.log("Avatar actualizado en Store:", authStore.usuario.avatar);
+  } catch (error) {
+    console.error("Error al refrescar datos:", error);
+  }
 };
 
 onMounted(() => {
   if (authStore.token) {
     cargarMaestras();
+    // --- DIAGNÓSTICO AUTOMÁTICO ---
+    console.log("DEBUG AUTH: Usuario actual en Store:", authStore.usuario);
+    console.log("DEBUG AUTH: ¿Tiene avatar?", authStore.usuario?.avatar);
   }
 });
 </script>
@@ -152,5 +167,32 @@ onMounted(() => {
 .navbar-dropdown.is-right {
   right: 0;
   left: auto;
+}
+
+.navbar-item.is-flex {
+  display: flex;
+  align-items: center;
+}
+
+/* FUERZA EL REDONDEO Y EL TAMAÑO */
+.image.is-32x32 {
+    width: 32px !important;
+    height: 32px !important;
+}
+
+.image.is-32x32 img {
+    border-radius: 50% !important;
+    object-fit: cover;
+    width: 32px !important;
+    height: 32px !important;
+    max-height: 32px !important;
+}
+
+.avatar-siglas {
+    border-radius: 50% !important;
+    width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+    font-weight: bold;
 }
 </style>

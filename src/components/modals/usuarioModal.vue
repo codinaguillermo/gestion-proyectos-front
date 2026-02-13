@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, watch, computed } from 'vue';
+import { ref, reactive, watch, computed, onUnmounted } from 'vue';
 import usuarioService from '../../services/usuario.services';
 import { useAuthStore } from '../../stores/auth';
 
@@ -14,13 +14,17 @@ const emit = defineEmits(['close', 'usuario-guardado']);
 const authStore = useAuthStore();
 const enviando = ref(false);
 const errorMsg = ref('');
+const fileInput = ref(null);
+const selectedFile = ref(null);
+const previewUrl = ref(null);
 
 const form = reactive({
   id: null, nombre: '', apellido: '', email: '', password: '',
-  rol_id: 3, curso: '', division: '', telefono: '', activo: true, escuelas_ids: []
+  rol_id: 3, curso: '', division: '', telefono: '', activo: true, escuelas_ids: [],
+  avatar: null
 });
 
-// --- LÓGICA DE PERMISOS ---
+// Lógica de permisos
 const esAdminODocente = computed(() => {
   const rol = Number(authStore.usuario?.rol_id);
   return rol === 1 || rol === 2;
@@ -38,18 +42,34 @@ const tituloModal = computed(() => {
   return esModoEdicion.value ? 'Editar Usuario' : 'Nuevo Usuario';
 });
 
-// REGLAS DE NEGOCIO:
-// 1. Rol y Escuela: Solo Admin/Docente (Blindado para Alumnos)
 const puedeEditarEstructura = computed(() => esAdminODocente.value);
+const puedeEditarDatosPropios = computed(() => esAdminODocente.value || esPropioPerfil.value);
 
-// 2. Datos personales e Identidad: Admin/Docente O el dueño del perfil
-const puedeEditarDatosPropios = computed(() => {
-  return esAdminODocente.value || esPropioPerfil.value;
+const onFileSelected = (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    if (file.size > 2 * 1024 * 1024) {
+      errorMsg.value = "La imagen no debe superar los 2MB";
+      fileInput.value.value = "";
+      return;
+    }
+    selectedFile.value = file;
+    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
+    previewUrl.value = URL.createObjectURL(file);
+  }
+};
+
+onUnmounted(() => {
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
 });
 
 watch(() => props.isActive, (val) => {
   if (val) {
     errorMsg.value = '';
+    selectedFile.value = null;
+    if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
+    previewUrl.value = null;
+
     const u = props.usuarioEdit;
     if (u && (u.id || u.uid)) {
       Object.assign(form, {
@@ -62,6 +82,7 @@ watch(() => props.isActive, (val) => {
         curso: u.curso || '',
         division: u.division || '',
         activo: u.activo ?? true,
+        avatar: u.avatar || null,
         password: '', 
         escuelas_ids: u.escuelas?.map(e => e.id) || []
       });
@@ -74,7 +95,7 @@ watch(() => props.isActive, (val) => {
 const resetForm = () => {
   Object.assign(form, {
     id: null, nombre: '', apellido: '', email: '', password: '',
-    rol_id: 3, curso: '', division: 'A', telefono: '', activo: true, escuelas_ids: []
+    rol_id: 3, curso: '', division: 'A', telefono: '', activo: true, escuelas_ids: [], avatar: null
   });
 };
 
@@ -85,11 +106,30 @@ const guardar = async () => {
     if (elUsuarioEsAlumno.value && form.escuelas_ids.length !== 1) {
       throw new Error("Un alumno debe pertenecer a exactamente una escuela.");
     }
-    if (esModoEdicion.value) {
-      await usuarioService.update(form.id, form);
-    } else {
-      await usuarioService.create(form);
+
+    const formData = new FormData();
+    formData.append('nombre', form.nombre);
+    formData.append('apellido', form.apellido);
+    formData.append('email', form.email);
+    formData.append('rol_id', form.rol_id);
+    formData.append('curso', form.curso);
+    formData.append('division', form.division);
+    formData.append('telefono', form.telefono);
+    formData.append('activo', form.activo);
+    
+    if (form.password) formData.append('password', form.password);
+    form.escuelas_ids.forEach(id => formData.append('escuelas_ids[]', id));
+
+    if (selectedFile.value) {
+      formData.append('avatar', selectedFile.value);
     }
+
+    if (esModoEdicion.value) {
+      await usuarioService.update(form.id, formData);
+    } else {
+      await usuarioService.create(formData);
+    }
+
     emit('usuario-guardado');
     emit('close');
   } catch (err) {
@@ -111,7 +151,29 @@ const guardar = async () => {
       <section class="modal-card-body">
         <div v-if="errorMsg" class="notification is-danger is-light py-2">{{ errorMsg }}</div>
 
+        <div class="field has-text-centered mb-5">
+           <div class="avatar-container is-inline-block" @click="fileInput.click()" :style="{ cursor: puedeEditarDatosPropios ? 'pointer' : 'default' }">
+              <figure v-if="previewUrl || form.avatar" class="image is-128x128">
+                <img class="is-rounded" 
+                     :src="previewUrl || `http://localhost:3000/uploads/avatars/${form.avatar}`"
+                     style="object-fit: cover; height: 128px; width: 128px; border: 2px solid #dbdbdb;">
+              </figure>
+              
+              <div v-else class="avatar-placeholder is-rounded">
+                <span class="icon is-large has-text-grey-light">
+                  <i class="fas fa-user-circle fa-5x"></i>
+                </span>
+                <div class="overlay-camera" v-if="puedeEditarDatosPropios">
+                  <i class="fas fa-camera"></i>
+                </div>
+              </div>
+           </div>
+           <p class="help mt-2" v-if="puedeEditarDatosPropios">Haz clic en la imagen para cambiarla</p>
+        </div>
+
         <div class="columns is-multiline">
+          <input class="is-hidden" type="file" ref="fileInput" @change="onFileSelected" accept="image/*" :disabled="!puedeEditarDatosPropios">
+
           <div class="column is-6">
             <label class="label">Nombre</label>
             <input v-model="form.nombre" class="input" type="text" :disabled="!puedeEditarDatosPropios">
@@ -148,7 +210,7 @@ const guardar = async () => {
           <div class="column is-12">
             <label class="label">Escuela/s</label>
             <div class="select is-multiple is-fullwidth">
-                <select v-model="form.escuelas_ids" multiple :size="5" :disabled="!puedeEditarEstructura">
+                <select v-model="form.escuelas_ids" multiple :size="3" :disabled="!puedeEditarEstructura">
                     <option v-for="e in escuelas" :key="e.id" :value="e.id">
                       {{ e.nombre_corto }} | {{ e.nombre_largo }}
                     </option>
@@ -206,3 +268,43 @@ const guardar = async () => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.avatar-container {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  transition: opacity 0.3s;
+}
+
+.avatar-container:hover {
+  opacity: 0.8;
+}
+
+.avatar-placeholder {
+  width: 128px;
+  height: 128px;
+  background-color: #f5f5f5;
+  border: 2px dashed #dbdbdb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.is-rounded {
+  border-radius: 50% !important;
+}
+
+.overlay-camera {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  color: white;
+  padding: 4px 0;
+  font-size: 0.8rem;
+}
+</style>
