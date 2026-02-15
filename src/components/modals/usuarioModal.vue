@@ -24,12 +24,21 @@ const form = reactive({
   avatar: null
 });
 
-// Lógica de permisos
+/**
+ * Propósito: Identificar si el usuario logueado tiene rango de gestión.
+ * Alimentado por: authStore.usuario.
+ * Retorna: Boolean.
+ */
 const esAdminODocente = computed(() => {
   const rol = Number(authStore.usuario?.rol_id);
   return rol === 1 || rol === 2;
 });
 
+/**
+ * Propósito: Identificar si el registro que se está visualizando pertenece al usuario logueado.
+ * Alimentado por: Datos del formulario y authStore.
+ * Retorna: Boolean.
+ */
 const esPropioPerfil = computed(() => {
   return form.id && Number(authStore.usuario?.id) === Number(form.id);
 });
@@ -37,15 +46,44 @@ const esPropioPerfil = computed(() => {
 const esModoEdicion = computed(() => !!form.id);
 const elUsuarioEsAlumno = computed(() => Number(form.rol_id) === 3);
 
+/**
+ * Propósito: Definir el texto de la cabecera del modal según el contexto.
+ */
 const tituloModal = computed(() => {
   if (esPropioPerfil.value) return 'Mi Perfil';
   return esModoEdicion.value ? 'Editar Usuario' : 'Nuevo Usuario';
 });
 
+/**
+ * Propósito: Bloquear la edición de roles y escuelas a quienes no sean administradores.
+ */
 const puedeEditarEstructura = computed(() => esAdminODocente.value);
+
+/**
+ * Propósito: Permitir la edición de campos de texto (nombre, tel, etc) al dueño o al docente.
+ */
 const puedeEditarDatosPropios = computed(() => esAdminODocente.value || esPropioPerfil.value);
 
+/**
+ * Propósito: RESTRICCIÓN DE PRIVACIDAD. Solo el dueño de la cuenta puede alterar su foto.
+ * Ni el administrador ni el docente pueden cambiar el avatar de otra persona.
+ * Retorna: Boolean.
+ */
+const puedeCambiarAvatar = computed(() => {
+  // Si es un perfil nuevo, el admin puede subir foto.
+  if (!esModoEdicion.value) return esAdminODocente.value;
+  // Si es edición, estrictamente el dueño del perfil.
+  return esPropioPerfil.value;
+});
+
+/**
+ * Propósito: Procesar la selección del archivo de imagen y generar preview.
+ * Alimentado por: Input file (change).
+ * Retorna: void.
+ */
 const onFileSelected = (event) => {
+  if (!puedeCambiarAvatar.value) return; // Salvaguarda lógica
+  
   const file = event.target.files[0];
   if (file) {
     if (file.size > 2 * 1024 * 1024) {
@@ -99,6 +137,11 @@ const resetForm = () => {
   });
 };
 
+/**
+ * Propósito: Empaquetar datos en FormData y enviar al servicio de usuarios.
+ * Alimentado por: Botón "Guardar" o "Actualizar".
+ * Emite: 'usuario-guardado' y 'close' en éxito.
+ */
 const guardar = async () => {
   enviando.value = true;
   errorMsg.value = '';
@@ -120,7 +163,8 @@ const guardar = async () => {
     if (form.password) formData.append('password', form.password);
     form.escuelas_ids.forEach(id => formData.append('escuelas_ids[]', id));
 
-    if (selectedFile.value) {
+    // Solo adjuntar si hay archivo seleccionado Y tiene permiso
+    if (selectedFile.value && puedeCambiarAvatar.value) {
       formData.append('avatar', selectedFile.value);
     }
 
@@ -152,7 +196,11 @@ const guardar = async () => {
         <div v-if="errorMsg" class="notification is-danger is-light py-2">{{ errorMsg }}</div>
 
         <div class="field has-text-centered mb-5">
-           <div class="avatar-container is-inline-block" @click="fileInput.click()" :style="{ cursor: puedeEditarDatosPropios ? 'pointer' : 'default' }">
+           <div 
+            class="avatar-container is-inline-block" 
+            @click="puedeCambiarAvatar ? fileInput.click() : null" 
+            :style="{ cursor: puedeCambiarAvatar ? 'pointer' : 'default' }"
+           >
               <figure v-if="previewUrl || form.avatar" class="image is-128x128">
                 <img class="is-rounded" 
                      :src="previewUrl || `http://localhost:3000/uploads/avatars/${form.avatar}`"
@@ -163,16 +211,24 @@ const guardar = async () => {
                 <span class="icon is-large has-text-grey-light">
                   <i class="fas fa-user-circle fa-5x"></i>
                 </span>
-                <div class="overlay-camera" v-if="puedeEditarDatosPropios">
+                <div class="overlay-camera" v-if="puedeCambiarAvatar">
                   <i class="fas fa-camera"></i>
                 </div>
               </div>
            </div>
-           <p class="help mt-2" v-if="puedeEditarDatosPropios">Haz clic en la imagen para cambiarla</p>
+           <p class="help mt-2" v-if="puedeCambiarAvatar">Haz clic en la imagen para cambiarla</p>
+           <p class="help mt-2 has-text-grey-light" v-else-if="esModoEdicion">La foto de perfil solo puede ser cambiada por el usuario</p>
         </div>
 
         <div class="columns is-multiline">
-          <input class="is-hidden" type="file" ref="fileInput" @change="onFileSelected" accept="image/*" :disabled="!puedeEditarDatosPropios">
+          <input 
+            class="is-hidden" 
+            type="file" 
+            ref="fileInput" 
+            @change="onFileSelected" 
+            accept="image/*" 
+            :disabled="!puedeCambiarAvatar"
+          >
 
           <div class="column is-6">
             <label class="label">Nombre</label>

@@ -52,6 +52,10 @@
       <p class="is-size-5 has-text-grey">El Product Backlog está vacío.</p>
     </div>
 
+    <div v-if="!cargando && userStories.length > 0 && proyectoId" class="mt-6">
+      <StatsProyecto :proyectoId="proyectoId" />
+    </div>
+
     <div class="modal" :class="{ 'is-active': isModalActive }">
       <div class="modal-background" @click="isModalActive = false"></div>
       <div class="modal-card">
@@ -138,6 +142,7 @@ import { useRoute } from 'vue-router';
 import api from '../services/api';
 import userStoryService from '../services/userStory.service';
 import UserStoryCard from '../components/userStoryCard.vue';
+import StatsProyecto from '../components/StatsProyecto.vue'; // <-- Importado
 import DetalleUserStoryModal from '../components/modals/DetalleUserStoryModal.vue';
 import CrearTareaModal from '../components/modals/crearTareaModal.vue'; 
 import ConfirmarModal from '../components/modals/ConfirmarModal.vue';
@@ -234,7 +239,6 @@ const crearUserStory = async () => {
 };
 
 const abrirDetalleUS = async (us) => {
-  // Estabilización: Limpiamos antes de asignar para resetear el v-if
   isDetalleModalActive.value = false;
   usSeleccionada.value = null;
   await nextTick();
@@ -293,11 +297,11 @@ const refrescarTodo = async () => {
   }
 };
 
-// ... Resto de funciones auxiliares ...
 const prepararEliminacion = (usId) => {
   usAEliminar.value = userStories.value.find(u => u.id === usId);
   isConfirmActive.value = true;
 };
+
 const ejecutarEliminacion = async () => {
   if (!usAEliminar.value) return;
   try {
@@ -307,12 +311,14 @@ const ejecutarEliminacion = async () => {
     await cargarUserStories(); 
   } catch (error) { console.error(error); }
 };
+
 const eliminarTareaDeBD = async (tareaId) => {
   try {
     await api.delete(`/tareas/${tareaId}`);
     await refrescarTodo();
   } catch (error) { console.error(error); }
 };
+
 const cargarDatosProyecto = async () => {
   try {
     const res = await api.get(`/proyectos/${proyectoId.value}`);

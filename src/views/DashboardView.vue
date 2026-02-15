@@ -1,73 +1,102 @@
 <template>  
-  <div>   
-    <div class="container mt-5 px-4">
-      <div class="level">
-        <div class="level-left">
-          <h1 class="title">Mis Proyectos</h1>
+  <div class="dashboard-bg">
+    <div class="main-content-wrapper">
+      <div class="container mt-0 pt-6 px-4 pb-6">
+        <div class="level mb-6">
+          <div class="level-left">
+            <h1 class="title has-text-white is-2">
+              <span class="icon mr-3"><i class="fas fa-chalkboard"></i></span>
+              Mis Proyectos
+            </h1>
+          </div>
+          <div class="level-right">
+            <button v-if="esAdminODocente" class="button is-info is-light has-text-weight-bold" @click="abrirModal">
+              <span class="icon"><i class="fas fa-plus"></i></span>
+              <span>Nuevo Proyecto</span>
+            </button>
+          </div>
         </div>
-        <div class="level-right">
-          <button v-if="esAdminODocente" class="button is-primary" @click="abrirModal">
-            <span class="icon"><i class="fas fa-plus"></i></span>
-            <span>Nuevo Proyecto</span>
-          </button>
+
+        <div v-if="cargando" class="notification glass-notification is-info">
+          <span class="icon"><i class="fas fa-spinner fa-pulse"></i></span> Cargando proyectos...
         </div>
-      </div>
+        <div v-if="errorMsg && errorMsg.length > 0" class="notification glass-notification is-danger"> 
+          {{ errorMsg }}
+        </div>
 
-      <div v-if="cargando" class="notification is-info is-light">Cargando proyectos...</div>
-      <div v-if="errorMsg && errorMsg.length > 0" class="notification is-danger is-light"> {{ errorMsg }}</div>
-
-      <div class="box" v-if="!cargando && !errorMsg">
-        <table class="table is-fullwidth is-hoverable is-striped">
-          <thead>
-            <tr>
-              <th>Escuela</th> <th>Nombre</th>
-              <th>Descripción</th>
-              <th>Estado</th>
-              <th>Creado</th>
-              <th class="has-text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr 
-              v-for="proyecto in proyectosVisibles" 
-              :key="proyecto.id" 
-              @click="irAbacklog(proyecto.id)" 
-              style="cursor: pointer;"
-            >
-              <td>
-                <span class="tag is-info is-light has-text-weight-bold">
-                  {{ proyecto.escuela?.nombre_corto || 'Global' }}
-                </span>
-              </td>
-              <td><strong>{{ proyecto.nombre }}</strong></td>
-              <td>{{ proyecto.descripcion }}</td>
-              <td>
-                <span class="tag is-primary is-light">
-                  {{ proyecto.estado_proyecto?.nombre || 'Sin estado' }}
-                </span>
-              </td>
-              <td>{{ formatearFecha(proyecto.created_at) }}</td>
-              
-              <td class="has-text-right">
-                <div v-if="puedeGestionar(proyecto)" class="buttons is-right">
-                  <button class="button is-small is-warning is-light" @click.stop="prepararEdicion(proyecto)">
-                    <span class="icon is-small"><i class="fas fa-edit"></i></span>
-                  </button>
-                  <button class="button is-small is-danger is-light" @click.stop="prepararEliminacion(proyecto)">
-                    <span class="icon is-small"><i class="fas fa-trash"></i></span>
-                  </button>
-                </div>
-              </td>
-            </tr>
-            <tr v-if="proyectosVisibles.length === 0">
-              <td colspan="6" class="has-text-centered has-text-grey py-5">
-                No tienes proyectos asignados actualmente.
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="box glass-panel p-0" v-if="!cargando && !errorMsg">
+          <table class="table is-fullwidth glass-table">
+            <thead>
+              <tr>
+                <th class="has-text-info">Escuela</th> 
+                <th class="has-text-info">Nombre</th>
+                <th class="has-text-info">Descripción</th>
+                <th class="has-text-info">Estado</th>
+                <th class="has-text-info">Creado</th>
+                <th class="has-text-right has-text-info">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr 
+                v-for="proyecto in proyectosVisibles" 
+                :key="proyecto.id" 
+                @click="irAbacklog(proyecto.id)" 
+                class="clickable-row"
+              >
+                <td>
+                  <span class="tag is-info post-it-tag">
+                    {{ proyecto.escuela?.nombre_corto || 'Global' }}
+                  </span>
+                </td>
+                <td><strong class="has-text-white">{{ proyecto.nombre }}</strong></td>
+                <td class="has-text-grey-lighter">{{ proyecto.descripcion }}</td>
+                <td>
+                  <span class="tag is-success is-light is-rounded has-text-weight-bold">
+                    {{ proyecto.estado_proyecto?.nombre || 'Sin estado' }}
+                  </span>
+                </td>
+                <td class="has-text-grey-light">{{ formatearFecha(proyecto.created_at) }}</td>
+                
+                <td class="has-text-right">
+                  <div v-if="puedeGestionar(proyecto)" class="buttons is-right">
+                    <button class="button is-small is-warning is-inverted" @click.stop="prepararEdicion(proyecto)">
+                      <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                    </button>
+                    <button class="button is-small is-danger is-inverted" @click.stop="prepararEliminacion(proyecto)">
+                      <span class="icon is-small"><i class="fas fa-trash"></i></span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="proyectosVisibles.length === 0">
+                <td colspan="6" class="has-text-centered has-text-grey-light py-6">
+                  <i class="fas fa-folder-open fa-3x mb-3"></i><br>
+                  No tienes proyectos asignados actualmente.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
+
+    <footer class="footer-dashboard">
+        <div class="footer-container">
+            <div class="footer-info">
+                Gestión de Proyectos Estudiantiles
+                <span class="version-badge">v1.0.3-stable</span>
+            </div>
+
+            <div class="footer-credits">
+                &copy; {{ anioActual }} | Creado por Ing. Guillermo Codina. Todos los derechos reservados.
+            </div>
+
+            <div class="footer-contact">
+                <span class="icon"><i class="fas fa-envelope"></i></span>
+                <a href="mailto:codinaguillermo@gmail.com">Contacto de Soporte</a>
+            </div>
+        </div>
+    </footer>
 
     <div class="modal" :class="{ 'is-active': isModalActive }">
       <div class="modal-background" @click="isModalActive = false"></div>
@@ -105,7 +134,7 @@
             </div>
           </div>
         </section>
-        <footer class="modal-card-foot">
+        <footer class="modal-card-foot is-justify-content-flex-end">
           <button class="button is-success" @click="guardarProyecto" :class="{ 'is-loading': enviando }" :disabled="!formProyecto.escuela_id">
             Guardar Proyecto
           </button>
@@ -142,7 +171,6 @@ import { tareaService } from '../services/tarea.service';
 import EditarProyectoModal from '../components/modals/EditarProyectoModal.vue';
 import ConfirmarModal from '../components/modals/ConfirmarModal.vue';
 
-// --- ESTADOS REACTIVOS (Declarados al principio para evitar Warns) ---
 const authStore = useAuthStore();
 const router = useRouter();
 
@@ -163,16 +191,31 @@ const mostrarModalEditar = ref(false);
 const proyectoSeleccionado = ref(null);
 const todasLasTareas = ref([]); 
 
-// Variables para eliminación (Movidas arriba para que las funciones las encuentren)
 const isConfirmActive = ref(false);
 const proyectoAEliminar = ref(null);
 
-// --- COMPUTED / PERMISOS ---
+/**
+ * Propósito: Obtener el año actual para el copyright.
+ * Alimenta a: Template del footer.
+ * Datos que retorna: Number (Año actual).
+ */
+const anioActual = computed(() => new Date().getFullYear());
+
+/**
+ * Propósito: Determinar si el usuario tiene rol administrativo o docente.
+ * Alimentado por: authStore.usuario.
+ * Retorna: Boolean.
+ */
 const esAdminODocente = computed(() => {
     const rol = Number(authStore.usuario?.rol_id || authStore.usuario?.rolId);
     return rol === 1 || rol === 2;
 });
 
+/**
+ * Propósito: Filtrar proyectos según pertenencia y rol del usuario.
+ * Alimentado por: proyectos (ref).
+ * Retorna: Array de objetos proyecto.
+ */
 const proyectosVisibles = computed(() => {
     const user = authStore.usuario;
     if (!user) return [];
@@ -189,6 +232,11 @@ const proyectosVisibles = computed(() => {
     });
 });
 
+/**
+ * Propósito: Validar si el usuario puede editar o borrar un proyecto específico.
+ * Alimentado por: Objeto proyecto.
+ * Retorna: Boolean.
+ */
 const puedeGestionar = (proyecto) => {
     const user = authStore.usuario;
     if (!user) return false;
@@ -205,16 +253,10 @@ const puedeGestionar = (proyecto) => {
     return false;
 };
 
-// --- FUNCIONES ---
 const irAbacklog = (id) => {
     router.push(`/proyectos/${id}/backlog`);
 };
 
-/**
- * Función: cargarProyectos
- * Qué hace: Trae la lista de proyectos desde el service.
- * Alimenta: Al listado principal (proyectosVisibles).
- */
 const cargarProyectos = async () => {
     cargando.value = true;
     errorMsg.value = ''; 
@@ -232,11 +274,6 @@ const cargarProyectos = async () => {
     }
 };
 
-/**
- * Función: cargarMaestras
- * Qué hace: Trae escuelas y otros diccionarios.
- * Alimenta: Al select de creación de proyectos.
- */
 const cargarMaestras = async () => {
     try {
         const data = await configService.getTablasMaestras();
@@ -253,10 +290,6 @@ const abrirModal = () => {
     isModalActive.value = true;
 };
 
-/**
- * Función: prepararEdicion
- * Qué hace: Carga tareas globales y abre el modal de edición.
- */
 const prepararEdicion = async (proyecto) => {
     proyectoSeleccionado.value = proyecto;
     try {
@@ -286,19 +319,11 @@ const guardarProyecto = async () => {
     }
 };
 
-/**
- * Función: prepararEliminacion
- * Qué hace: Setea el proyecto a borrar y activa el modal de confirmación.
- */
 const prepararEliminacion = (proyecto) => {
     proyectoAEliminar.value = proyecto;
     isConfirmActive.value = true;
 };
 
-/**
- * Función: ejecutarEliminacion
- * Qué hace: Llama al service para borrar y actualiza la lista.
- */
 const ejecutarEliminacion = async () => {
     if (!proyectoAEliminar.value) return;
     const res = await projectService.delete(proyectoAEliminar.value.id);
@@ -321,3 +346,115 @@ onMounted(() => {
     cargarMaestras(); 
 });
 </script>
+
+<style scoped>
+/* Estructura para el Sticky Footer */
+.dashboard-bg {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)), 
+              url('../src/assets/fondo.jpg');
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+.main-content-wrapper {
+  flex: 1 0 auto; /* Ocupa todo el espacio para empujar el footer */
+}
+
+/* Estilos del Footer Arreglado */
+.footer-dashboard {
+  flex-shrink: 0; /* No permite que el footer se achique */
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1.5rem 1rem;
+  color: #bdc3c7;
+}
+
+.footer-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-size: 0.9rem;
+}
+
+.footer-info, .footer-credits, .footer-contact {
+  margin: 5px 15px;
+}
+
+.version-badge {
+  background-color: rgba(52, 152, 219, 0.2);
+  color: #3498db;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-weight: bold;
+  margin-left: 8px;
+  border: 1px solid rgba(52, 152, 219, 0.3);
+}
+
+.footer-contact a {
+  color: #3498db;
+  text-decoration: none;
+  margin-left: 5px;
+}
+
+.footer-contact a:hover {
+  text-decoration: underline;
+}
+
+/* Panel de vidrio esmerilado y tabla */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.glass-table {
+  background: transparent !important;
+  color: white !important;
+}
+
+.glass-table thead th {
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+}
+
+.clickable-row {
+  transition: background 0.3s ease;
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.glass-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+  vertical-align: middle !important;
+}
+
+/* Etiquetas estilo post-it */
+.post-it-tag {
+  background-color: #ffd966 !important; 
+  color: #333 !important;
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+  transform: rotate(-1deg);
+}
+
+.glass-notification {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(5px);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+</style>

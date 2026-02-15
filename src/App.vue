@@ -3,7 +3,7 @@
     <div class="container">
       <div class="navbar-brand">
         <router-link to="/dashboard" class="navbar-item has-text-weight-bold has-text-white">
-          SISTEMA GESTIÓN
+          GEPRES - GESTIÓN DE PROYECTOS ESTUDIANTILES
         </router-link>
       </div>
 
@@ -98,24 +98,49 @@ const usuarioParaEditar = ref(null);
 const escuelas = ref([]);
 const roles = ref([]);
 
+/**
+ * Propósito: Determinar la visibilidad de la barra de navegación.
+ * Alimentado por: Estado del token en authStore y ruta actual.
+ * Retorna: Boolean.
+ */
 const mostrarNavbar = computed(() => {
   return authStore.token && route.path !== '/login';
 });
 
+/**
+ * Propósito: Obtener el nombre del usuario de forma reactiva desde el store.
+ * Alimentado por: authStore.usuario.
+ * Retorna: String (Nombre o 'Usuario').
+ */
 const nombreUsuario = computed(() => {
   return authStore.usuario?.nombre || 'Usuario';
 });
 
+/**
+ * Propósito: Validar permisos de acceso a menús administrativos.
+ * Alimentado por: authStore.usuario.rol_id.
+ * Retorna: Boolean.
+ */
 const esDocenteOAdmin = computed(() => {
   const rol = Number(authStore.usuario?.rol_id);
   return rol === 1 || rol === 2;
 });
 
+/**
+ * Propósito: Ejecutar el cierre de sesión y redirección.
+ * Alimentado por: Evento click en el menú de navegación.
+ * Retorna: void.
+ */
 const handleLogout = () => {
   authStore.logout();
   router.push('/login');
 };
 
+/**
+ * Propósito: Obtener catálogos de escuelas y roles para los modales.
+ * Alimentado por: Ciclo onMounted y abrirPerfil.
+ * Retorna: void (actualiza refs locales).
+ */
 const cargarMaestras = async () => {
   try {
     const [resE, resR] = await Promise.all([
@@ -129,6 +154,11 @@ const cargarMaestras = async () => {
   }
 };
 
+/**
+ * Propósito: Preparar y mostrar el modal de edición para el usuario logueado.
+ * Alimentado por: Botón "Mi Perfil" en el menú.
+ * Retorna: void.
+ */
 const abrirPerfil = async () => {
   try {
     const res = await api.get(`/usuarios/${authStore.usuario.id}`);
@@ -142,10 +172,17 @@ const abrirPerfil = async () => {
   }
 };
 
+/**
+ * Propósito: Refrescar la información del usuario tras una edición exitosa.
+ * Alimentado por: Evento @usuario-guardado del componente UsuarioModal.
+ * Llamadas: api.get para datos frescos y authStore.actualizarDatosUsuario para sincronizar memoria.
+ * Retorna: void.
+ */
 const refrescarDatos = async () => {
   modalPerfilActivo.value = false;
   try {
     const res = await api.get(`/usuarios/${authStore.usuario.id}`);
+    // Sincroniza la información nueva (incluyendo avatar) con Pinia y LocalStorage
     authStore.actualizarDatosUsuario(res.data);
     console.log("Avatar actualizado en Store:", authStore.usuario.avatar);
   } catch (error) {
@@ -156,9 +193,7 @@ const refrescarDatos = async () => {
 onMounted(() => {
   if (authStore.token) {
     cargarMaestras();
-    // --- DIAGNÓSTICO AUTOMÁTICO ---
     console.log("DEBUG AUTH: Usuario actual en Store:", authStore.usuario);
-    console.log("DEBUG AUTH: ¿Tiene avatar?", authStore.usuario?.avatar);
   }
 });
 </script>
@@ -174,7 +209,6 @@ onMounted(() => {
   align-items: center;
 }
 
-/* FUERZA EL REDONDEO Y EL TAMAÑO */
 .image.is-32x32 {
     width: 32px !important;
     height: 32px !important;
