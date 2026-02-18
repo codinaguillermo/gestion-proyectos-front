@@ -168,7 +168,7 @@ import { useRouter } from 'vue-router';
 import { projectService } from '../services/project.services'; 
 import { configService } from '../services/config.service'; 
 import { tareaService } from '../services/tarea.service'; 
-import EditarProyectoModal from '../components/modals/EditarProyectoModal.vue';
+import EditarProyectoModal from '../components/modals/editarProyectoModal.vue';
 import ConfirmarModal from '../components/modals/ConfirmarModal.vue';
 
 const authStore = useAuthStore();

@@ -99,12 +99,13 @@ const escuelas = ref([]);
 const roles = ref([]);
 
 /**
- * Propósito: Determinar la visibilidad de la barra de navegación.
- * Alimentado por: Estado del token en authStore y ruta actual.
- * Retorna: Boolean.
+ * Propósito: Determinar la visibilidad de la barra de navegación basada en autenticación y ruta.
+ * Alimentado por: authStore.token y route.path.
+ * Retorna: Boolean (false si está en / o /login).
  */
 const mostrarNavbar = computed(() => {
-  return authStore.token && route.path !== '/login';
+  const rutasSinNavbar = ['/login', '/'];
+  return authStore.token && !rutasSinNavbar.includes(route.path);
 });
 
 /**
@@ -182,7 +183,6 @@ const refrescarDatos = async () => {
   modalPerfilActivo.value = false;
   try {
     const res = await api.get(`/usuarios/${authStore.usuario.id}`);
-    // Sincroniza la información nueva (incluyendo avatar) con Pinia y LocalStorage
     authStore.actualizarDatosUsuario(res.data);
     console.log("Avatar actualizado en Store:", authStore.usuario.avatar);
   } catch (error) {
