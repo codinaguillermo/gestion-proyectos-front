@@ -8,8 +8,9 @@ transformarlos manualmente.
 import axios from 'axios';
 
 // Creamos una instancia de axios configurada
-const api = axios.create({
-    baseURL: 'http://localhost:3000/api', // Esta es la URL de tu Backend de Node
+const api = axios.create({    
+    //baseURL: import.meta.env.VITE_API_BASE_URL || '/api'    
+    baseURL: import.meta.env.VITE_API_BASE_URL || '/api'
 });
 
 // Este "interceptor" servirá para que, una vez logueado, 

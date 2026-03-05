@@ -4,7 +4,7 @@
       <button class="button is-small is-light mb-3" @click="$router.back()">
         <span class="icon is-small"><i class="fas fa-arrow-left"></i></span>
         <span>Volver</span>
-        </button>
+      </button>
     </div>
 
     <div class="level">
@@ -75,6 +75,7 @@
             <th>Email</th>
             <th>Rol</th>
             <th>Escuela/s</th>
+            <th class="has-text-centered">Especialidad</th> 
             <th class="has-text-centered">Curso/Div</th>
             <th class="has-text-centered">Estado</th>
             <th class="has-text-right">Acciones</th>
@@ -82,7 +83,7 @@
         </thead>
         <tbody>
           <tr v-if="usuarios.length === 0 && !cargando">
-            <td colspan="7" class="has-text-centered py-5 has-text-grey">
+            <td colspan="8" class="has-text-centered py-5 has-text-grey">
               No se encontraron usuarios con los filtros aplicados.
             </td>
           </tr>
@@ -104,6 +105,12 @@
               </div>
             </td>
             <td class="has-text-centered is-vcentered">
+              <span v-if="Number(u.rol_id) === 3" class="tag is-white">
+                {{ getEspecialidadNombre(u) }}
+              </span>
+              <span v-else>-</span>
+            </td>
+            <td class="has-text-centered is-vcentered">
               {{ Number(u.rol_id) === 3 ? `${u.curso || ''} ${u.division || ''}` : '-' }}
             </td>
             <td class="has-text-centered is-vcentered">
@@ -122,11 +129,12 @@
     </div>
 
     <UsuarioModal 
-        v-if="roles.length > 0 && escuelas.length > 0"
+        v-if="roles.length > 0 && escuelas.length > 0 && especialidades.length > 0"
         :is-active="modalActivo"
         :usuario-edit="usuarioParaEditar"
         :escuelas="escuelas"
         :roles="roles"
+        :especialidades="especialidades"
         @close="modalActivo = false"
         @usuario-guardado="cargarUsuarios"
     />
@@ -142,6 +150,7 @@ import UsuarioModal from '../components/modals/usuarioModal.vue';
 const usuarios = ref([]);
 const escuelas = ref([]);
 const roles = ref([]);
+const especialidades = ref([]); 
 const filtros = reactive({ q: '', curso: '', division: '' });
 const cargando = ref(false);
 
@@ -160,15 +169,26 @@ const cargarUsuarios = async () => {
   }
 };
 
-const cargarMaestras = async () => {
+
+const getEspecialidadNombre = (u) => {
+  if (!u || !especialidades.value.length) return '-';
+  const id = u.especialidad_id || u.id_especialidad || u.especialidadId;
+  const encontrada = especialidades.value.find(e => e.id == id);
+  return encontrada ? encontrada.nombre : '-';
+};
+
+const cargarMaestras = async () => {  
   try {    
-    const [resEscuelas, resRoles] = await Promise.all([
+    const [resEscuelas, resRoles, resEspecialidades] = await Promise.all([
       api.get('/common/escuelas'), 
-      api.get('/common/roles')
+      api.get('/common/roles'),
+      api.get('/common/especialidades') 
     ]);
     
     escuelas.value = resEscuelas.data;
     roles.value = resRoles.data;
+    especialidades.value = resEspecialidades.data; 
+    console.log("ESPECIALIDADES CARGADAS:", especialidades.value);
   } catch (err) {
     console.error("Error cargando maestras", err);
   }
@@ -191,14 +211,14 @@ const limpiarFiltros = () => {
   cargarUsuarios();
 };
 
-onMounted(() => {
-  cargarUsuarios();
-  cargarMaestras();
+// ARREGLADO: Cargamos primero las maestras para asegurar que los nombres estén disponibles
+onMounted(async () => {
+  await cargarMaestras();
+  await cargarUsuarios();
 });
 </script>
 
 <style scoped>
-/* Agregamos una pequeña transición para el loader de Bulma */
 .loader {
   border: 4px solid #f3f3f3;
   border-top: 4px solid #3273dc;

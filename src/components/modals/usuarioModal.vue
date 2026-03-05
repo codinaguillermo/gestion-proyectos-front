@@ -7,7 +7,8 @@ const props = defineProps({
   isActive: Boolean,
   usuarioEdit: { type: Object, default: null },
   escuelas: { type: Array, default: () => [] },
-  roles: { type: Array, default: () => [] }
+  roles: { type: Array, default: () => [] },
+  especialidades: { type: Array, default: () => [] } 
 });
 
 const emit = defineEmits(['close', 'usuario-guardado']);
@@ -21,7 +22,8 @@ const previewUrl = ref(null);
 const form = reactive({
   id: null, nombre: '', apellido: '', email: '', password: '',
   rol_id: 3, curso: '', division: '', telefono: '', activo: true, escuelas_ids: [],
-  avatar: null
+  avatar: null,
+  especialidad_id: 1
 });
 
 /**
@@ -122,7 +124,8 @@ watch(() => props.isActive, (val) => {
         activo: u.activo ?? true,
         avatar: u.avatar || null,
         password: '', 
-        escuelas_ids: u.escuelas?.map(e => e.id) || []
+        escuelas_ids: u.escuelas?.map(e => e.id) || [],
+        especialidad_id: u.especialidad_id || 1,
       });
     } else {
       resetForm();
@@ -133,7 +136,7 @@ watch(() => props.isActive, (val) => {
 const resetForm = () => {
   Object.assign(form, {
     id: null, nombre: '', apellido: '', email: '', password: '',
-    rol_id: 3, curso: '', division: 'A', telefono: '', activo: true, escuelas_ids: [], avatar: null
+    rol_id: 3, curso: '', division: 'A', telefono: '', activo: true, escuelas_ids: [], avatar: null, especialidad_id: 1
   });
 };
 
@@ -159,6 +162,7 @@ const guardar = async () => {
     formData.append('division', form.division);
     formData.append('telefono', form.telefono);
     formData.append('activo', form.activo);
+    formData.append('especialidad_id', form.especialidad_id);
     
     if (form.password) formData.append('password', form.password);
     form.escuelas_ids.forEach(id => formData.append('escuelas_ids[]', id));
@@ -203,7 +207,7 @@ const guardar = async () => {
            >
               <figure v-if="previewUrl || form.avatar" class="image is-128x128">
                 <img class="is-rounded" 
-                     :src="previewUrl || `http://localhost:3000/uploads/avatars/${form.avatar}`"
+                     :src="previewUrl || `/uploads/avatars/${form.avatar}`"
                      style="object-fit: cover; height: 128px; width: 128px; border: 2px solid #dbdbdb;">
               </figure>
               
@@ -306,6 +310,17 @@ const guardar = async () => {
                 </select>
               </div>
             </div>
+            <div class="column is-12">
+              <label class="label">Especialidad (Solo Escuelas Técnicas)</label>
+              <div class="select is-fullwidth">
+                <select v-model="form.especialidad_id" :disabled="!puedeEditarDatosPropios">
+                  <option v-for="esp in especialidades" :key="esp.id" :value="esp.id">
+                    {{ esp.nombre }}
+                  </option>
+                </select>
+              </div>
+              <p class="help">Seleccione "Ninguna" si la escuela no es técnica.</p>
+            </div>
           </template>
 
           <div class="column is-12" v-if="esAdminODocente">
@@ -326,6 +341,7 @@ const guardar = async () => {
 </template>
 
 <style scoped>
+/* Los estilos se mantienen exactamente igual */
 .avatar-container {
   position: relative;
   width: 128px;
@@ -333,11 +349,9 @@ const guardar = async () => {
   border-radius: 50%;
   transition: opacity 0.3s;
 }
-
 .avatar-container:hover {
   opacity: 0.8;
 }
-
 .avatar-placeholder {
   width: 128px;
   height: 128px;
@@ -349,11 +363,9 @@ const guardar = async () => {
   position: relative;
   overflow: hidden;
 }
-
 .is-rounded {
   border-radius: 50% !important;
 }
-
 .overlay-camera {
   position: absolute;
   bottom: 0;

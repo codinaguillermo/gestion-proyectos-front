@@ -83,7 +83,7 @@ const cargando = ref(true);
 
 const fetchStats = async () => {
   try {
-    const response = await fetch(`http://localhost:3000/api/stats/proyecto/${props.proyectoId}`, {
+    const response = await fetch(`/api/stats/proyecto/${props.proyectoId}`, {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
     });
     const result = await response.json();

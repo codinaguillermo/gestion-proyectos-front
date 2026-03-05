@@ -13,7 +13,7 @@
             <figure class="image is-32x32 mr-3">
               <img 
                 v-if="authStore.usuario?.avatar && authStore.usuario.avatar !== ''"
-                :src="`http://localhost:3000/uploads/avatars/${authStore.usuario.avatar}`"
+                :src="`/uploads/avatars/${authStore.usuario.avatar}`"
                 class="is-rounded"
                 style="object-fit: cover; width: 32px; height: 32px; min-width: 32px; border: 1px solid #fff;"
               >

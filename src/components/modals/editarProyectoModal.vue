@@ -238,16 +238,24 @@ export default {
         }
         try {
             const authStore = useAuthStore();
-            const res = await axios.get(`http://localhost:3000/api/usuarios?q=${this.busqueda}`, {
+            const res = await axios.get(`/api/usuarios?q=${this.busqueda}`, {
                 headers: { 'Authorization': `Bearer ${authStore.token}` }
             });
             const idEscuelaProyecto = Number(this.proyectoOriginal.escuela_id);
+            
             this.resultadosBusqueda = res.data.filter(u => {
+                // RESTRICCIÓN DE ACTIVIDAD: Si el usuario no está activo, se ignora
+                if (!u.activo) return false;
+
                 const rolId = Number(u.rol_id);
+                // Si no es alumno (Admin o Docente), pasa directo si está activo
                 if (rolId !== 3) return true;
+
+                // Lógica de escuela para alumnos
                 const arrayEscuelas = u.usuario_escuelas || u.UsuarioEscuelas || u.Escuelas || u.escuelas || [];
                 const coincideEnRelacion = arrayEscuelas.some(rel => Number(rel.escuela_id || rel.id) === idEscuelaProyecto);
                 const coincideDirecto = Number(u.escuela_id || u.escuelaId) === idEscuelaProyecto;
+                
                 return coincideEnRelacion || coincideDirecto;
             });
         } catch (e) { console.error("Error en la búsqueda:", e); }
@@ -263,7 +271,7 @@ export default {
     async confirmarCambios() {
       try {
         const authStore = useAuthStore();
-        await axios.put(`http://localhost:3000/api/proyectos/${this.form.id}`, {
+        await axios.put(`/api/proyectos/${this.form.id}`, {
           ...this.form,
           usuariosIds: this.miembrosAsignados.map(m => m.id)
         }, { headers: { 'Authorization': `Bearer ${authStore.token}` } });
