@@ -1,10 +1,17 @@
 <script setup>
+/**
+ * COMPONENTE: crearTareaModal.vue
+ * DESCRIPCIÓN: Modal para la gestión (creación/edición) de tareas técnicas.
+ * Mantiene la lógica de permisos, estados iniciales y trazabilidad temporal.
+ * REGLA DE CIERRE: Solo exige Link de Evidencia (si está marcado Documentado) 
+ * y Comentario de Cierre al intentar guardar en estado DONE (ID 4).
+ */
 import { ref, reactive, onMounted, watch, computed } from 'vue';
-// Usamos llaves {} porque en tu config.service.js exportamos 'const configService'
 import { configService } from '../../services/config.service';
 import tareaService from '../../services/tarea.service';
 import { useAuthStore } from '../../stores/auth';
 
+// --- PROPIEDADES RECIBIDAS ---
 const props = defineProps({
   isActive: Boolean,
   userStory: { type: Object, default: () => ({}) },
@@ -15,63 +22,52 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'tarea-creada', 'tarea-actualizada']);
 
+// --- ESTADOS REACTIVOS ---
 const authStore = useAuthStore();
 const enviando = ref(false);
-const nombreResponsable = ref('');
 const maestras = ref({ estados: [], prioridades: [], tipos: [] });
 const mostrandoConfirmacionSalida = ref(false);
 const errorValidacion = ref('');
 const horasNuevasDeHoy = ref(0);
 
+// --- ESTADO INICIAL DEL FORMULARIO ---
 const form = reactive({
   id: null,
   titulo: '',
   descripcion: '',
-  tipo_id: null,      // Cambiado de '' a null para evitar error MySQL
-  prioridad_id: null, // Cambiado de '' a null para evitar error MySQL
-  estado_id: null,    // Cambiado de '' a null para evitar error MySQL
+  tipo_id: null,
+  prioridad_id: null,
+  estado_id: null,
   responsable_id: null,
   horas_estimadas: 0,
   horas_reales: 0,
+  fechaInicioReal: null,
+  fechaFinReal: null,
   cumpleAceptacion: false,
   testeado: false,
-  documentado: false,
+  documentado: false, // Flag que indica si la tarea requiere documentación
   utilizable: false,
   criterios_aceptacion: '',
-  comentario_cierre: '',
-  link_evidencia: ''
+  comentario_cierre: '', // Campo vinculado a comentario_cierre en DB
+  link_evidencia: ''    // Campo vinculado a link_evidencia en DB
 });
 
-// --- LÓGICA DE PERMISOS ---
-const usuarioLogueado = computed(() => authStore.usuario || JSON.parse(localStorage.getItem('user')));
-
-const esJefe = computed(() => {
-  const u = usuarioLogueado.value;
-  return u && (String(u.rol_id) === '1' || String(u.rol_id) === '2');
-});
-
-const esMiTarea = computed(() => {
-  return String(usuarioLogueado.value?.id) === String(form.responsable_id);
-});
-
-const puedeGuardar = computed(() => {
-  if (!form.id) return esJefe.value;
-  return esJefe.value || esMiTarea.value;
-});
-
-const mostrarRegistroHoras = computed(() => {
-  return form.id && puedeGuardar.value && Number(form.estado_id) !== 1;
-});
-
-// --- FUNCIONES ---
-const intentarCerrar = () => {
-  if ((form.titulo !== (props.tareaEdit?.titulo || '') || horasNuevasDeHoy.value > 0) && !enviando.value) {
-    mostrandoConfirmacionSalida.value = true;
-  } else {
-    emit('close');
+// --- LÓGICA DE ESTADO INICIAL ---
+/**
+ * Al crear una tarea nueva, pre-selecciona 'TO DO' o 'PENDIENTE' para agilizar la carga.
+ */
+const setEstadoPorDefecto = () => {
+  if (maestras.value.estados?.length) {
+    const estadoTodo = maestras.value.estados.find(e => 
+      e.nombre.toUpperCase() === 'TO DO' || e.nombre.toUpperCase() === 'PENDIENTE'
+    );
+    form.estado_id = estadoTodo ? estadoTodo.id : maestras.value.estados[0].id;
   }
 };
 
+/**
+ * Limpia el objeto reactivo para iniciar una creación de tarea desde cero.
+ */
 const resetForm = () => {
   form.id = null;
   form.titulo = '';
@@ -79,6 +75,8 @@ const resetForm = () => {
   form.responsable_id = null;
   form.horas_estimadas = 0;
   form.horas_reales = 0;
+  form.fechaInicioReal = null;
+  form.fechaFinReal = null;
   form.cumpleAceptacion = false;
   form.testeado = false;
   form.documentado = false;
@@ -86,14 +84,76 @@ const resetForm = () => {
   form.criterios_aceptacion = '';
   form.comentario_cierre = '';
   form.link_evidencia = '';
-  nombreResponsable.value = '';
   
-  // Seteamos por defecto la primera opción de las tablas maestras
-  if (maestras.value.estados?.length) form.estado_id = maestras.value.estados[0].id;
   if (maestras.value.prioridades?.length) form.prioridad_id = maestras.value.prioridades[0].id;
   if (maestras.value.tipos?.length) form.tipo_id = maestras.value.tipos[0].id;
+  
+  setEstadoPorDefecto();
 };
 
+// --- LÓGICA DE TIEMPOS (SELLOS DE TRAZABILIDAD) ---
+/**
+ * Convierte un string ISO de fecha a formato local legible (Día, Mes, Año, Hora).
+ */
+const formatearFecha = (fecha) => {
+  if (!fecha) return '';
+  return new Intl.DateTimeFormat('es-AR', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  }).format(new Date(fecha));
+};
+
+/**
+ * Calcula la diferencia en días desde el inicio real hasta hoy.
+ */
+const calcularAntiguedad = (fecha) => {
+  if (!fecha) return '';
+  const inicio = new Date(fecha);
+  const ahora = new Date();
+  const diffTime = Math.abs(ahora - inicio);
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'hoy';
+  if (diffDays === 1) return 'ayer';
+  return `hace ${diffDays} días`;
+};
+
+// --- LÓGICA DE PERMISOS (RBAC) ---
+const usuarioLogueado = computed(() => authStore.usuario || JSON.parse(localStorage.getItem('user')));
+
+/**
+ * Determina si el usuario tiene privilegios de Docente o Administrador.
+ */
+const esJefe = computed(() => {
+  const u = usuarioLogueado.value;
+  return u && (String(u.rol_id) === '1' || String(u.rol_id) === '2');
+});
+
+/**
+ * Verifica si el usuario actual es el responsable de la tarea que se está editando.
+ */
+const esMiTarea = computed(() => String(usuarioLogueado.value?.id) === String(form.responsable_id));
+
+/**
+ * Define si el usuario tiene permiso para guardar cambios.
+ */
+const puedeGuardar = computed(() => form.id ? (esJefe.value || esMiTarea.value) : esJefe.value);
+
+/**
+ * Define si se habilita la carga incremental de horas (no disponible en TO DO).
+ */
+const mostrarRegistroHoras = computed(() => form.id && puedeGuardar.value && Number(form.estado_id) !== 1);
+
+/**
+ * Detecta si el estado seleccionado actualmente es DONE (ID 4).
+ */
+const esEstadoFinalizado = computed(() => {
+    return Number(form.estado_id) === 4; 
+});
+
+// --- WATCHERS Y LIFECYCLE ---
+/**
+ * Sincroniza los datos del formulario al abrir el modal (Edición vs Creación).
+ */
 watch(() => props.isActive, (val) => {
   if (val) {
     mostrandoConfirmacionSalida.value = false;
@@ -110,13 +170,14 @@ watch(() => props.isActive, (val) => {
       form.responsable_id = props.tareaEdit.responsable_id;      
       form.horas_estimadas = props.tareaEdit.horas_estimadas || props.tareaEdit.horasEstimadas || 0; 
       form.horas_reales = Number(props.tareaEdit.horasReales || props.tareaEdit.horas_reales || 0);
-
+      form.fechaInicioReal = props.tareaEdit.fechaInicioReal || null;
+      form.fechaFinReal = props.tareaEdit.fechaFinReal || null;
       form.cumpleAceptacion = !!props.tareaEdit.cumpleAceptacion;
       form.testeado = !!props.tareaEdit.testeado;
       form.documentado = !!props.tareaEdit.documentado;
       form.utilizable = !!props.tareaEdit.utilizable;
       form.criterios_aceptacion = props.tareaEdit.criterios_aceptacion || '';
-      form.comentario_cierre = props.tareaEdit.comentario_cierre || '';
+      form.comentario_cierre = props.tareaEdit.comentarioCierre || props.tareaEdit.comentario_cierre || '';
       form.link_evidencia = props.tareaEdit.linkEvidencia || props.tareaEdit.link_evidencia || '';
     } else {
       resetForm();
@@ -124,6 +185,9 @@ watch(() => props.isActive, (val) => {
   }
 }, { immediate: true });
 
+/**
+ * Carga los diccionarios (tablas maestras) desde el servidor al montar.
+ */
 onMounted(async () => {
   const data = await configService.getTablasMaestras();
   maestras.value = {
@@ -131,50 +195,37 @@ onMounted(async () => {
     prioridades: data.prioridades || [],
     tipos: data.tipos || []
   };
-
-  // Aseguramos carga inicial si es nueva tarea y las maestras ya llegaron
   if (!form.id && props.isActive) {
-    if (maestras.value.estados?.length) form.estado_id = maestras.value.estados[0].id;
-    if (maestras.value.prioridades?.length) form.prioridad_id = maestras.value.prioridades[0].id;
-    if (maestras.value.tipos?.length) form.tipo_id = maestras.value.tipos[0].id;
+    setEstadoPorDefecto();
   }
 });
 
+/**
+ * Procesa la validación lógica y el envío de datos al backend.
+ */
 const guardarTarea = async () => {
   errorValidacion.value = '';
 
-  if (form.documentado && (!form.link_evidencia || form.link_evidencia.trim() === '')) {
-    errorValidacion.value = "Para marcar la tarea como 'Documentada', es obligatorio proveer el link de evidencia.";
-    return;
-  }
-  
-  if (props.tareaEdit) {
-    const estadoAnterior = Number(props.tareaEdit.estado_id);
-    const estadoNuevo = Number(form.estado_id);
-
-    if (estadoAnterior === 1 && estadoNuevo === 4) {
-      errorValidacion.value = "No puedes pasar de To Do a Done directamente. La tarea debe ser procesada.";
-      return;
-    }
-
-    const esCambioSinEsfuerzo = (estadoAnterior === 1 || estadoAnterior === 4 || estadoNuevo === 1);
-
-    if (!esCambioSinEsfuerzo && estadoAnterior !== estadoNuevo && Number(horasNuevasDeHoy.value) <= 0) {
-      errorValidacion.value = "Debes registrar las horas trabajadas antes de cambiar el estado.";
-      return;
-    }
-    
-    if (esCambioSinEsfuerzo) {
-      horasNuevasDeHoy.value = 0;
-    }
+  /**
+   * REGLA DE CIERRE:
+   * Si el estado es DONE (finalizado), se exige el Comentario. 
+   * Si además está tildado 'Documentado', se exige el Link.
+   */
+  if (esEstadoFinalizado.value) {
+      if (!form.comentario_cierre || form.comentario_cierre.trim().length < 5) {
+          errorValidacion.value = "Al finalizar la tarea (DONE), debes ingresar un comentario de cierre descriptivo.";
+          return;
+      }
+      if (form.documentado && (!form.link_evidencia || form.link_evidencia.trim() === '')) {
+          errorValidacion.value = "Para pasar a DONE una tarea con documentación, debes proveer el link de evidencia.";
+          return;
+      }
   }
 
   if (!form.titulo) return;
   enviando.value = true;
-
   try {
     const acumuladoFinal = Number(form.horas_reales) + Number(horasNuevasDeHoy.value);
-
     const payload = {
       titulo: form.titulo,
       descripcion: form.descripcion,
@@ -194,7 +245,6 @@ const guardarTarea = async () => {
       comentario_cierre: form.comentario_cierre,
       link_evidencia: form.link_evidencia
     };
-
     if (form.id) {
       await tareaService.update(form.id, payload);
       emit('tarea-actualizada');
@@ -209,21 +259,13 @@ const guardarTarea = async () => {
     enviando.value = false;
   }
 };
+const intentarCerrar = () => emit('close');
 </script>
 
 <template>  
   <div :class="['modal', { 'is-active': isActive }]">
     <div class="modal-background" @click="intentarCerrar"></div>
     <div class="modal-card">
-      
-      <div v-if="mostrandoConfirmacionSalida" class="confirm-overlay notification is-warning">
-        <h3 class="title is-5">¿Descartar cambios?</h3>
-        <div class="buttons">
-          <button class="button is-danger" @click="emit('close')">Sí, descartar</button>
-          <button class="button is-white" @click="mostrandoConfirmacionSalida = false">Seguir</button>
-        </div>
-      </div>
-
       <header class="modal-card-head">
         <p class="modal-card-title is-size-5">{{ form.id ? 'Gestionar Tarea' : 'Nueva Tarea' }}</p>
         <button class="delete" @click="intentarCerrar"></button>
@@ -232,6 +274,16 @@ const guardarTarea = async () => {
       <section class="modal-card-body">
         <div v-if="errorValidacion" class="notification is-danger is-light py-2 mb-4">
           <strong>Atención:</strong> {{ errorValidacion }}
+        </div>
+
+        <div v-if="form.id && form.fechaInicioReal" class="notification is-info is-light py-2 mb-4">
+          <div class="is-flex is-align-items-center">
+            <span class="icon mr-2"><i class="fas fa-history"></i></span>
+            <div class="is-size-7">
+              <p><strong>Inicio real:</strong> {{ formatearFecha(form.fechaInicioReal) }} ({{ calcularAntiguedad(form.fechaInicioReal) }})</p>
+              <p v-if="form.fechaFinReal"><strong>Finalización:</strong> {{ formatearFecha(form.fechaFinReal) }}</p>
+            </div>
+          </div>
         </div>
 
         <div class="field">
@@ -265,6 +317,13 @@ const guardarTarea = async () => {
               </select>
             </div>
           </div>
+        </div>
+
+        <div v-if="esEstadoFinalizado" class="box has-background-warning-light p-3 mt-2" style="border: 1px solid #ffdd57">
+            <div class="field">
+                <label class="label is-size-7 has-text-warning-dark">Comentario de Cierre (Obligatorio)</label>
+                <textarea v-model="form.comentario_cierre" class="textarea is-small" placeholder="Contanos qué hiciste para terminar la tarea..." rows="2"></textarea>
+            </div>
         </div>
 
         <div class="columns">
@@ -316,42 +375,18 @@ const guardarTarea = async () => {
         <div class="box has-background-light p-3 mt-2" v-if="form.id">
           <label class="label is-size-7 mb-2">Checklist de Calidad (DoD)</label>
           <div class="columns is-multiline is-mobile">
-            <div class="column is-half-mobile">
-              <label class="checkbox is-size-7">
-                <input type="checkbox" v-model="form.cumpleAceptacion" :disabled="!puedeGuardar"> Cumple Aceptación
-              </label>
-            </div>
-            <div class="column is-half-mobile">
-              <label class="checkbox is-size-7">
-                <input type="checkbox" v-model="form.testeado" :disabled="!puedeGuardar"> Testeado
-              </label>
-            </div>
-            <div class="column is-half-mobile">
-              <label class="checkbox is-size-7">
-                <input type="checkbox" v-model="form.documentado" :disabled="!puedeGuardar"> Documentado
-              </label>
-            </div>
-            <div class="column is-half-mobile">
-              <label class="checkbox is-size-7">
-                <input type="checkbox" v-model="form.utilizable" :disabled="!puedeGuardar"> Utilizable
-              </label>
-            </div>
+            <div class="column is-half-mobile"><label class="checkbox is-size-7"><input type="checkbox" v-model="form.cumpleAceptacion" :disabled="!puedeGuardar"> Cumple Aceptación</label></div>
+            <div class="column is-half-mobile"><label class="checkbox is-size-7"><input type="checkbox" v-model="form.testeado" :disabled="!puedeGuardar"> Testeado</label></div>
+            <div class="column is-half-mobile"><label class="checkbox is-size-7"><input type="checkbox" v-model="form.documentado" :disabled="!puedeGuardar"> Documentado</label></div>
+            <div class="column is-half-mobile"><label class="checkbox is-size-7"><input type="checkbox" v-model="form.utilizable" :disabled="!puedeGuardar"> Utilizable</label></div>
           </div>
         </div>
 
-        <div class="box is-info is-light p-3 mt-2" v-if="form.documentado">
-          <div class="field">
-            <label class="label is-size-7">Link de Evidencia <span class="has-text-danger">*</span></label>
-            <div class="control">
-              <input v-model="form.link_evidencia" class="input is-small" type="url" :disabled="!puedeGuardar">
+        <div v-if="form.documentado" class="box has-background-info-light p-3 mt-2">
+            <div class="field">
+                <label class="label is-size-7 has-text-info">Link de Evidencia</label>
+                <input v-model="form.link_evidencia" class="input is-small" type="url" placeholder="URL de Google Drive, Repo, etc.">
             </div>
-          </div>
-          <div class="field mt-2">
-            <label class="label is-size-7">Comentario de Cierre</label>
-            <div class="control">
-              <textarea v-model="form.comentario_cierre" class="textarea is-small" rows="2" :disabled="!puedeGuardar"></textarea>
-            </div>
-          </div>
         </div>
 
         <div class="field mt-3">
@@ -371,17 +406,3 @@ const guardarTarea = async () => {
     </div>
   </div>
 </template>
-
-<style scoped>
-.confirm-overlay {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 221, 87, 0.95);
-  border-radius: 6px;
-}
-</style>

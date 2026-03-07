@@ -4,24 +4,42 @@
     <div class="modal-card modal-grande">
       
       <header class="modal-card-head has-background-primary">
-        <p class="modal-card-title has-text-white is-size-5-mobile">Gestionar Proyecto: {{ proyectoOriginal.nombre }}</p>
+        <p class="modal-card-title has-text-white is-size-5-mobile">
+          {{ esAdminOOwner ? 'Gestionar Proyecto:' : 'Detalles del Proyecto:' }} {{ proyectoOriginal.nombre }}
+        </p>
         <button class="delete" aria-label="close" @click="$emit('close')"></button>
       </header>
 
       <section class="modal-card-body p-5">
         <div class="columns is-multiline">
           
-          <div class="column is-12-mobile is-4-tablet border-right-tablet">
+          <div class="column is-12-mobile is-6-tablet border-right-tablet">
             <h3 class="title is-6 border-bottom has-text-grey uppercase-label">Información General</h3>
             
-            <div class="field mb-4">
-              <label class="label is-small">Escuela</label>
-              <div class="control">
-                <div class="tags has-addons">
-                  <span class="tag is-dark is-medium"><i class="fas fa-school"></i></span>
-                  <span class="tag is-info is-light is-medium has-text-weight-bold">
-                    {{ proyectoOriginal.escuela?.nombre_corto || 'Global' }}
-                  </span>
+            <div class="columns is-multiline">
+              <div class="column is-6">
+                <div class="field mb-4">
+                  <label class="label is-small">Escuela</label>
+                  <div class="control">
+                    <div class="tags has-addons">
+                      <span class="tag is-dark is-medium"><i class="fas fa-school"></i></span>
+                      <span class="tag is-info is-light is-medium has-text-weight-bold">
+                        {{ proyectoOriginal.escuela?.nombre_corto || 'Global' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="column is-6">
+                <div class="field mb-4">
+                  <label class="label is-small">Estado Global</label>
+                  <div class="select is-fullwidth is-small">
+                    <select v-model="form.estado_id" :disabled="!esAdminOOwner">
+                      <option v-for="est in estadosProyecto" :key="est.id" :value="est.id">
+                        {{ est.nombre }}
+                      </option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
@@ -30,23 +48,107 @@
               <label class="label is-small">Nombre del Proyecto</label>
               <input class="input" type="text" v-model="form.nombre" :disabled="!esAdminOOwner">
             </div>
-            
-            <div class="field mb-4">
-              <label class="label is-small">Estado Global</label>
-              <div class="select is-fullwidth">
-                <select v-model="form.estado_id" :disabled="!esAdminOOwner">
-                  <option v-for="est in estadosProyecto" :key="est.id" :value="est.id">
-                    {{ est.nombre }}
-                  </option>
-                </select>
+
+            <div class="mt-5 pt-4" style="border-top: 2px solid #f5f5f5;">
+              <h3 class="title is-6 has-text-grey uppercase-label mb-4">Identidad y Alcances</h3>
+              
+              <div class="field mb-5">
+                <label class="label is-size-7 is-flex is-justify-content-between is-align-items-center">
+                  <span>Objetivo General</span>
+                  <span v-if="form.objetivoBloqueado" class="tag is-success is-light is-narrow has-text-weight-bold" style="font-size: 0.65rem">APROBADO</span>
+                </label>
+                <div class="field has-addons">
+                  <div class="control is-expanded">
+                    <textarea 
+                      class="textarea is-small" 
+                      rows="5" 
+                      v-model="form.objetivo" 
+                      :readonly="form.objetivoBloqueado"
+                      :class="{'has-background-light has-text-grey': form.objetivoBloqueado}"
+                      placeholder="Describa el problema y la solución propuesta...">
+                    </textarea>
+                  </div>
+                  <div class="control" v-if="esAdminOOwner">
+                    <button 
+                      class="button is-light" 
+                      style="height: 100%; min-width: 45px;"
+                      @click="form.objetivoBloqueado = !form.objetivoBloqueado"
+                      :class="form.objetivoBloqueado ? 'has-text-danger' : 'has-text-link'"
+                      title="Habilitar/Bloquear edición">
+                      <span class="icon">
+                        <i class="fas" :class="form.objetivoBloqueado ? 'fa-lock' : 'fa-lock-open'"></i>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field mb-5">
+                <label class="label is-size-7 is-flex is-justify-content-between is-align-items-center">
+                  <span>Alcance del Prototipo (Entrega Real)</span>
+                  <span v-if="form.alcancePrototipoBloqueado" class="tag is-success is-light is-narrow has-text-weight-bold" style="font-size: 0.65rem">APROBADO</span>
+                </label>
+                <div class="field has-addons">
+                  <div class="control is-expanded">
+                    <textarea 
+                      class="textarea is-small" 
+                      rows="5" 
+                      v-model="form.alcancePrototipo" 
+                      :readonly="form.alcancePrototipoBloqueado"
+                      :class="{'has-background-light has-text-grey': form.alcancePrototipoBloqueado}"
+                      placeholder="Detalle técnico de la entrega actual...">
+                    </textarea>
+                  </div>
+                  <div class="control" v-if="esAdminOOwner">
+                    <button 
+                      class="button is-light" 
+                      style="height: 100%; min-width: 45px;"
+                      @click="form.alcancePrototipoBloqueado = !form.alcancePrototipoBloqueado"
+                      :class="form.alcancePrototipoBloqueado ? 'has-text-danger' : 'has-text-link'">
+                      <span class="icon">
+                        <i class="fas" :class="form.alcancePrototipoBloqueado ? 'fa-lock' : 'fa-lock-open'"></i>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field mb-4">
+                <label class="label is-size-7 is-flex is-justify-content-between is-align-items-center">
+                  <span>Alcance Producto Final (Escalabilidad)</span>
+                  <span v-if="form.alcanceFinalBloqueado" class="tag is-success is-light is-narrow has-text-weight-bold" style="font-size: 0.65rem">APROBADO</span>
+                </label>
+                <div class="field has-addons">
+                  <div class="control is-expanded">
+                    <textarea 
+                      class="textarea is-small" 
+                      rows="5" 
+                      v-model="form.alcanceFinal" 
+                      :readonly="form.alcanceFinalBloqueado"
+                      :class="{'has-background-light has-text-grey': form.alcanceFinalBloqueado}"
+                      placeholder="Visión del producto a escala masiva...">
+                    </textarea>
+                  </div>
+                  <div class="control" v-if="esAdminOOwner">
+                    <button 
+                      class="button is-light" 
+                      style="height: 100%; min-width: 45px;"
+                      @click="form.alcanceFinalBloqueado = !form.alcanceFinalBloqueado"
+                      :class="form.alcanceFinalBloqueado ? 'has-text-danger' : 'has-text-link'">
+                      <span class="icon">
+                        <i class="fas" :class="form.alcanceFinalBloqueado ? 'fa-lock' : 'fa-lock-open'"></i>
+                      </span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="column is-12-mobile is-8-tablet">
+          <div class="column is-12-mobile is-6-tablet pl-5-tablet">
             <div class="is-flex is-justify-content-between is-align-items-center border-bottom mb-2">
               <h3 class="title is-6 has-text-grey uppercase-label mb-0">
-                Integrantes ({{ miembrosAsignados.length }})
+                Integrantes del Equipo ({{ miembrosAsignados.length }})
               </h3>
               <span class="icon has-text-info is-clickable help-tooltip-down" :data-tooltip="leyendaPrioridades">
                 <i class="fas fa-info-circle"></i>
@@ -54,7 +156,7 @@
             </div>
             
             <div class="miembros-scroll-area mb-4">
-              <div class="columns is-multiline is-mobile px-2">
+              <div class="columns is-multiline is-mobile px-2 pt-2">
                 <div class="column is-12 p-1" v-for="miembro in miembrosAsignados" :key="miembro.id">
                   <div class="box p-3 mb-0 is-shadowless border-slack">
                     <article class="media is-align-items-center">
@@ -77,8 +179,8 @@
 
                       <div class="media-right is-flex is-align-items-center">
                         <div v-if="calcularPuntos(miembro.id) > 0" 
-                             class="workload-badge mr-3" 
-                             :class="getColorCarga(calcularPuntos(miembro.id))">
+                               class="workload-badge mr-3" 
+                               :class="getColorCarga(calcularPuntos(miembro.id))">
                           {{ calcularPuntos(miembro.id) }}
                         </div>
 
@@ -131,8 +233,10 @@
       </section>
 
       <footer class="modal-card-foot is-justify-content-flex-end p-4">
-        <button class="button" @click="$emit('close')">Cerrar</button>
-        <button v-if="esAdminOOwner" class="button is-success" @click="confirmarCambios">
+        <button class="button" @click="$emit('close')">
+          {{ esAdminOOwner ? 'Cancelar' : 'Cerrar' }}
+        </button>
+        <button class="button is-success" @click="confirmarCambios">
           <span>Guardar Cambios</span>
         </button>
       </footer>
@@ -152,7 +256,16 @@ export default {
   },
   data() {
     return {
-      form: { ...this.proyectoOriginal, escuela_id: this.proyectoOriginal.escuela_id },
+      form: { 
+        ...this.proyectoOriginal, 
+        escuela_id: this.proyectoOriginal.escuela_id,
+        objetivo: this.proyectoOriginal.objetivo || '',
+        objetivoBloqueado: !!this.proyectoOriginal.objetivoBloqueado,
+        alcancePrototipo: this.proyectoOriginal.alcancePrototipo || '',
+        alcancePrototipoBloqueado: !!this.proyectoOriginal.alcancePrototipoBloqueado,
+        alcanceFinal: this.proyectoOriginal.alcanceFinal || '',
+        alcanceFinalBloqueado: !!this.proyectoOriginal.alcanceFinalBloqueado
+      },
       estadosProyecto: [],
       prioridades: [], 
       miembrosAsignados: [],
@@ -166,18 +279,9 @@ export default {
       const user = authStore.usuario;
       return user && (Number(user.rol_id) === 1 || Number(user.id) === Number(this.proyectoOriginal?.docente_owner_id));
     },
-    /**
-     * Genera dinámicamente el texto del tooltip basado en las prioridades/importancias 
-     * cargadas desde la base de datos.
-     */
     leyendaPrioridades() {
-      if (!this.prioridades || this.prioridades.length === 0) {
-        return "Cargando escala de puntos...";
-      }
-      const escala = this.prioridades
-        .map(p => `• ${p.nombre}: ${p.peso} pts`)
-        .join('\n');
-
+      if (!this.prioridades || this.prioridades.length === 0) return "Cargando escala de puntos...";
+      const escala = this.prioridades.map(p => `• ${p.nombre}: ${p.peso} pts`).join('\n');
       return `Puntos por tarea (según importancia):\n${escala}\n\n(Solo suma tareas en 'In Progress' o 'Testing')`;
     }
   },
@@ -191,7 +295,7 @@ export default {
         const data = await configService.getTablasMaestras();
         this.estadosProyecto = data.estadosProyecto || [];
         this.prioridades = data.prioridades || [];
-      } catch (e) { console.error("Error cargando configuraciones en modal:", e); }
+      } catch (e) { console.error("Error cargando configuraciones:", e); }
     },
 
     prepararMiembros() {
@@ -201,7 +305,6 @@ export default {
 
     calcularPuntos(usuarioId) {
       if (!this.todasLasTareas.length) return 0;
-      
       return this.todasLasTareas
         .filter(t => 
           Number(t.responsable_id) === Number(usuarioId) && 
@@ -244,18 +347,12 @@ export default {
             const idEscuelaProyecto = Number(this.proyectoOriginal.escuela_id);
             
             this.resultadosBusqueda = res.data.filter(u => {
-                // RESTRICCIÓN DE ACTIVIDAD: Si el usuario no está activo, se ignora
                 if (!u.activo) return false;
-
                 const rolId = Number(u.rol_id);
-                // Si no es alumno (Admin o Docente), pasa directo si está activo
                 if (rolId !== 3) return true;
-
-                // Lógica de escuela para alumnos
                 const arrayEscuelas = u.usuario_escuelas || u.UsuarioEscuelas || u.Escuelas || u.escuelas || [];
                 const coincideEnRelacion = arrayEscuelas.some(rel => Number(rel.escuela_id || rel.id) === idEscuelaProyecto);
                 const coincideDirecto = Number(u.escuela_id || u.escuelaId) === idEscuelaProyecto;
-                
                 return coincideEnRelacion || coincideDirecto;
             });
         } catch (e) { console.error("Error en la búsqueda:", e); }
@@ -275,108 +372,32 @@ export default {
           ...this.form,
           usuariosIds: this.miembrosAsignados.map(m => m.id)
         }, { headers: { 'Authorization': `Bearer ${authStore.token}` } });
+        
         this.$emit('actualizado');
         this.$emit('close');
-      } catch (e) { alert("Error al guardar."); }
+      } catch (e) { alert("Error al guardar cambios."); }
     }
   }
 }
 </script>
 
 <style scoped>
-.modal-grande { width: 95%; max-width: 1000px; height: 90vh; }
+/* Estilos originales preservados */
+.modal-grande { width: 95%; max-width: 1100px; height: 90vh; }
 .modal-card-body { overflow-y: visible !important; }
-.miembros-scroll-area { max-height: 350px; overflow-y: auto; background: #fafafa; border-radius: 8px; border: 1px solid #eee; }
+.miembros-scroll-area { max-height: 550px; overflow-y: auto; background: #fafafa; border-radius: 8px; border: 1px solid #eee; }
 .avatar-circle-lg { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 .buscador-relativo { position: relative; }
 .border-right-tablet { border-right: 1px solid #dbdbdb; }
+.pl-5-tablet { padding-left: 2.5rem !important; }
 .border-slack { border: 1px solid #e1e4e8; border-radius: 10px; background: white; }
-.uppercase-label { text-transform: uppercase; font-size: 0.7rem; font-weight: 700; }
-
-/* Estilos para el Globito de Carga */
-.workload-badge {
-  min-width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: bold;
-  color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+.uppercase-label { text-transform: uppercase; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; }
+.workload-badge { min-width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 .is-success-badge { background-color: #48c78e; }
 .is-warning-badge { background-color: #ffe08a; color: #947600; }
 .is-danger-badge { background-color: #f14668; }
-
-/* Tooltip dinámico hacia abajo */
 .help-tooltip-down { position: relative; }
-
-.help-tooltip-down:hover::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  top: 130%; /* Desplazamiento hacia abajo */
-  right: 0;
-  background: #2c3e50;
-  color: white;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  white-space: pre;
-  z-index: 1000;
-  width: 250px;
-  line-height: 1.4;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-  text-align: left;
-}
-
-/* Tooltip dinámico hacia abajo REFORZADO */
-.help-tooltip-down { 
-  position: relative; 
-}
-
-.help-tooltip-down:hover::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  top: 130%; 
-  right: 0;
-  background: #2c3e50;
-  color: white;
-  padding: 14px; /* Un poco más de aire interno */
-  border-radius: 8px;
-  font-size: 0.85rem;
-  white-space: pre-wrap; /* CAMBIO CLAVE: permite que el texto baje y el fondo crezca */
-  z-index: 1000;
-  width: 280px; /* Un poco más ancho para que respire */
-  line-height: 1.5;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-  text-align: left;
-  display: block; /* Asegura comportamiento de bloque */
-}
-
-/* Triangulito del tooltip */
-.help-tooltip-down:hover::before {
-  content: '';
-  position: absolute;
-  top: 110%;
-  right: 6px;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-bottom: 8px solid #2c3e50;
-  z-index: 1001;
-}
-
-.search-results-down { 
-  position: absolute; 
-  top: 100%; 
-  left: 0; 
-  width: 100%; 
-  max-height: 250px; 
-  overflow-y: auto; 
-  z-index: 9999; 
-  background: white;
-  border: 1px solid #dbdbdb;
-  box-shadow: 0 8px 15px rgba(0,0,0,0.2);
-}
+.help-tooltip-down:hover::after { content: attr(data-tooltip); position: absolute; top: 130%; right: 0; background: #2c3e50; color: white; padding: 14px; border-radius: 8px; font-size: 0.85rem; white-space: pre-wrap; z-index: 1000; width: 280px; line-height: 1.5; box-shadow: 0 6px 20px rgba(0,0,0,0.4); text-align: left; }
+.help-tooltip-down:hover::before { content: ''; position: absolute; top: 110%; right: 6px; border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 8px solid #2c3e50; z-index: 1001; }
+.search-results-down { position: absolute; top: 100%; left: 0; width: 100%; max-height: 250px; overflow-y: auto; z-index: 9999; background: white; border: 1px solid #dbdbdb; box-shadow: 0 8px 15px rgba(0,0,0,0.2); }
 </style>

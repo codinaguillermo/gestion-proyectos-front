@@ -48,15 +48,33 @@
       </div>
 
       <div class="column is-5">
-        <h5 class="subtitle is-5 ml-2 mb-4">
-          <i class="fas fa-users mr-2 has-text-grey"></i>Carga de Trabajo Global
-        </h5>
+        <div class="is-flex is-justify-content-between is-align-items-center mb-4">
+          <h5 class="subtitle is-5 ml-2 mb-0">
+            <i class="fas fa-users mr-2 has-text-grey"></i>Carga de Trabajo
+          </h5>
+          <div class="buttons has-addons">
+            <button 
+              class="button is-small" 
+              :class="{'is-info is-selected': filtroCarga === 'viva'}"
+              @click="filtroCarga = 'viva'">
+              Viva
+            </button>
+            <button 
+              class="button is-small" 
+              :class="{'is-info is-selected': filtroCarga === 'historica'}"
+              @click="filtroCarga = 'historica'">
+              Histórica
+            </button>
+          </div>
+        </div>
+
         <div class="chart-container shadow-inner">
           <Bar v-if="datosGrafico" :data="datosGrafico" :options="chartOptions" />
         </div>
+
         <div class="has-text-centered mt-3">
           <p class="is-size-7 has-text-grey">
-            La barra muestra la carga total del alumno en el sistema.
+            {{ textoInformativo }}
           </p>
         </div>
       </div>
@@ -80,6 +98,7 @@ const props = defineProps({
 
 const rawData = ref(null);
 const cargando = ref(true);
+const filtroCarga = ref('viva'); // 'viva' o 'historica'
 
 const fetchStats = async () => {
   try {
@@ -110,21 +129,34 @@ const totalTareasUS = (us) => us.reduce((sum, item) => sum + item.cantidad, 0);
 const calcularTareasTerminadas = (us) => us.find(i => i.estado === 'DONE')?.cantidad || 0;
 const calcularPorcentaje = (us) => Math.round((calcularTareasTerminadas(us) / totalTareasUS(us)) * 100) || 0;
 
+const textoInformativo = computed(() => {
+  return filtroCarga.value === 'viva' 
+    ? 'Puntos de tareas PENDIENTES (Carga actual).' 
+    : 'Puntos de tareas TOTALES (Historial de esfuerzo).';
+});
+
 const datosGrafico = computed(() => {
   if (!rawData.value) return null;
+  
+  const esViva = filtroCarga.value === 'viva';
+  
   return {
-    labels: rawData.value.participacion.map(p => p.nombre || 'Sin Asignar'),
+    labels: rawData.value.participacion.map(p => `${p.apellido}, ${p.nombre}`),
     datasets: [
       {
-        label: 'Este Proyecto',
+        label: esViva ? 'Este Proyecto (Pendiente)' : 'Este Proyecto (Total)',
         backgroundColor: '#3e8ed0',
-        data: rawData.value.participacion.map(p => p.tareas),
+        data: rawData.value.participacion.map(p => 
+          parseFloat(esViva ? p.carga_viva : p.carga_historica) || 0
+        ),
         borderRadius: { topLeft: 0, topRight: 0, bottomLeft: 4, bottomRight: 4 }
       },
       {
-        label: 'Otros Proyectos',
-        backgroundColor: '#e2e8f0', // Un gris claro para la carga externa
-        data: rawData.value.participacion.map(p => parseInt(p.tareas_externas) || 0),
+        label: 'Otros Proyectos (Pendiente)',
+        backgroundColor: '#e2e8f0',
+        data: rawData.value.participacion.map(p => 
+          parseFloat(p.carga_viva_externa) || 0
+        ),
         borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 }
       }
     ]
@@ -143,7 +175,7 @@ const chartOptions = {
         footer: (tooltipItems) => {
           let sum = 0;
           tooltipItems.forEach((item) => { sum += item.raw; });
-          return 'Carga Total: ' + sum;
+          return 'Carga Total (Puntos): ' + sum;
         }
       }
     }
@@ -156,7 +188,7 @@ const chartOptions = {
     y: { 
       stacked: true,
       beginAtZero: true,
-      ticks: { stepSize: 1, color: '#b5b5b5' },
+      ticks: { stepSize: 5, color: '#b5b5b5' },
       grid: { color: '#f5f5f5' }
     }
   }
@@ -186,4 +218,8 @@ onMounted(fetchStats);
   height: 340px;
 }
 .shadow-inner { box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05); }
+.buttons.has-addons .button.is-selected {
+  z-index: 2;
+  font-weight: bold;
+}
 </style>

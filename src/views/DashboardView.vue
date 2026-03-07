@@ -58,11 +58,13 @@
                 <td class="has-text-grey-light">{{ formatearFecha(proyecto.created_at) }}</td>
                 
                 <td class="has-text-right">
-                  <div v-if="puedeGestionar(proyecto)" class="buttons is-right">
+                  <div class="buttons is-right">
                     <button class="button is-small is-warning is-inverted" @click.stop="prepararEdicion(proyecto)">
-                      <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                      <span class="icon is-small">
+                        <i class="fas" :class="puedeGestionar(proyecto) ? 'fa-edit' : 'fa-eye'"></i>
+                      </span>
                     </button>
-                    <button class="button is-small is-danger is-inverted" @click.stop="prepararEliminacion(proyecto)">
+                    <button v-if="puedeGestionar(proyecto)" class="button is-small is-danger is-inverted" @click.stop="prepararEliminacion(proyecto)">
                       <span class="icon is-small"><i class="fas fa-trash"></i></span>
                     </button>
                   </div>
