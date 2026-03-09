@@ -26,7 +26,13 @@
             <div class="field">
               <label class="label">Título</label>
               <div class="control">
-                <input class="input" v-model="editForm.titulo" type="text" :disabled="!puedeGestionarEstructura">
+                <textarea 
+                  class="textarea" 
+                  rows="2" 
+                  v-model="editForm.titulo" 
+                  :disabled="!puedeGestionarEstructura"
+                  placeholder="Como [rol], quiero [acción], para [beneficio]"
+                ></textarea>
               </div>
             </div>
             <div class="field">
