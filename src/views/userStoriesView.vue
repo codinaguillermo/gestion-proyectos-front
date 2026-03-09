@@ -32,13 +32,14 @@
         <div 
           v-for="us in userStories" 
           :key="'card-us-' + us.id" 
-          class="column is-4"
+          class="column is-12-mobile is-6-tablet is-4-desktop"
         >
           <UserStoryCard 
             :userStory="us" 
             @click="abrirDetalleUS(us)" 
             @eliminar="prepararEliminacion" 
             :showDelete="puedeGestionarBacklog" 
+            class="user-story-card-custom"
             :class="{ 'can-delete': puedeGestionarBacklog }"
           />
         </div>
@@ -67,13 +68,13 @@
           <div class="field">
             <label class="label">Título de la US</label>
             <div class="control">
-              <input class="input" type="text" v-model="formUS.titulo" placeholder="Ej: Registro de Usuarios">
+              <textarea class="textarea" rows="2" v-model="formUS.titulo" placeholder="Ej: Como usuario quiero..."></textarea>
             </div>
           </div>
           <div class="field">
             <label class="label">Descripción</label>
             <div class="control">
-              <textarea class="textarea" v-model="formUS.descripcion" placeholder="Como... quiero... para..."></textarea>
+              <textarea class="textarea" v-model="formUS.descripcion" placeholder="Detalles adicionales..."></textarea>
             </div>
           </div>
           <div class="field">
@@ -120,7 +121,7 @@
       :isActive="isTareaModalActive"
       :userStory="usSeleccionada"
       :tareaEdit="tareaParaEditar" 
-      :integrantes="proyectoData?.integrantes || proyectoData?.Usuarios || []" 
+      :integrantes="proyectoData?.Usuarios || proyectoData?.integrantes || []" 
       :proyectoOwnerId="proyectoData?.docente_owner_id"
       @tarea-creada="refrescarTodo"
       @tarea-actualizada="refrescarTodo"
@@ -137,28 +138,36 @@
 </template>
 
 <script setup>
+/**
+ * userStoriesView.vue
+ * Vista principal del Backlog de un proyecto.
+ * Gestiona la visualización, creación y flujo de detalle de User Stories y sus tareas asociadas.
+ */
 import { ref, reactive, onMounted, computed, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import api from '../services/api';
 import userStoryService from '../services/userStory.service';
 import UserStoryCard from '../components/userStoryCard.vue';
-import StatsProyecto from '../components/StatsProyecto.vue'; // <-- Importado
+import StatsProyecto from '../components/StatsProyecto.vue';
 import DetalleUserStoryModal from '../components/modals/DetalleUserStoryModal.vue';
 import CrearTareaModal from '../components/modals/crearTareaModal.vue'; 
 import ConfirmarModal from '../components/modals/ConfirmarModal.vue';
 import { useAuthStore } from '../stores/auth';
 
+// --- ESTADOS Y REFERENCIAS ---
 const route = useRoute();
 const proyectoId = ref(null);
 const userStories = ref([]);
 const cargando = ref(true);
 const enviando = ref(false);
 
+// Control de Modales
 const isModalActive = ref(false);
 const isDetalleModalActive = ref(false);
 const isTareaModalActive = ref(false);
 const isConfirmActive = ref(false);
 
+// Selección de datos para edición/detalle
 const usSeleccionada = ref(null);
 const tareaParaEditar = ref(null);
 const usAEliminar = ref(null);
@@ -170,6 +179,7 @@ const authStore = useAuthStore();
 const mensajeError = ref(''); 
 const mostrarError = ref(false); 
 
+// Formulario reactivo para nueva US
 const formUS = reactive({
   titulo: '',
   descripcion: '',
@@ -177,6 +187,11 @@ const formUS = reactive({
   prioridad_id: 2
 });
 
+// --- LÓGICA DE PERMISOS ---
+/**
+ * Determina si el usuario logueado puede realizar cambios en el backlog.
+ * Administradores (rol 1) y Docentes/Dueños del proyecto (rol 2) tienen acceso.
+ */
 const puedeGestionarBacklog = computed(() => {
   const user = authStore.usuario;
   if (!user || !proyectoData.value) return false;
@@ -190,6 +205,9 @@ const puedeGestionarBacklog = computed(() => {
   return false;
 });
 
+// --- COMUNICACIÓN CON API ---
+
+/** Obtiene tablas maestras para selects (prioridades y estados de US) */
 const cargarMaestros = async () => {
   try {
     const [resP, resE] = await Promise.all([
@@ -203,6 +221,7 @@ const cargarMaestros = async () => {
   }
 };
 
+/** Trae todas las User Stories vinculadas al proyecto actual */
 const cargarUserStories = async () => {
   cargando.value = true;
   try {
@@ -215,6 +234,7 @@ const cargarUserStories = async () => {
   }
 };
 
+/** Envía la nueva US al servidor y refresca la lista */
 const crearUserStory = async () => {
   if (!formUS.titulo) return;
   enviando.value = true;
@@ -238,10 +258,13 @@ const crearUserStory = async () => {
   }
 };
 
+// --- GESTIÓN DE MODALES DE DETALLE Y TAREAS ---
+
+/** Abre el modal de detalle cargando la información más fresca de la US seleccionada */
 const abrirDetalleUS = async (us) => {
   isDetalleModalActive.value = false;
   usSeleccionada.value = null;
-  await nextTick();
+  await nextTick(); // Asegura limpieza de DOM antes de reabrir
 
   const usFresca = userStories.value.find(item => item.id === us.id);
   if (usFresca) {
@@ -255,6 +278,7 @@ const cerrarDetalleUS = () => {
   usSeleccionada.value = null;
 };
 
+/** Prepara el estado para crear una tarea nueva desde una US */
 const prepararNuevaTarea = async (us) => {
   tareaParaEditar.value = null; 
   isDetalleModalActive.value = false; 
@@ -262,6 +286,7 @@ const prepararNuevaTarea = async (us) => {
   isTareaModalActive.value = true;
 };
 
+/** Prepara el estado para editar una tarea existente */
 const prepararEdicionTarea = async (tarea, us) => {
   tareaParaEditar.value = tarea;
   isDetalleModalActive.value = false; 
@@ -269,6 +294,7 @@ const prepararEdicionTarea = async (tarea, us) => {
   isTareaModalActive.value = true;
 };
 
+/** Actualiza la información básica de la US (Título, descripción, etc) */
 const actualizarUS = async (datos) => {
   mensajeError.value = '';
   mostrarError.value = false;
@@ -282,6 +308,7 @@ const actualizarUS = async (datos) => {
   }
 };
 
+/** Refresca los datos y mantiene abierto el modal de detalle tras cambios en tareas */
 const refrescarTodo = async () => {
   const currentId = usSeleccionada.value?.id;
   await cargarUserStories(); 
@@ -296,6 +323,8 @@ const refrescarTodo = async () => {
     }
   }
 };
+
+// --- ELIMINACIÓN ---
 
 const prepararEliminacion = (usId) => {
   usAEliminar.value = userStories.value.find(u => u.id === usId);
@@ -326,6 +355,7 @@ const cargarDatosProyecto = async () => {
   } catch (error) { console.error(error); }
 };
 
+// Ciclo de vida inicial
 onMounted(() => {
   proyectoId.value = route.params.id;
   cargarMaestros();
@@ -333,3 +363,49 @@ onMounted(() => {
   cargarDatosProyecto();
 });
 </script>
+
+<style scoped>
+/** * ESTILOS DE PERSONALIZACIÓN DEL BACKLOG
+ * Se utiliza :deep() para inyectar estilos en el componente hijo UserStoryCard.
+ */
+
+/* Color "Amarillo Post-it" para las Historias de Usuario */
+:deep(.user-story-card-custom) {
+  background-color: #fdfae6 !important; /* Amarillo pastel suave */
+  border: 1px solid #f2e8a7 !important;
+  border-radius: 8px;
+  height: 100%;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+:deep(.user-story-card-custom:hover) {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  background-color: #fcf7d3 !important; /* Un tono apenas más fuerte al hacer hover */
+}
+
+/* FORZAR 2 RENGLONES FIJOS EN EL TÍTULO (Usando Webkit Line Clamp) */
+:deep(.user-story-card-custom .title),
+:deep(.user-story-card-custom h3) {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  white-space: normal !important;
+  text-overflow: ellipsis !important;
+  
+  /* Altura fija para mantener simetría */
+  line-height: 1.4em !important;
+  height: 2.8em !important; 
+  margin-bottom: 0.5rem !important;
+}
+
+/* Mejora de la separación de elementos internos */
+:deep(.user-story-card-custom .card-content) {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+}
+</style>

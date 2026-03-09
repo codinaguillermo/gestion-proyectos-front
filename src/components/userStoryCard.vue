@@ -2,12 +2,15 @@
   <div class="card mb-4 is-clickable shadow-sm" @click="$emit('click')">
     <div class="card-content p-4">
       
-      <div class="level is-mobile mb-2">
-        <div class="level-left">
-          <span class="tag is-info is-light is-small mr-2">US-{{ userStory.id }}</span>
-          <h3 class="subtitle is-6 mb-0"><strong>{{ userStory.titulo }}</strong></h3>
+      <div class="is-flex is-justify-content-between is-align-items-start mb-2">
+        <div style="flex: 1;">
+          <span class="tag is-info is-light is-small mr-2" style="vertical-align: middle;">US-{{ userStory.id }}</span>
+          <h3 class="subtitle is-6 mb-0 is-inline-block custom-title-clamp">
+            <strong>{{ userStory.titulo }}</strong>
+          </h3>
         </div>
-        <div class="level-right">
+        
+        <div class="ml-2">
           <button 
             v-if="showDelete" 
             class="button is-small is-danger is-inverted" 
@@ -83,36 +86,31 @@ const props = defineProps({
 
 defineEmits(['click', 'eliminar']);
 
-// --- LÓGICA DE PROGRESO POR CANTIDAD DE TAREAS ---
 const stats = computed(() => {
   const tareas = props.userStory.tareas || [];
   const total = tareas.length;
   
-  // FILTRO CORRECTO: Buscamos el ID 4 o el nombre 'DONE'
   const terminadas = tareas.filter(t => {
     const idEstado = Number(t.estado_id);
     const nombreEstado = String(t.estado_detalle?.nombre || '').toUpperCase().trim();
-    
-    // Validamos contra tu tabla real: ID 4 o nombre 'DONE'
     return idEstado === 4 || nombreEstado === 'DONE';
   }).length;
 
   const porcentaje = total > 0 ? Math.round((terminadas / total) * 100) : 0;
 
-  // Lógica de colores dinámica
-  let clase = 'is-danger'; // 0% - Rojo
+  let clase = 'is-danger'; 
   let claseTexto = 'has-text-danger';
 
   if (porcentaje > 0) {
-    clase = 'is-warning'; // Iniciado - Amarillo
+    clase = 'is-warning'; 
     claseTexto = 'has-text-warning-dark';
   }
   if (porcentaje >= 75) {
-    clase = 'is-link'; // Avanzado - Azul
+    clase = 'is-link'; 
     claseTexto = 'has-text-link';
   }
   if (porcentaje === 100) {
-    clase = 'is-success'; // Completado - Verde
+    clase = 'is-success'; 
     claseTexto = 'has-text-success';
   }
 
@@ -125,7 +123,6 @@ const stats = computed(() => {
   };
 });
 
-// Lógica de Colores para PRIORIDAD
 const colorPrioridad = computed(() => {
   const p = String(props.userStory.prioridad_detalle?.nombre || '').toUpperCase();
   if (p.includes('ALTA')) return 'is-danger';
@@ -134,7 +131,6 @@ const colorPrioridad = computed(() => {
   return 'is-light';
 });
 
-// Lógica de Colores para ESTADO
 const colorEstado = computed(() => {
   const e = String(props.userStory.estado_detalle?.nombre || '').toUpperCase();
   if (e.includes('PENDIENTE')) return 'is-info is-light';
@@ -146,7 +142,6 @@ const colorEstado = computed(() => {
 </script>
 
 <style scoped>
-/* Tu CSS existente se mantiene igual */
 .card {
   transition: all 0.2s ease;
   border-radius: 8px;
@@ -158,6 +153,22 @@ const colorEstado = computed(() => {
   transform: translateY(-4px);
   box-shadow: 0 8px 15px rgba(0,0,0,0.1) !important;
 }
+
+/* TÍTULO FORZADO A 2 RENGLONES FIJOS */
+.custom-title-clamp {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: normal !important;
+  
+  /* Altura fija calculada */
+  line-height: 1.2em !important;
+  height: 2.4em !important; 
+  min-height: 2.4em !important;
+}
+
 .custom-description {
   flex-grow: 1;
   display: -webkit-box;
