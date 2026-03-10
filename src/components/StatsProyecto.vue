@@ -136,17 +136,21 @@ const textoInformativo = computed(() => {
 });
 
 const datosGrafico = computed(() => {
-  if (!rawData.value) return null;
+  if (!rawData.value || !rawData.value.participacion) return null;
   
   const esViva = filtroCarga.value === 'viva';
+
+  // --- FIX v1.1.1: FILTRAR TAREAS SIN ASIGNAR ---
+  // Filtramos a los usuarios que no tengan nombre o apellido (los 'null')
+  const integrantesAsignados = rawData.value.participacion.filter(p => p.nombre && p.apellido);
   
   return {
-    labels: rawData.value.participacion.map(p => `${p.apellido}, ${p.nombre}`),
+    labels: integrantesAsignados.map(p => `${p.apellido}, ${p.nombre}`),
     datasets: [
       {
         label: esViva ? 'Este Proyecto (Pendiente)' : 'Este Proyecto (Total)',
         backgroundColor: '#3e8ed0',
-        data: rawData.value.participacion.map(p => 
+        data: integrantesAsignados.map(p => 
           parseFloat(esViva ? p.carga_viva : p.carga_historica) || 0
         ),
         borderRadius: { topLeft: 0, topRight: 0, bottomLeft: 4, bottomRight: 4 }
@@ -154,7 +158,7 @@ const datosGrafico = computed(() => {
       {
         label: 'Otros Proyectos (Pendiente)',
         backgroundColor: '#e2e8f0',
-        data: rawData.value.participacion.map(p => 
+        data: integrantesAsignados.map(p => 
           parseFloat(p.carga_viva_externa) || 0
         ),
         borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 }
