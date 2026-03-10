@@ -86,7 +86,7 @@
         <div class="footer-container">
             <div class="footer-info">
                 Gestión de Proyectos Estudiantiles
-                <span class="version-badge">v1.1.0</span>
+                <span class="version-badge">v1.2.0</span>
             </div>
 
             <div class="footer-credits">

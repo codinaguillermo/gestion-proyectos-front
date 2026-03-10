@@ -160,6 +160,10 @@ watch(() => props.isActive, (val) => {
     errorValidacion.value = '';
     horasNuevasDeHoy.value = 0;
     
+    // FIX: Limpiamos los campos de cierre para evitar que se muestre el texto de la tarea anterior (Caché visual)
+    form.comentario_cierre = '';
+    form.link_evidencia = '';
+    
     if (props.tareaEdit && props.tareaEdit.id) {     
       form.id = props.tareaEdit.id;
       form.titulo = props.tareaEdit.titulo || '';
@@ -406,3 +410,7 @@ const intentarCerrar = () => emit('close');
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Sin cambios en estilos */
+</style>

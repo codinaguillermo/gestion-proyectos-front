@@ -48,6 +48,11 @@
                 Gestionar Escuelas
               </router-link>
 
+              <router-link v-if="esDocenteOAdmin" to="/sugerencias" class="navbar-item">
+                <span class="icon is-small mr-2"><i class="fas fa-lightbulb has-text-warning"></i></span>
+                Sugerencias y Errores
+              </router-link>
+
               <hr v-if="esDocenteOAdmin" class="navbar-divider">
 
               <a class="navbar-item" @click="abrirPerfil">
@@ -100,8 +105,6 @@ const roles = ref([]);
 
 /**
  * Propósito: Determinar la visibilidad de la barra de navegación basada en autenticación y ruta.
- * Alimentado por: authStore.token y route.path.
- * Retorna: Boolean (false si está en / o /login).
  */
 const mostrarNavbar = computed(() => {
   const rutasSinNavbar = ['/login', '/'];
@@ -110,8 +113,6 @@ const mostrarNavbar = computed(() => {
 
 /**
  * Propósito: Obtener el nombre del usuario de forma reactiva desde el store.
- * Alimentado por: authStore.usuario.
- * Retorna: String (Nombre o 'Usuario').
  */
 const nombreUsuario = computed(() => {
   return authStore.usuario?.nombre || 'Usuario';
@@ -119,8 +120,6 @@ const nombreUsuario = computed(() => {
 
 /**
  * Propósito: Validar permisos de acceso a menús administrativos.
- * Alimentado por: authStore.usuario.rol_id.
- * Retorna: Boolean.
  */
 const esDocenteOAdmin = computed(() => {
   const rol = Number(authStore.usuario?.rol_id);
@@ -129,8 +128,6 @@ const esDocenteOAdmin = computed(() => {
 
 /**
  * Propósito: Ejecutar el cierre de sesión y redirección.
- * Alimentado por: Evento click en el menú de navegación.
- * Retorna: void.
  */
 const handleLogout = () => {
   authStore.logout();
@@ -139,8 +136,6 @@ const handleLogout = () => {
 
 /**
  * Propósito: Obtener catálogos de escuelas y roles para los modales.
- * Alimentado por: Ciclo onMounted y abrirPerfil.
- * Retorna: void (actualiza refs locales).
  */
 const cargarMaestras = async () => {
   try {
@@ -157,8 +152,6 @@ const cargarMaestras = async () => {
 
 /**
  * Propósito: Preparar y mostrar el modal de edición para el usuario logueado.
- * Alimentado por: Botón "Mi Perfil" en el menú.
- * Retorna: void.
  */
 const abrirPerfil = async () => {
   try {
@@ -175,9 +168,6 @@ const abrirPerfil = async () => {
 
 /**
  * Propósito: Refrescar la información del usuario tras una edición exitosa.
- * Alimentado por: Evento @usuario-guardado del componente UsuarioModal.
- * Llamadas: api.get para datos frescos y authStore.actualizarDatosUsuario para sincronizar memoria.
- * Retorna: void.
  */
 const refrescarDatos = async () => {
   modalPerfilActivo.value = false;
@@ -193,7 +183,6 @@ const refrescarDatos = async () => {
 onMounted(() => {
   if (authStore.token) {
     cargarMaestras();
-    console.log("DEBUG AUTH: Usuario actual en Store:", authStore.usuario);
   }
 });
 </script>

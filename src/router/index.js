@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import LoginView from '../views/LoginView.vue';
 import HomeView from '../views/HomeView.vue';
+import SugerenciasView from '../views/SugerenciasView.vue';
 
 /**
  * Propósito: Definir la configuración de rutas y navegación de la aplicación.
@@ -44,7 +45,14 @@ const router = createRouter({
       name: 'escuelas',
       component: () => import('../views/EscuelasLista.vue'), 
       meta: { requiresAuth: true, roles: [1, 2] } 
-    }
+    },
+    {
+      path: '/sugerencias',
+      name: 'Sugerencias',
+      component: SugerenciasView,
+      // Solo accesible para Admin (1) y Docente (2)
+      meta: { requiresAuth: true, roles: [1, 2] } 
+    },
   ]
 });
 
