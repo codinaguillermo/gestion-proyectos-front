@@ -126,7 +126,12 @@ const avanceAgrupado = computed(() => {
 });
 
 const totalTareasUS = (us) => us.reduce((sum, item) => sum + item.cantidad, 0);
-const calcularTareasTerminadas = (us) => us.find(i => i.estado === 'DONE')?.cantidad || 0;
+
+// --- CAMBIO ÚNICO: El valor literal que envía el backend para ID 5 es 'DONE' ---
+const calcularTareasTerminadas = (us) => {
+  return us.find(i => String(i.estado).toUpperCase().trim() === 'DONE')?.cantidad || 0;
+};
+
 const calcularPorcentaje = (us) => Math.round((calcularTareasTerminadas(us) / totalTareasUS(us)) * 100) || 0;
 
 const textoInformativo = computed(() => {
@@ -141,7 +146,6 @@ const datosGrafico = computed(() => {
   const esViva = filtroCarga.value === 'viva';
 
   // --- FIX v1.1.1: FILTRAR TAREAS SIN ASIGNAR ---
-  // Filtramos a los usuarios que no tengan nombre o apellido (los 'null')
   const integrantesAsignados = rawData.value.participacion.filter(p => p.nombre && p.apellido);
   
   return {

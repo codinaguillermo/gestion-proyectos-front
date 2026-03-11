@@ -44,9 +44,22 @@
               </div>
             </div>
 
-            <div class="field mb-4">
+            <div class="field mb-3">
               <label class="label is-small">Nombre del Proyecto</label>
               <input class="input" type="text" v-model="form.nombre" :disabled="!esAdminOOwner">
+            </div>
+
+            <div class="field mb-4">
+              <label class="label is-small">Descripción Breve</label>
+              <div class="control">
+                <textarea 
+                  class="textarea is-small" 
+                  rows="2" 
+                  v-model="form.descripcion" 
+                  :disabled="!esAdminOOwner"
+                  placeholder="Resumen introductorio del proyecto...">
+                </textarea>
+              </div>
             </div>
 
             <div class="mt-5 pt-4" style="border-top: 2px solid #f5f5f5;">
@@ -59,7 +72,7 @@
                 </label>
                 <div class="field has-addons">
                   <div class="control is-expanded">
-                    <textarea class="textarea is-small" rows="5" v-model="form.objetivo" :readonly="form.objetivoBloqueado" :class="{'has-background-light has-text-grey': form.objetivoBloqueado}" placeholder="Describa el problema y la solución propuesta..."></textarea>
+                    <textarea class="textarea is-small" rows="4" v-model="form.objetivo" :readonly="form.objetivoBloqueado" :class="{'has-background-light has-text-grey': form.objetivoBloqueado}" placeholder="Describa el problema y la solución propuesta..."></textarea>
                   </div>
                   <div class="control" v-if="esAdminOOwner">
                     <button class="button is-light" style="height: 100%; min-width: 45px;" @click="form.objetivoBloqueado = !form.objetivoBloqueado" :class="form.objetivoBloqueado ? 'has-text-danger' : 'has-text-link'" title="Habilitar/Bloquear edición">
@@ -78,7 +91,7 @@
                 </label>
                 <div class="field has-addons">
                   <div class="control is-expanded">
-                    <textarea class="textarea is-small" rows="5" v-model="form.alcancePrototipo" :readonly="form.alcancePrototipoBloqueado" :class="{'has-background-light has-text-grey': form.alcancePrototipoBloqueado}" placeholder="Detalle técnico de la entrega actual..."></textarea>
+                    <textarea class="textarea is-small" rows="4" v-model="form.alcancePrototipo" :readonly="form.alcancePrototipoBloqueado" :class="{'has-background-light has-text-grey': form.alcancePrototipoBloqueado}" placeholder="Detalle técnico de la entrega actual..."></textarea>
                   </div>
                   <div class="control" v-if="esAdminOOwner">
                     <button class="button is-light" style="height: 100%; min-width: 45px;" @click="form.alcancePrototipoBloqueado = !form.alcancePrototipoBloqueado" :class="form.alcancePrototipoBloqueado ? 'has-text-danger' : 'has-text-link'">
@@ -97,7 +110,7 @@
                 </label>
                 <div class="field has-addons">
                   <div class="control is-expanded">
-                    <textarea class="textarea is-small" rows="5" v-model="form.alcanceFinal" :readonly="form.alcanceFinalBloqueado" :class="{'has-background-light has-text-grey': form.alcanceFinalBloqueado}" placeholder="Visión del producto a escala masiva..."></textarea>
+                    <textarea class="textarea is-small" rows="4" v-model="form.alcanceFinal" :readonly="form.alcanceFinalBloqueado" :class="{'has-background-light has-text-grey': form.alcanceFinalBloqueado}" placeholder="Visión del producto a escala masiva..."></textarea>
                   </div>
                   <div class="control" v-if="esAdminOOwner">
                     <button class="button is-light" style="height: 100%; min-width: 45px;" @click="form.alcanceFinalBloqueado = !form.alcanceFinalBloqueado" :class="form.alcanceFinalBloqueado ? 'has-text-danger' : 'has-text-link'">
@@ -112,7 +125,6 @@
           </div>
 
           <div class="column is-12-mobile is-7-tablet pl-6-tablet">
-            
             <div class="is-flex is-justify-content-between is-align-items-center border-bottom mb-2">
               <h3 class="title is-6 has-text-grey uppercase-label mb-0">Integrantes ({{ miembrosAsignados.length }})</h3>
               <span class="icon has-text-info is-clickable help-tooltip-down" :data-tooltip="leyendaPrioridades">
@@ -204,7 +216,6 @@
                 </tbody>
               </table>
             </div>
-
           </div>
         </div>
       </section>
@@ -218,8 +229,6 @@
 </template>
 
 <script>
-// El script completo y comentado que te pasé antes (is-7 / is-5 revertidos en template)
-// ... (Lo pego completo para que no tengas que buscarlo)
 import { configService } from '../../services/config.service';
 import axios from 'axios';
 import { useAuthStore } from '../../stores/auth';
@@ -231,14 +240,10 @@ export default {
   },
   data() {
     return {
-      /**
-       * form: Objeto reactivo local. Se utiliza Deep Copy (JSON.parse/stringify) 
-       * para asegurar que los cambios realizados en el modal no se reflejen en
-       * el estado global de la aplicación hasta que se confirme la operación.
-       */
       form: { 
         ...this.proyectoOriginal, 
         escuela_id: this.proyectoOriginal.escuela_id,
+        descripcion: this.proyectoOriginal.descripcion || '',
         objetivo: this.proyectoOriginal.objetivo || '',
         objetivoBloqueado: !!this.proyectoOriginal.objetivoBloqueado,
         alcancePrototipo: this.proyectoOriginal.alcancePrototipo || '',
@@ -258,13 +263,11 @@ export default {
     }
   },
   computed: {
-    /** Control de acceso: verifica si el usuario es administrador o el docente dueño del proyecto */
     esAdminOOwner() {
       const authStore = useAuthStore();
       const user = authStore.usuario;
       return user && (Number(user.rol_id) === 1 || Number(user.id) === Number(this.proyectoOriginal?.docente_owner_id));
     },
-    /** Renderiza el contenido del tooltip de ayuda basado en los pesos de las tareas cargados */
     leyendaPrioridades() {
       if (!this.prioridades || this.prioridades.length === 0) return "Cargando escala de puntos...";
       const escala = this.prioridades.map(p => `• ${p.nombre}: ${p.peso} pts`).join('\n');
@@ -276,7 +279,6 @@ export default {
     this.prepararMiembros();
   },
   methods: {
-    /** Carga diccionarios maestros para estados y prioridades */
     async cargarConfiguraciones() {
       try {
         const data = await configService.getTablasMaestras();
@@ -284,14 +286,10 @@ export default {
         this.prioridades = data.prioridades || [];
       } catch (e) { console.error("Error cargando configuraciones:", e); }
     },
-
-    /** Prepara la lista de integrantes a partir de las posibles nomenclaturas del objeto original */
     prepararMiembros() {
       const lista = this.proyectoOriginal?.integrantes || this.proyectoOriginal?.Usuarios || [];
       this.miembrosAsignados = lista.map(m => ({ ...m }));
     },
-
-    /** Agrega un nuevo registro de entregable al estado local de la memoria (RAM) */
     agregarEntregableRAM() {
       if (!this.nuevoEntregableNombre.trim()) return;
       this.form.entregables.push({
@@ -302,13 +300,9 @@ export default {
       });
       this.nuevoEntregableNombre = '';
     },
-
-    /** Remueve un entregable del estado local sin afectar la base de datos de forma inmediata */
     quitarEntregableRAM(index) {
       this.form.entregables.splice(index, 1);
     },
-
-    /** Lógica de negocio para calcular la carga acumulada de un integrante */
     calcularPuntos(usuarioId) {
       if (!this.todasLasTareas.length) return 0;
       return this.todasLasTareas
@@ -321,28 +315,20 @@ export default {
           return acc + (prio ? Number(prio.peso) : 0);
         }, 0);
     },
-
-    /** Helper de estilo para categorizar la carga (verde, amarillo, rojo) */
     getColorCarga(puntos) {
       if (puntos >= 100) return 'is-danger-badge'; 
       if (puntos >= 50) return 'is-warning-badge'; 
       return 'is-success-badge'; 
     },
-
     obtenerColorAvatar(rolId) {
       return Number(rolId) === 3 ? 'has-background-success-light has-text-success' : 'has-background-link-light has-text-link';
     },
-
     obtenerIniciales(n) {
       return n ? n.split(' ').map(x => x[0]).join('').toUpperCase().substring(0, 2) : '?';
     },
-
-    /** Quita a un usuario de la lista temporal de integrantes */
     quitarMiembro(id) {
       this.miembrosAsignados = this.miembrosAsignados.filter(m => m.id !== id);
     },
-
-    /** Busca usuarios compatibles con el proyecto (activos y pertenecientes a la misma escuela) */
     async buscarUsuarios() {
         if (this.busqueda.length < 2) {
             this.resultadosBusqueda = [];
@@ -354,7 +340,6 @@ export default {
                 headers: { 'Authorization': `Bearer ${authStore.token}` }
             });
             const idEscuelaProyecto = Number(this.proyectoOriginal.escuela_id);
-            
             this.resultadosBusqueda = res.data.filter(u => {
                 if (!u.activo) return false;
                 const rolId = Number(u.rol_id);
@@ -366,19 +351,12 @@ export default {
             });
         } catch (e) { console.error("Error en la búsqueda:", e); }
     },
-
-    /** Incorpora al usuario seleccionado a la lista local de miembros */
     seleccionarUsuario(u) {
       if (this.miembrosAsignados.some(m => m.id === u.id)) return;
       this.miembrosAsignados.push({ ...u });
       this.busqueda = '';
       this.resultadosBusqueda = [];
     },
-
-    /** * PERSISTENCIA ATÓMICA: 
-     * Realiza una única llamada al servidor para actualizar Proyecto, Integrantes y Entregables.
-     * Esto garantiza que los cambios sean consistentes o no se apliquen en absoluto (ACID).
-     */
     async confirmarCambios() {
       try {
         const authStore = useAuthStore();
@@ -391,7 +369,7 @@ export default {
         this.$emit('actualizado');
         this.$emit('close');
       } catch (e) { 
-        console.error("Error al guardar cambios atómicos:", e);
+        console.error("Error al guardar cambios:", e);
       }
     }
   }
@@ -405,7 +383,7 @@ export default {
 .avatar-circle-lg { border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 .buscador-relativo { position: relative; }
 .border-right-tablet { border-right: 1px solid #dbdbdb; }
-.pl-6-tablet { padding-left: 2rem !important; } /* Aumentado padding de la columna ancha */
+.pl-6-tablet { padding-left: 2rem !important; } 
 .border-slack { border: 1px solid #e1e4e8; border-radius: 10px; background: white; }
 .uppercase-label { text-transform: uppercase; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; }
 .workload-badge { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }

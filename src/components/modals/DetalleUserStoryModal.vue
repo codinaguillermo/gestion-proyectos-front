@@ -8,6 +8,13 @@
       </header>
       
       <section class="modal-card-body">
+        <div v-if="esUSBloqueada" class="notification is-danger is-light mb-4 py-2">
+          <div class="is-flex is-align-items-center">
+            <span class="icon mr-2"><i class="fas fa-hand-paper"></i></span>
+            <span><strong>USER STORY BLOQUEADA:</strong> Solo el personal docente puede realizar cambios o gestionar tareas.</span>
+          </div>
+        </div>
+
         <transition name="fade">
           <div v-if="errorVisible" class="notification is-danger is-light mb-4">
             <button class="delete" @click="errorVisible = false"></button>
@@ -128,8 +135,14 @@
                 </td>
                 <td class="has-text-right is-vcentered">
                   <div class="buttons is-right">
-                    <button class="button is-small is-info is-light" @click="$emit('editar-tarea', tarea)">
-                      <span class="icon is-small"><i class="fas fa-eye"></i></span>
+                    <button 
+                      class="button is-small is-info is-light" 
+                      :disabled="esUSBloqueada && !puedeGestionarEstructura"
+                      @click="$emit('editar-tarea', tarea)"
+                    >
+                      <span class="icon is-small">
+                        <i class="fas" :class="esUSBloqueada && !puedeGestionarEstructura ? 'fa-lock' : 'fa-eye'"></i>
+                      </span>
                     </button>
                     <button 
                       v-if="puedeGestionarEstructura" 
@@ -210,15 +223,30 @@ const editForm = reactive({
   estado_id: null
 });
 
-// --- FUNCIONES DE APOYO ---
+// --- LÓGICA DE BLOQUEO POR ESTADO ---
+/** * Verifica si la US está en estado BLOQUEADA. 
+ * Se asume que el nombre del estado contiene "BLOQUEADA" o el ID es 3 (Ajustar según tu BD)
+ */
+const esUSBloqueada = computed(() => {
+  if (!props.userStory) return false;
+  const nombreEstado = String(props.userStory.estado_detalle?.nombre || '').toUpperCase();
+  // Puedes usar el ID si lo tienes fijo, o el nombre para mayor flexibilidad
+  return nombreEstado.includes('BLOQUEADA') || Number(props.userStory.estado_id) === 3;
+});
+
+// Solo Admin (1) o Docente (2) gestionan la US
+const puedeGestionarEstructura = computed(() => {
+  const u = authStore.usuario;
+  if (!u) return false;
+  const miRol = Number(u.rol_id);
+  return miRol === 1 || miRol === 2;
+});
 
 const obtenerClaseEstadoTarea = (tarea) => {
   if (!tarea || !tarea.estado_detalle) return 'is-light';
   const nombre = String(tarea.estado_detalle.nombre).toUpperCase().trim();
-  
   if (nombre === 'DONE') return 'is-success has-text-white has-text-weight-bold';
   if (nombre === 'TO DO' || nombre === 'PENDIENTE') return 'is-danger has-text-white has-text-weight-bold';
-  
   return 'is-light has-text-grey-dark';
 };
 
@@ -227,16 +255,6 @@ const esTareaFinalizada = (tarea) => {
   const nombre = String(tarea.estado_detalle.nombre).toUpperCase().trim();
   return nombre === 'DONE';
 };
-
-// --- REGLAS DE NEGOCIO (PERMISOS) ---
-
-// Solo Admin (1) o Docente (2) gestionan la US y la existencia de tareas
-const puedeGestionarEstructura = computed(() => {
-  const u = authStore.usuario;
-  if (!u) return false;
-  const miRol = Number(u.rol_id);
-  return miRol === 1 || miRol === 2;
-});
 
 watch(() => props.userStory, (newVal) => {
   if (newVal) {
@@ -283,42 +301,20 @@ const confirmarEliminacion = () => {
 </script>
 
 <style scoped>
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
-.tareas-container::-webkit-scrollbar {
-  width: 6px;
-}
-.tareas-container::-webkit-scrollbar-thumb {
-  background: #dbdbdb;
-  border-radius: 10px;
-}
+/* Estilos mantenidos... */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+.tareas-container::-webkit-scrollbar { width: 6px; }
+.tareas-container::-webkit-scrollbar-thumb { background: #dbdbdb; border-radius: 10px; }
 .input:disabled, .textarea:disabled, .select select:disabled {
   background-color: #f5f5f5;
   border-color: #eeeeee;
   color: #7a7a7a;
   cursor: not-allowed;
 }
-.tag.is-danger {
-  background-color: #ff1744 !important;
-  color: white !important;
-  font-weight: bold;
-}
-.tag.is-success {
-  background-color: #00c853 !important;
-  color: white !important;
-  font-weight: bold;
-}
-.is-done-row {
-  background-color: #f1fcf4 !important; 
-  opacity: 0.85;
-  transition: all 0.3s ease;
-}
-.is-done-row td {
-  color: #2e7d32 !important; 
-  font-style: italic;
+/* Estilo para botón bloqueado */
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>

@@ -86,18 +86,23 @@ const props = defineProps({
 
 defineEmits(['click', 'eliminar']);
 
+// --- CONSTANTES DE ESTADO ---
+const ID_DONE = 5; // Solo el ID 5 cuenta como terminado para las métricas
+
 const stats = computed(() => {
   const tareas = props.userStory.tareas || [];
   const total = tareas.length;
   
+  // Refactorización: Solo contamos como terminadas las que tienen ID 5 (DONE)
   const terminadas = tareas.filter(t => {
     const idEstado = Number(t.estado_id);
     const nombreEstado = String(t.estado_detalle?.nombre || '').toUpperCase().trim();
-    return idEstado === 4 || nombreEstado === 'DONE';
+    return idEstado === ID_DONE || nombreEstado === 'DONE';
   }).length;
 
   const porcentaje = total > 0 ? Math.round((terminadas / total) * 100) : 0;
 
+  // Manejo de clases visuales según el avance real (Auditoría Docente)
   let clase = 'is-danger'; 
   let claseTexto = 'has-text-danger';
 
@@ -105,11 +110,15 @@ const stats = computed(() => {
     clase = 'is-warning'; 
     claseTexto = 'has-text-warning-dark';
   }
-  if (porcentaje >= 75) {
+  
+  // Si llegamos a más del 75% pero falta el OK final del docente
+  if (porcentaje >= 75 && porcentaje < 100) {
     clase = 'is-link'; 
     claseTexto = 'has-text-link';
   }
-  if (porcentaje === 100) {
+
+  // SOLO verde cuando el docente puso TODO en ID 5
+  if (porcentaje === 100 && total > 0) {
     clase = 'is-success'; 
     claseTexto = 'has-text-success';
   }
@@ -136,7 +145,8 @@ const colorEstado = computed(() => {
   if (e.includes('PENDIENTE')) return 'is-info is-light';
   if (e.includes('DESARROLLO')) return 'is-link is-light';
   if (e.includes('BLOQUEADA')) return 'is-danger is-light';
-  if (e.includes('TERMINADA')) return 'is-success is-light';
+  // El estado de la US también debería ser verde solo si está TERMINADA
+  if (e.includes('TERMINADA') || e.includes('DONE')) return 'is-success is-light';
   return 'is-light';
 });
 </script>
