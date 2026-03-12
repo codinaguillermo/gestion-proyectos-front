@@ -49,7 +49,21 @@ export const projectService = {
         } catch (error) {
             throw error;
         }
-    }
+    },
+
+
+    // Función para pedir un solo proyecto por ID (FALTANTE)
+    async getById(id) {
+        try {
+            const response = await api.get(`/proyectos/${id}`);
+            return { success: true, data: response.data };
+        } catch (error) {
+            return { 
+                success: false, 
+                error: error.response?.data?.mensaje || 'Error al obtener el proyecto' 
+            };
+        }
+    },
 };
 
 /*

@@ -19,7 +19,11 @@ export const userStoryService = {
   // Actualizar una US (por si después querés cambiar el título o prioridad)
   update(id, payload) {
     return api.put(`/user-stories/${id}`, payload);
-  }
+  },
+  getById: async (id) => {
+  return await api.get(`/user-stories/${id}`); 
+  // O quizás tu ruta sea /api/user-stories/${id}, revisalo.
+},
 };
 
 export default userStoryService;

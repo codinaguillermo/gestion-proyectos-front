@@ -57,7 +57,7 @@
               class="button is-small" 
               :class="{'is-info is-selected': filtroCarga === 'viva'}"
               @click="filtroCarga = 'viva'">
-              Viva
+              Pendiente
             </button>
             <button 
               class="button is-small" 
@@ -98,7 +98,7 @@ const props = defineProps({
 
 const rawData = ref(null);
 const cargando = ref(true);
-const filtroCarga = ref('viva'); // 'viva' o 'historica'
+const filtroCarga = ref('viva'); 
 
 const fetchStats = async () => {
   try {
@@ -127,44 +127,40 @@ const avanceAgrupado = computed(() => {
 
 const totalTareasUS = (us) => us.reduce((sum, item) => sum + item.cantidad, 0);
 
-// --- CAMBIO ÚNICO: El valor literal que envía el backend para ID 5 es 'DONE' ---
+// --- EL FIX DEL ID 5 ---
 const calcularTareasTerminadas = (us) => {
-  return us.find(i => String(i.estado).toUpperCase().trim() === 'DONE')?.cantidad || 0;
+  return us.find(i => 
+    (i.estado && String(i.estado).toUpperCase().trim() === 'DONE') || 
+    (i.estado_id && Number(i.estado_id) === 5)
+  )?.cantidad || 0;
 };
 
 const calcularPorcentaje = (us) => Math.round((calcularTareasTerminadas(us) / totalTareasUS(us)) * 100) || 0;
 
 const textoInformativo = computed(() => {
   return filtroCarga.value === 'viva' 
-    ? 'Puntos de tareas PENDIENTES (Carga actual).' 
-    : 'Puntos de tareas TOTALES (Historial de esfuerzo).';
+    ? 'Carga actual: solo tareas pendientes.' 
+    : 'Esfuerzo histórico: total de tareas asignadas.';
 });
 
 const datosGrafico = computed(() => {
   if (!rawData.value || !rawData.value.participacion) return null;
-  
   const esViva = filtroCarga.value === 'viva';
-
-  // --- FIX v1.1.1: FILTRAR TAREAS SIN ASIGNAR ---
   const integrantesAsignados = rawData.value.participacion.filter(p => p.nombre && p.apellido);
   
   return {
     labels: integrantesAsignados.map(p => `${p.apellido}, ${p.nombre}`),
     datasets: [
       {
-        label: esViva ? 'Este Proyecto (Pendiente)' : 'Este Proyecto (Total)',
+        label: esViva ? 'Pendiente' : 'Total',
         backgroundColor: '#3e8ed0',
-        data: integrantesAsignados.map(p => 
-          parseFloat(esViva ? p.carga_viva : p.carga_historica) || 0
-        ),
+        data: integrantesAsignados.map(p => parseFloat(esViva ? p.carga_viva : p.carga_historica) || 0),
         borderRadius: { topLeft: 0, topRight: 0, bottomLeft: 4, bottomRight: 4 }
       },
       {
-        label: 'Otros Proyectos (Pendiente)',
+        label: 'Externo',
         backgroundColor: '#e2e8f0',
-        data: integrantesAsignados.map(p => 
-          parseFloat(p.carga_viva_externa) || 0
-        ),
+        data: integrantesAsignados.map(p => parseFloat(p.carga_viva_externa) || 0),
         borderRadius: { topLeft: 4, topRight: 4, bottomLeft: 0, bottomRight: 0 }
       }
     ]
@@ -175,30 +171,11 @@ const chartOptions = {
   responsive: true, 
   maintainAspectRatio: false,
   plugins: {
-    legend: { display: true, position: 'bottom' },
-    tooltip: {
-      mode: 'index',
-      intersect: false,
-      callbacks: {
-        footer: (tooltipItems) => {
-          let sum = 0;
-          tooltipItems.forEach((item) => { sum += item.raw; });
-          return 'Carga Total (Puntos): ' + sum;
-        }
-      }
-    }
+    legend: { display: true, position: 'bottom' }
   },
   scales: {
-    x: { 
-      stacked: true,
-      grid: { display: false }
-    },
-    y: { 
-      stacked: true,
-      beginAtZero: true,
-      ticks: { stepSize: 5, color: '#b5b5b5' },
-      grid: { color: '#f5f5f5' }
-    }
+    x: { stacked: true, grid: { display: false } },
+    y: { stacked: true, beginAtZero: true }
   }
 };
 
@@ -211,23 +188,12 @@ onMounted(fetchStats);
   background-color: #f9fbfd;
   border: 1px solid #eef2f7;
   border-radius: 8px;
-  transition: transform 0.2s ease;
-}
-.us-stat-card:hover {
-  transform: translateX(5px);
-  background-color: #f1f5f9;
 }
 .progress { height: 1rem; border-radius: 10px; }
 .chart-container {
   padding: 1.5rem;
   background: #ffffff;
   border-radius: 12px;
-  border: 1px solid #f0f0f0;
   height: 340px;
-}
-.shadow-inner { box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05); }
-.buttons.has-addons .button.is-selected {
-  z-index: 2;
-  font-weight: bold;
 }
 </style>

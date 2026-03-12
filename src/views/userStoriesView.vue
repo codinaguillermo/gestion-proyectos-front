@@ -1,333 +1,178 @@
 <template>
-  <div class="container mt-5 px-4">
-    <div class="level">
-      <div class="level-left">
-        <div>
-          <button class="button is-small is-light mb-3" @click="$router.back()">
-            <span class="icon is-small"><i class="fas fa-arrow-left"></i></span>
-            <span>Volver</span>
-          </button>
-          <h1 class="title">Product Backlog</h1>          
-          <h2 class="subtitle is-6 has-text-grey">
-            Proyecto: {{ proyectoData?.nombre || 'Cargando...' }}
-          </h2>
+  <div class="dashboard-bg">
+    <div class="main-content-wrapper">
+      <div class="container mt-0 pt-6 px-4 pb-6">
+        
+        <div class="level mb-5 glass-panel p-5">
+          <div class="level-left">
+            <button class="button is-ghost has-text-white p-0 mr-5" @click="$router.back()">
+              <span class="icon is-large"><i class="fas fa-arrow-left fa-lg"></i></span>
+            </button>
+            <div>
+              <h2 class="subtitle is-4 has-text-info has-text-weight-bold mb-1">
+                <i class="fas fa-project-diagram mr-2"></i> {{ proyectoData?.nombre || 'Cargando...' }}
+              </h2>
+              <h1 class="title has-text-white is-2 mb-0">
+                Product Backlog
+                <span class="is-size-4 has-text-grey-lighter" style="font-weight: 300; margin-left: 10px;">
+                  (Entregables por Etapas)
+                </span>
+              </h1>
+            </div>
+          </div>
+          <div class="level-right">
+            <button v-if="puedeGestionarBacklog" class="button is-info is-medium has-text-weight-bold" @click="abrirModalNuevaUS">
+              <span class="icon"><i class="fas fa-plus"></i></span>
+              <span>NUEVA USER STORY</span>
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="level-right">
-        <button v-if="puedeGestionarBacklog" class="button is-primary" @click="isModalActive = true">
-          <span class="icon"><i class="fas fa-plus"></i></span>
-          <span>Nueva User Story (US)</span>
-        </button>
-      </div>
-    </div>
 
-    <hr>
-
-    <div v-if="cargando" class="notification is-info is-light">
-      Refrescando Backlog...
-    </div>
-
-    <div v-else-if="userStories && userStories.length > 0">
-      <div class="columns is-multiline">
-        <div 
-          v-for="us in userStories" 
-          :key="'card-us-' + us.id" 
-          class="column is-12-mobile is-6-tablet is-4-desktop"
-        >
-          <UserStoryCard 
-            :userStory="us" 
-            @click="abrirDetalleUS(us)" 
-            @eliminar="prepararEliminacion" 
-            :showDelete="puedeGestionarBacklog" 
-            class="user-story-card-custom"
-            :class="{ 'can-delete': puedeGestionarBacklog }"
-          />
+        <div class="tabs is-boxed is-centered custom-tabs mb-6">
+          <ul>
+            <li :class="{'is-active': tabActiva === 'backlog'}">
+              <a @click="tabActiva = 'backlog'" :style="{ fontWeight: tabActiva === 'backlog' ? '800' : '400' }">
+                <span class="icon is-medium"><i class="fas fa-th-large"></i></span>
+                <span class="is-size-5">Tablero de US</span>
+              </a>
+            </li>
+            <li :class="{'is-active': tabActiva === 'stats'}">
+              <a @click="tabActiva = 'stats'" :style="{ fontWeight: tabActiva === 'stats' ? '800' : '400' }">
+                <span class="icon is-medium"><i class="fas fa-chart-pie"></i></span>
+                <span class="is-size-5">Métricas y Avance</span>
+              </a>
+            </li>
+          </ul>
         </div>
-      </div>
-    </div>
 
-    <div v-else class="box has-text-centered py-6">
-      <span class="icon is-large has-text-grey-light mb-3">
-        <i class="fas fa-list-ul fa-3x"></i>
-      </span>
-      <p class="is-size-5 has-text-grey">El Product Backlog está vacío.</p>
-    </div>
+        <div v-if="tabActiva === 'backlog'">
+          <div v-if="cargando" class="notification glass-notification is-info is-size-5">
+            <span class="icon"><i class="fas fa-spinner fa-pulse"></i></span> Refrescando datos...
+          </div>
+          <div v-else-if="userStories && userStories.length > 0">
+            <div class="columns is-multiline px-2">
+              <div v-for="us in userStories" :key="'us-' + us.id" class="column is-12-mobile is-6-tablet is-4-desktop mb-4">
+                
+                <div class="card-wrapper">
+                  <UserStoryCard 
+                    :userStory="us" 
+                    @click="abrirDetalleUS(us)" 
+                    @eliminar="prepararEliminacion" 
+                    :showDelete="puedeGestionarBacklog" 
+                    class="user-story-card-custom"
+                  />
+                  
+                  <div v-if="calcularVencimiento(us)" 
+                       class="vencimiento-badge px-4 pb-3 mt--2" 
+                       :class="calcularVencimiento(us).clase">
+                    <span class="icon is-small mr-1">
+                      <i class="fas" :class="calcularVencimiento(us).icono"></i>
+                    </span>
+                    <span class="is-size-7 has-text-weight-bold is-uppercase letter-spacing-1">
+                      {{ calcularVencimiento(us).texto }}
+                    </span>
+                  </div>
+                </div>
 
-    <div v-if="!cargando && userStories.length > 0 && proyectoId" class="mt-6">
-      <StatsProyecto :proyectoId="proyectoId" />
-    </div>
-
-    <div class="modal" :class="{ 'is-active': isModalActive }">
-      <div class="modal-background" @click="isModalActive = false"></div>
-      <div class="modal-card">
-        <header class="modal-card-head">
-          <p class="modal-card-title">Definir Nueva User Story</p>
-          <button class="delete" @click="isModalActive = false"></button>
-        </header>
-        <section class="modal-card-body">
-          <div class="field">
-            <label class="label">Título de la US</label>
-            <div class="control">
-              <textarea class="textarea" rows="2" v-model="formUS.titulo" placeholder="Ej: Como usuario quiero..."></textarea>
-            </div>
-          </div>
-          <div class="field">
-            <label class="label">Descripción</label>
-            <div class="control">
-              <textarea class="textarea" v-model="formUS.descripcion" placeholder="Detalles adicionales..."></textarea>
-            </div>
-          </div>
-          <div class="field">
-            <label class="label">Condiciones</label>
-            <div class="control">
-              <textarea class="textarea" v-model="formUS.condiciones" placeholder="Criterios de aceptación"></textarea>
-            </div>
-          </div>
-          <div class="field">
-            <label class="label">Prioridad Inicial</label>
-            <div class="control">
-              <div class="select is-fullwidth">
-                <select v-model="formUS.prioridad_id">
-                  <option v-for="p in prioridades" :key="'p-opt-' + p.id" :value="p.id">{{ p.nombre }}</option>
-                </select>
               </div>
             </div>
           </div>
-        </section>
-        <footer class="modal-card-foot">
-          <button @click="crearUserStory" :disabled="enviando" class="button is-primary" :class="{'is-loading': enviando}">
-            Añadir al Backlog
-          </button>
-          <button class="button" @click="isModalActive = false">Cancelar</button>
-        </footer>
+          <div v-else class="box glass-panel has-text-centered py-6">
+            <p class="is-size-4 has-text-grey-lighter">El Backlog está vacío.</p>
+          </div>
+        </div>
+
+        <div v-if="tabActiva === 'stats'">
+          <div class="glass-panel p-6 animate__animated animate__fadeIn">
+            <div class="columns is-centered">
+              <div class="column is-11">
+                <StatsProyecto v-if="proyectoId" :proyectoId="proyectoId" class="stats-glass-fix" />
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
-    <DetalleUserStoryModal 
-      v-if="isDetalleModalActive && usSeleccionada"
-      :isActive="isDetalleModalActive"
-      :userStory="usSeleccionada"
-      :prioridades="prioridades"
-      :estados="estados"
-      @close="cerrarDetalleUS"
-      @actualizar="actualizarUS"
-      @agregar-tarea="prepararNuevaTarea"
-      @editar-tarea="prepararEdicionTarea($event, usSeleccionada)"
-      @eliminar-tarea="eliminarTareaDeBD" 
-    />
-
-    <CrearTareaModal 
-      v-if="isTareaModalActive && usSeleccionada"
-      :isActive="isTareaModalActive"
-      :userStory="usSeleccionada"
-      :tareaEdit="tareaParaEditar" 
-      :integrantes="proyectoData?.Usuarios || proyectoData?.integrantes || []" 
-      :proyectoOwnerId="proyectoData?.docente_owner_id"
-      @tarea-creada="refrescarTodo"
-      @tarea-actualizada="refrescarTodo"
-      @close="isTareaModalActive = false; isDetalleModalActive = true;"
-    />
-
     <ConfirmarModal 
-      :isActive="isConfirmActive"
-      :mensaje="`¿Estás seguro de eliminar la US '${usAEliminar?.titulo}'?`"
-      @confirmar="ejecutarEliminacion"
-      @cancelar="isConfirmActive = false"
+      :isActive="isConfirmActive" 
+      :mensaje="`¿Estás seguro de eliminar la US?`" 
+      @confirmar="ejecutarEliminacion" 
+      @cancelar="isConfirmActive = false" 
     />
   </div>
 </template>
 
 <script setup>
-/**
- * userStoriesView.vue
- * Vista principal del Backlog de un proyecto.
- * Gestiona la visualización, creación y flujo de detalle de User Stories y sus tareas asociadas.
- */
-import { ref, reactive, onMounted, computed, nextTick } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, onMounted, computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import api from '../services/api';
 import userStoryService from '../services/userStory.service';
 import UserStoryCard from '../components/userStoryCard.vue';
 import StatsProyecto from '../components/StatsProyecto.vue';
-import DetalleUserStoryModal from '../components/modals/DetalleUserStoryModal.vue';
-import CrearTareaModal from '../components/modals/crearTareaModal.vue'; 
 import ConfirmarModal from '../components/modals/ConfirmarModal.vue';
 import { useAuthStore } from '../stores/auth';
 
-// --- ESTADOS Y REFERENCIAS ---
 const route = useRoute();
+const router = useRouter(); 
+const authStore = useAuthStore();
+
 const proyectoId = ref(null);
 const userStories = ref([]);
 const cargando = ref(true);
-const enviando = ref(false);
+const tabActiva = ref('backlog'); 
 
-// Control de Modales
-const isModalActive = ref(false);
-const isDetalleModalActive = ref(false);
-const isTareaModalActive = ref(false);
 const isConfirmActive = ref(false);
-
-// Selección de datos para edición/detalle
-const usSeleccionada = ref(null);
-const tareaParaEditar = ref(null);
 const usAEliminar = ref(null);
-const prioridades = ref([]);
-const estados = ref([]);
 const proyectoData = ref(null);
-const authStore = useAuthStore();
 
-const mensajeError = ref(''); 
-const mostrarError = ref(false); 
-
-// Formulario reactivo para nueva US
-const formUS = reactive({
-  titulo: '',
-  descripcion: '',
-  condiciones: '',
-  prioridad_id: 2
-});
-
-// --- LÓGICA DE PERMISOS ---
-/**
- * Determina si el usuario logueado puede realizar cambios en el backlog.
- * Administradores (rol 1) y Docentes/Dueños del proyecto (rol 2) tienen acceso.
- */
 const puedeGestionarBacklog = computed(() => {
   const user = authStore.usuario;
   if (!user || !proyectoData.value) return false;
-  const miId = Number(user.id);
-  const miRol = Number(user.rol_id);
-  if (miRol === 1) return true;
-  if (miRol === 2) {
-    const integrantes = proyectoData.value.Usuarios || proyectoData.value.integrantes || [];
-    return integrantes.some(i => Number(i.id) === miId);
-  }
-  return false;
+  return Number(user.rol_id) === 1 || Number(user.rol_id) === 2;
 });
 
-// --- COMUNICACIÓN CON API ---
+// NUEVA FUNCIÓN: Lógica de banderas de vencimiento
+const calcularVencimiento = (us) => {
+  if (!us.fecha_entrega || String(us.estado_detalle?.nombre).toUpperCase() === 'DONE') return null;
 
-/** Obtiene tablas maestras para selects (prioridades y estados de US) */
-const cargarMaestros = async () => {
-  try {
-    const [resP, resE] = await Promise.all([
-      api.get('/common/prioridades-us'), 
-      api.get('/common/estados-us')
-    ]);
-    prioridades.value = resP.data;
-    estados.value = resE.data;
-  } catch (error) {
-    console.error("Error cargando maestros:", error);
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const entrega = new Date(us.fecha_entrega);
+  entrega.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.ceil((entrega - hoy) / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return {
+      texto: `${Math.abs(diffDays)} días vencidos`,
+      clase: 'has-text-danger',
+      icono: 'fa-exclamation-circle'
+    };
+  } else if (diffDays <= 3) {
+    return {
+      texto: diffDays === 0 ? 'Vence hoy' : `Cierra en ${diffDays} días`,
+      clase: 'has-text-warning-dark',
+      icono: 'fa-hourglass-half'
+    };
   }
+  return null;
 };
 
-/** Trae todas las User Stories vinculadas al proyecto actual */
 const cargarUserStories = async () => {
   cargando.value = true;
   try {
     const res = await userStoryService.getByProyecto(proyectoId.value);
     userStories.value = res.data;
-  } catch (error) {
-    console.error("Error al cargar US:", error);
-  } finally {
-    cargando.value = false;
-  }
+  } finally { cargando.value = false; }
 };
 
-/** Envía la nueva US al servidor y refresca la lista */
-const crearUserStory = async () => {
-  if (!formUS.titulo) return;
-  enviando.value = true;
-  try {
-    const payload = {
-      proyecto_id: Number(proyectoId.value),
-      titulo: formUS.titulo.trim(),
-      descripcion: formUS.descripcion.trim(),
-      condiciones: formUS.condiciones.trim(),
-      prioridad_id: formUS.prioridad_id,
-      estado_id: 1 
-    };
-    await userStoryService.create(payload);
-    isModalActive.value = false;
-    formUS.titulo = ''; formUS.descripcion = ''; formUS.condiciones = '';
-    await cargarUserStories();
-  } catch (error) {
-    console.error("Error al crear US");
-  } finally {
-    enviando.value = false;
-  }
-};
+const abrirDetalleUS = (us) => router.push(`/proyectos/${proyectoId.value}/backlog/${us.id}`);
+const abrirModalNuevaUS = () => router.push(`/proyectos/${proyectoId.value}/backlog/nueva`);
 
-// --- GESTIÓN DE MODALES DE DETALLE Y TAREAS ---
-
-/** Abre el modal de detalle cargando la información más fresca de la US seleccionada */
-const abrirDetalleUS = async (us) => {
-  isDetalleModalActive.value = false;
-  usSeleccionada.value = null;
-  await nextTick(); // Asegura limpieza de DOM antes de reabrir
-
-  const usFresca = userStories.value.find(item => item.id === us.id);
-  if (usFresca) {
-    usSeleccionada.value = { ...usFresca }; 
-    isDetalleModalActive.value = true;
-  }
-};
-
-const cerrarDetalleUS = () => {
-  isDetalleModalActive.value = false;
-  usSeleccionada.value = null;
-};
-
-/** Prepara el estado para crear una tarea nueva desde una US */
-const prepararNuevaTarea = async (us) => {
-  tareaParaEditar.value = null; 
-  isDetalleModalActive.value = false; 
-  await nextTick();
-  isTareaModalActive.value = true;
-};
-
-/** Prepara el estado para editar una tarea existente */
-const prepararEdicionTarea = async (tarea, us) => {
-  tareaParaEditar.value = tarea;
-  isDetalleModalActive.value = false; 
-  await nextTick();
-  isTareaModalActive.value = true;
-};
-
-/** Actualiza la información básica de la US (Título, descripción, etc) */
-const actualizarUS = async (datos) => {
-  mensajeError.value = '';
-  mostrarError.value = false;
-  try {
-    await userStoryService.update(datos.id, datos);
-    cerrarDetalleUS();
-    await cargarUserStories();
-  } catch (error) {
-    mensajeError.value = error.response?.data?.detalle || error.response?.data?.mensaje || "Error inesperado";
-    mostrarError.value = true;
-  }
-};
-
-/** Refresca los datos y mantiene abierto el modal de detalle tras cambios en tareas */
-const refrescarTodo = async () => {
-  const currentId = usSeleccionada.value?.id;
-  await cargarUserStories(); 
-  isTareaModalActive.value = false; 
-  
-  if (currentId) {
-    const usActualizada = userStories.value.find(u => u.id === currentId);
-    if (usActualizada) {
-      usSeleccionada.value = { ...usActualizada };
-      await nextTick();
-      isDetalleModalActive.value = true; 
-    }
-  }
-};
-
-// --- ELIMINACIÓN ---
-
-const prepararEliminacion = (usId) => {
-  usAEliminar.value = userStories.value.find(u => u.id === usId);
+const prepararEliminacion = (us) => {
+  usAEliminar.value = us;
   isConfirmActive.value = true;
 };
 
@@ -336,15 +181,7 @@ const ejecutarEliminacion = async () => {
   try {
     await userStoryService.delete(usAEliminar.value.id);
     isConfirmActive.value = false;
-    usAEliminar.value = null;
     await cargarUserStories(); 
-  } catch (error) { console.error(error); }
-};
-
-const eliminarTareaDeBD = async (tareaId) => {
-  try {
-    await api.delete(`/tareas/${tareaId}`);
-    await refrescarTodo();
   } catch (error) { console.error(error); }
 };
 
@@ -355,57 +192,62 @@ const cargarDatosProyecto = async () => {
   } catch (error) { console.error(error); }
 };
 
-// Ciclo de vida inicial
 onMounted(() => {
   proyectoId.value = route.params.id;
-  cargarMaestros();
   cargarUserStories();
   cargarDatosProyecto();
 });
 </script>
 
 <style scoped>
-/** * ESTILOS DE PERSONALIZACIÓN DEL BACKLOG
- * Se utiliza :deep() para inyectar estilos en el componente hijo UserStoryCard.
- */
+.dashboard-bg {
+  min-height: 100vh;
+  background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.8)), url('../assets/fondo.jpg');
+  background-size: cover;
+  background-attachment: fixed;
+}
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+.custom-tabs ul { border-bottom: 2px solid rgba(255, 255, 255, 0.2); }
+.custom-tabs li a { color: #ffffff !important; border: 1px solid transparent !important; }
+.custom-tabs li.is-active a { background-color: rgba(52, 152, 219, 0.3) !important; border-bottom-color: #3498db !important; }
 
-/* Color "Amarillo Post-it" para las Historias de Usuario */
-:deep(.user-story-card-custom) {
-  background-color: #fdfae6 !important; /* Amarillo pastel suave */
-  border: 1px solid #f2e8a7 !important;
-  border-radius: 8px;
-  height: 100%;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  cursor: pointer;
+/* Estilo de la Card */
+.card-wrapper {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: rgba(253, 250, 230, 0.95);
 }
 
-:deep(.user-story-card-custom:hover) {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  background-color: #fcf7d3 !important; /* Un tono apenas más fuerte al hacer hover */
+:deep(.user-story-card-custom) { 
+  background-color: transparent !important; 
+  box-shadow: none !important;
 }
 
-/* FORZAR 2 RENGLONES FIJOS EN EL TÍTULO (Usando Webkit Line Clamp) */
-:deep(.user-story-card-custom .title),
-:deep(.user-story-card-custom h3) {
-  display: -webkit-box !important;
-  -webkit-line-clamp: 2 !important;
-  -webkit-box-orient: vertical !important;
-  overflow: hidden !important;
-  white-space: normal !important;
-  text-overflow: ellipsis !important;
-  
-  /* Altura fija para mantener simetría */
-  line-height: 1.4em !important;
-  height: 2.8em !important; 
-  margin-bottom: 0.5rem !important;
+/* Bandera de vencimiento */
+.vencimiento-badge {
+  margin-top: -15px; /* Para que quede pegado a la zona de tags */
+  background: transparent;
 }
 
-/* Mejora de la separación de elementos internos */
-:deep(.user-story-card-custom .card-content) {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 100%;
+.letter-spacing-1 { letter-spacing: 1px; }
+
+:deep(.user-story-card-custom .title), :deep(.user-story-card-custom h3) { font-size: 1.5rem !important; font-weight: 800 !important; color: #2c3e50 !important; }
+:deep(.user-story-card-custom p) { font-size: 1.15rem !important; color: #333 !important; }
+:deep(.has-text-grey-dark.is-size-7) { font-size: 1.1rem !important; font-weight: 700 !important; color: #2c3e50 !important; }
+:deep(.user-story-card-custom .tag) { font-size: 0.95rem !important; font-weight: 700 !important; }
+
+:deep(.stats-glass-fix) {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(8px);
+  border-radius: 15px;
+  padding: 25px;
 }
+
+.has-text-warning-dark { color: #856404 !important; } /* Amarillo más legible en fondo crema */
 </style>

@@ -1,7 +1,8 @@
-<template>  
+<template>
   <div class="dashboard-bg">
     <div class="main-content-wrapper">
       <div class="container mt-0 pt-6 px-4 pb-6">
+        
         <div class="level mb-6">
           <div class="level-left">
             <h1 class="title has-text-white is-2">
@@ -10,7 +11,7 @@
             </h1>
           </div>
           <div class="level-right">
-            <button v-if="esAdminODocente" class="button is-info is-light has-text-weight-bold" @click="abrirModal">
+            <button v-if="esAdminODocente" class="button is-info is-light has-text-weight-bold" @click="isModalActive = true">
               <span class="icon"><i class="fas fa-plus"></i></span>
               <span>Nuevo Proyecto</span>
             </button>
@@ -20,7 +21,8 @@
         <div v-if="cargando" class="notification glass-notification is-info">
           <span class="icon"><i class="fas fa-spinner fa-pulse"></i></span> Cargando proyectos...
         </div>
-        <div v-if="errorMsg && errorMsg.length > 0" class="notification glass-notification is-danger"> 
+        
+        <div v-if="errorMsg" class="notification glass-notification is-danger"> 
           {{ errorMsg }}
         </div>
 
@@ -29,6 +31,8 @@
             <thead>
               <tr>
                 <th class="has-text-info">Escuela</th> 
+                <th class="has-text-info has-text-centered">Cierre 1</th>
+                <th class="has-text-info has-text-centered">Cierre 2</th>
                 <th class="has-text-info">Nombre</th>
                 <th class="has-text-info">Descripción</th>
                 <th class="has-text-info">Estado</th>
@@ -46,6 +50,18 @@
                 <td>
                   <span class="tag is-info post-it-tag">
                     {{ proyecto.escuela?.nombre_corto || 'Global' }}
+                  </span>
+                </td>
+                <td class="has-text-centered">
+                  <span class="semaforo-led" 
+                        :style="{ backgroundColor: calcularSemaforo(proyecto.fecha_cierre_1).color }"
+                        :title="calcularSemaforo(proyecto.fecha_cierre_1).mensaje">
+                  </span>
+                </td>
+                <td class="has-text-centered">
+                  <span class="semaforo-led" 
+                        :style="{ backgroundColor: calcularSemaforo(proyecto.fecha_cierre_2).color }"
+                        :title="calcularSemaforo(proyecto.fecha_cierre_2).mensaje">
                   </span>
                 </td>
                 <td><strong class="has-text-white">{{ proyecto.nombre }}</strong></td>
@@ -71,7 +87,7 @@
                 </td>
               </tr>
               <tr v-if="proyectosVisibles.length === 0">
-                <td colspan="6" class="has-text-centered has-text-grey-light py-6">
+                <td colspan="8" class="has-text-centered has-text-grey-light py-6">
                   <i class="fas fa-folder-open fa-3x mb-3"></i><br>
                   No tienes proyectos asignados actualmente.
                 </td>
@@ -85,17 +101,14 @@
     <footer class="footer-dashboard">
         <div class="footer-container">
             <div class="footer-info">
-                Gestión de Proyectos Estudiantiles
-                <span class="version-badge">v1.2.0</span>
+                Gestión de Proyectos Estudiantiles <span class="version-badge">v2.0</span>
             </div>
-
             <div class="footer-credits">
-                &copy; {{ anioActual }} | Creado por Ing. Guillermo Codina. Todos los derechos reservados.
+                &copy; {{ anioActual }} | Creado por Ing. Guillermo Codina.
             </div>
-
             <div class="footer-contact">
                 <span class="icon"><i class="fas fa-envelope"></i></span>
-                <a href="mailto:codinaguillermo@gmail.com">Contacto de Soporte</a>
+                <a href="mailto:codinaguillermo@gmail.com">Soporte</a>
             </div>
         </div>
     </footer>
@@ -105,7 +118,7 @@
       <div class="modal-card">
         <header class="modal-card-head">
           <p class="modal-card-title">Nuevo Proyecto</p>
-          <button class="delete" aria-label="close" @click="isModalActive = false"></button>
+          <button class="delete" @click="isModalActive = false"></button>
         </header>
         <section class="modal-card-body">
           <div class="field">
@@ -121,14 +134,12 @@
               </div>
             </div>
           </div>
-
           <div class="field">
             <label class="label">Nombre del Proyecto</label>
             <div class="control">
               <input class="input" type="text" v-model="formProyecto.nombre" placeholder="Ej: App de Asistencia">
             </div>
           </div>
-
           <div class="field">
             <label class="label">Descripción</label>
             <div class="control">
@@ -137,7 +148,7 @@
           </div>
         </section>
         <footer class="modal-card-foot is-justify-content-flex-end">
-          <button class="button is-success" @click="guardarProyecto" :class="{ 'is-loading': enviando }" :disabled="!formProyecto.escuela_id">
+          <button class="button is-success" @click="guardarProyecto" :class="{ 'is-loading': enviando }" :disabled="!formProyecto.escuela_id || !formProyecto.nombre">
             Guardar Proyecto
           </button>
           <button class="button" @click="isModalActive = false">Cancelar</button>
@@ -145,18 +156,9 @@
       </div>
     </div>
 
-    <EditarProyectoModal 
-      v-if="mostrarModalEditar"
-      :key="proyectoSeleccionado.id"
-      :proyectoOriginal="proyectoSeleccionado"
-      :todasLasTareas="todasLasTareas"
-      @close="mostrarModalEditar = false"
-      @actualizado="cargarProyectos" 
-    />
-
     <ConfirmarModal 
       :isActive="isConfirmActive"
-      :mensaje="`¿Estás seguro de eliminar el proyecto '${proyectoAEliminar?.nombre}'? Se borrará todo el backlog asociado.`"
+      :mensaje="`¿Estás seguro de eliminar '${proyectoAEliminar?.nombre}'? Se perderá todo el progreso.`"
       @confirmar="ejecutarEliminacion"
       @cancelar="isConfirmActive = false"
     />
@@ -169,8 +171,6 @@ import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import { projectService } from '../services/project.services'; 
 import { configService } from '../services/config.service'; 
-import { tareaService } from '../services/tarea.service'; 
-import EditarProyectoModal from '../components/modals/editarProyectoModal.vue';
 import ConfirmarModal from '../components/modals/ConfirmarModal.vue';
 
 const authStore = useAuthStore();
@@ -180,44 +180,20 @@ const proyectos = ref([]);
 const escuelasMaestras = ref([]); 
 const cargando = ref(false);
 const errorMsg = ref('');
-
 const isModalActive = ref(false);
 const enviando = ref(false);
-const formProyecto = reactive({
-    nombre: '',
-    descripcion: '',
-    escuela_id: null 
-});
-
-const mostrarModalEditar = ref(false);
-const proyectoSeleccionado = ref(null);
-const todasLasTareas = ref([]); 
-
 const isConfirmActive = ref(false);
 const proyectoAEliminar = ref(null);
 
-/**
- * Propósito: Obtener el año actual para el copyright.
- * Alimenta a: Template del footer.
- * Datos que retorna: Number (Año actual).
- */
+const formProyecto = reactive({ nombre: '', descripcion: '', escuela_id: null });
+
 const anioActual = computed(() => new Date().getFullYear());
 
-/**
- * Propósito: Determinar si el usuario tiene rol administrativo o docente.
- * Alimentado por: authStore.usuario.
- * Retorna: Boolean.
- */
 const esAdminODocente = computed(() => {
     const rol = Number(authStore.usuario?.rol_id || authStore.usuario?.rolId);
     return rol === 1 || rol === 2;
 });
 
-/**
- * Propósito: Filtrar proyectos según pertenencia y rol del usuario.
- * Alimentado por: proyectos (ref).
- * Retorna: Array de objetos proyecto.
- */
 const proyectosVisibles = computed(() => {
     const user = authStore.usuario;
     if (!user) return [];
@@ -227,18 +203,11 @@ const proyectosVisibles = computed(() => {
     if (miRol === 1) return proyectos.value;
 
     return proyectos.value.filter(p => {
-        const esDuenio = Number(p.docente_owner_id) === miId;
         const integrantes = p.Usuarios || p.integrantes || p.usuarios || [];
-        const esParticipante = integrantes.some(i => Number(i.id) === miId);
-        return esDuenio || esParticipante;
+        return Number(p.docente_owner_id) === miId || integrantes.some(i => Number(i.id) === miId);
     });
 });
 
-/**
- * Propósito: Validar si el usuario puede editar o borrar un proyecto específico.
- * Alimentado por: Objeto proyecto.
- * Retorna: Boolean.
- */
 const puedeGestionar = (proyecto) => {
     const user = authStore.usuario;
     if (!user) return false;
@@ -247,16 +216,10 @@ const puedeGestionar = (proyecto) => {
 
     if (miRol === 1) return true;
     if (miRol === 2) {
-        const esDuenio = Number(proyecto.docente_owner_id) === miId;
         const integrantes = proyecto.Usuarios || proyecto.integrantes || [];
-        const esMiembroDocente = integrantes.some(i => Number(i.id) === miId);
-        return esDuenio || esMiembroDocente;
+        return Number(proyecto.docente_owner_id) === miId || integrantes.some(i => Number(i.id) === miId);
     }
     return false;
-};
-
-const irAbacklog = (id) => {
-    router.push(`/proyectos/${id}/backlog`);
 };
 
 const cargarProyectos = async () => {
@@ -264,11 +227,8 @@ const cargarProyectos = async () => {
     errorMsg.value = ''; 
     try {
         const res = await projectService.getAll();
-        if (res.success) {
-            proyectos.value = res.data;
-        } else {
-            errorMsg.value = res.error;
-        }
+        if (res.success) proyectos.value = res.data;
+        else errorMsg.value = res.error;
     } catch (e) {
         errorMsg.value = "Error al conectar con el servidor";
     } finally {
@@ -280,29 +240,11 @@ const cargarMaestras = async () => {
     try {
         const data = await configService.getTablasMaestras();
         escuelasMaestras.value = data.escuelas || [];
-    } catch (e) {
-        console.error("Error al cargar escuelas:", e);
-    }
+    } catch (e) { console.error(e); }
 };
 
-const abrirModal = () => {
-    formProyecto.nombre = '';
-    formProyecto.descripcion = '';
-    formProyecto.escuela_id = null; 
-    isModalActive.value = true;
-};
-
-const prepararEdicion = async (proyecto) => {
-    proyectoSeleccionado.value = proyecto;
-    try {
-        const res = await tareaService.getAll();
-        todasLasTareas.value = res.data || res;
-    } catch (error) {
-        console.error("Error cargando tareas globales:", error);
-        todasLasTareas.value = [];
-    } finally {
-        mostrarModalEditar.value = true;
-    }
+const prepararEdicion = (proyecto) => {
+    router.push({ name: 'configurar-proyecto', params: { id: proyecto.id } });
 };
 
 const guardarProyecto = async () => {
@@ -314,11 +256,7 @@ const guardarProyecto = async () => {
             isModalActive.value = false;
             await cargarProyectos(); 
         }
-    } catch (e) {
-        console.error("Error guardando proyecto", e);
-    } finally {
-        enviando.value = false;
-    }
+    } finally { enviando.value = false; }
 };
 
 const prepararEliminacion = (proyecto) => {
@@ -331,16 +269,21 @@ const ejecutarEliminacion = async () => {
     const res = await projectService.delete(proyectoAEliminar.value.id);
     if (res.success) {
         isConfirmActive.value = false;
-        proyectoAEliminar.value = null;
         await cargarProyectos();
-    } else {
-        alert(res.error);
     }
 };
 
-const formatearFecha = (fechaRaw) => {
-    if (!fechaRaw) return '-';
-    return new Date(fechaRaw).toLocaleDateString('es-AR');
+const irAbacklog = (id) => router.push(`/proyectos/${id}/backlog`);
+
+const formatearFecha = (fecha) => fecha ? new Date(fecha).toLocaleDateString('es-AR') : '-';
+
+const calcularSemaforo = (fecha) => {
+  if (!fecha) return { color: '#444', mensaje: 'Sin fecha' };
+  const difDias = Math.ceil((new Date(fecha) - new Date()) / (1000 * 60 * 60 * 24));
+  if (difDias < 0) return { color: '#f14668', mensaje: `Atrasado: ${Math.abs(difDias)} días` };
+  if (difDias <= 7) return { color: '#f14668', mensaje: `URGENTE: ${difDias} días` };
+  if (difDias <= 21) return { color: '#ffdd57', mensaje: `Alerta: ${difDias} días` };
+  return { color: '#48c78e', mensaje: `${difDias} días restantes` };
 };
 
 onMounted(() => {
@@ -350,113 +293,59 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Estructura para el Sticky Footer */
+/* Estilos consolidados */
 .dashboard-bg {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)), 
-              url('../src/assets/fondo.jpg');
+  background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)), url('../assets/fondo.jpg');
   background-size: cover;
   background-attachment: fixed;
 }
-
-.main-content-wrapper {
-  flex: 1 0 auto; /* Ocupa todo el espacio para empujar el footer */
-}
-
-/* Estilos del Footer Arreglado */
+.main-content-wrapper { flex: 1 0 auto; }
 .footer-dashboard {
-  flex-shrink: 0; /* No permite que el footer se achique */
+  flex-shrink: 0;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(5px);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   padding: 1.5rem 1rem;
   color: #bdc3c7;
 }
-
 .footer-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
   max-width: 1200px;
   margin: 0 auto;
-  font-size: 0.9rem;
 }
-
-.footer-info, .footer-credits, .footer-contact {
-  margin: 5px 15px;
-}
-
 .version-badge {
-  background-color: rgba(52, 152, 219, 0.2);
+  background: rgba(52, 152, 219, 0.2);
   color: #3498db;
   padding: 2px 8px;
   border-radius: 4px;
   font-family: monospace;
-  font-weight: bold;
-  margin-left: 8px;
-  border: 1px solid rgba(52, 152, 219, 0.3);
 }
-
-.footer-contact a {
-  color: #3498db;
-  text-decoration: none;
-  margin-left: 5px;
-}
-
-.footer-contact a:hover {
-  text-decoration: underline;
-}
-
-/* Panel de vidrio esmerilado y tabla */
 .glass-panel {
   background: rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  overflow: hidden;
 }
-
-.glass-table {
-  background: transparent !important;
-  color: white !important;
-}
-
-.glass-table thead th {
-  border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
-  text-transform: uppercase;
-  font-size: 0.85rem;
-  letter-spacing: 1px;
-}
-
-.clickable-row {
-  transition: background 0.3s ease;
-  cursor: pointer;
-}
-
-.clickable-row:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
-}
-
-.glass-table td {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-  vertical-align: middle !important;
-}
-
-/* Etiquetas estilo post-it */
+.glass-table { background: transparent !important; color: white !important; }
+.clickable-row { transition: background 0.3s ease; cursor: pointer; }
+.clickable-row:hover { background: rgba(255, 255, 255, 0.1) !important; }
 .post-it-tag {
   background-color: #ffd966 !important; 
   color: #333 !important;
   box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
   transform: rotate(-1deg);
 }
-
-.glass-notification {
-  background: rgba(255, 255, 255, 0.1) !important;
-  backdrop-filter: blur(5px);
-  color: white;
+.semaforo-led {
+  display: inline-block;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.2s;
 }
+.semaforo-led:hover { transform: scale(1.3); }
 </style>

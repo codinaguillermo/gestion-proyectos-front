@@ -4,11 +4,6 @@ import LoginView from '../views/LoginView.vue';
 import HomeView from '../views/HomeView.vue';
 import SugerenciasView from '../views/SugerenciasView.vue';
 
-/**
- * Propósito: Definir la configuración de rutas y navegación de la aplicación.
- * Alimentado por: main.js y eventos de navegación del usuario.
- * Retorna: Instancia del Router configurada.
- */
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -34,11 +29,25 @@ const router = createRouter({
       component: () => import('../views/userStoriesView.vue'),
       meta: { requiresAuth: true }
     },
+    // --- NUEVAS RUTAS PARA USER STORIES (FULL PAGE) ---
+    {
+      path: '/proyectos/:id/backlog/nueva',
+      name: 'nueva-us',
+      component: () => import('../views/UserStoryDetailView.vue'),
+      meta: { requiresAuth: true, roles: [1, 2] } // Solo Admin y Docente pueden crear
+    },
+    {
+      path: '/proyectos/:id/backlog/:usId',
+      name: 'detalle-us',
+      component: () => import('../views/UserStoryDetailView.vue'),
+      meta: { requiresAuth: true } // Alumnos pueden entrar a ver/editar tareas
+    },
+    // --------------------------------------------------
     {
       path: '/usuarios',
       name: 'usuarios',
       component: () => import('../views/usuariosView.vue'),
-      meta: { requiresAuth: true, roles: [1, 2] } // 1: Admin, 2: Docente
+      meta: { requiresAuth: true, roles: [1, 2] } 
     },
     {
       path: '/escuelas',
@@ -50,26 +59,30 @@ const router = createRouter({
       path: '/sugerencias',
       name: 'Sugerencias',
       component: SugerenciasView,
-      // Solo accesible para Admin (1) y Docente (2)
       meta: { requiresAuth: true, roles: [1, 2] } 
     },
+    {
+      path: '/proyectos/:id/configuracion',
+      name: 'configurar-proyecto',
+      component: () => import('../views/ProyectoConfigView.vue'),
+      meta: { requiresAuth: true, roles: [1, 2] } 
+    },
+    {
+      path: '/proyectos/:id/backlog/:usId/tarea/:tareaId', // :tareaId será 'nueva' para crear
+      name: 'tarea-detail',
+      component: () => import('../views/TareaDetailView.vue'),
+      meta: { requiresAuth: true }
+    }
   ]
 });
 
-/**
- * Propósito: Guardián global para proteger rutas por autenticación y roles de usuario.
- * Alimentado por: Intentos de navegación (to, from).
- * Retorna: Ejecución de next() con la ruta destino o redirección de seguridad.
- */
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
   
-  // Verificación de existencia de Token
   if (to.meta.requiresAuth && !authStore.token) {
     return next('/login');
   }
 
-  // Verificación de Permisos por Rol
   if (to.meta.roles) {
     const rolUsuario = Number(authStore.usuario?.rol_id);
     if (!to.meta.roles.includes(rolUsuario)) {
