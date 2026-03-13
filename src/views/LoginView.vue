@@ -3,24 +3,24 @@
     <div class="main-content-wrapper hero-body">
       <div class="container">
         <div class="columns is-centered">
-          <div class="column is-5-tablet is-4-desktop is-3-widescreen">
-            <form class="box glass-box p-6 shadow-lg" @submit.prevent="handleLogin">
+          <div class="column is-8-tablet is-5-desktop is-4-widescreen">
+            <form class="box glass-box p-6 shadow-lg custom-login-width" @submit.prevent="handleLogin">
               <div class="is-flex is-justify-content-center is-align-items-center mb-6">
-                <img src="../assets/iconoOscuro.png" alt="Logo" style="width: 150px; height: 150px; object-fit: contain;">
+                <img src="../assets/iconoOscuro.png" alt="Logo" style="width: 300px; height: 300px; object-fit: contain;">
               </div>
               
-              <div class="field">
-                <label class="label has-text-white">Email</label>
+              <div class="field mb-5">
+                <label class="label has-text-white is-size-5">Email</label>
                 <div class="control has-icons-left">                  
-                  <input v-model="email" type="email" placeholder="e.g. guille@gmail.com" class="input transparent-input" required>
+                  <input v-model="email" type="email" placeholder="e.g. guille@gmail.com" class="input transparent-input is-medium" required>
                   <span class="icon is-small is-left">📧</span>
                 </div>
               </div>
 
-              <div class="field">
-                <label class="label has-text-white">Password</label>
+              <div class="field mb-5">
+                <label class="label has-text-white is-size-5">Password</label>
                 <div class="control has-icons-left">
-                  <input v-model="password" type="password" placeholder="*******" class="input transparent-input" required>
+                  <input v-model="password" type="password" placeholder="*******" class="input transparent-input is-medium" required>
                   <span class="icon is-small is-left">🔒</span>
                 </div>
               </div>
@@ -29,8 +29,8 @@
                 {{ errorMsg }}
               </div>
 
-              <div class="field mt-5">
-                <button class="button is-info is-fullwidth has-text-weight-bold" :class="{'is-loading': cargando}">
+              <div class="field mt-6">
+                <button class="button is-info is-fullwidth has-text-weight-bold is-medium" :class="{'is-loading': cargando}">
                   Ingresar al Tablero
                 </button>
               </div>
@@ -44,7 +44,7 @@
         <div class="footer-container">
             <div class="footer-info">
                 GEPRES
-                <span class="version-badge">v2.0</span>
+                <span class="version-badge">v2.1.0</span>
             </div>
 
             <div class="footer-credits">
@@ -65,11 +65,6 @@ import { ref, computed } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 
-/**
- * Propósito: Gestionar el acceso de usuarios con estética de tablero.
- * Alimentado por: Usuario final.
- * Retorna: Redirección a dashboard en éxito o mensaje de error.
- */
 const router = useRouter();
 const authStore = useAuthStore();
 
@@ -78,18 +73,8 @@ const password = ref('');
 const errorMsg = ref('');
 const cargando = ref(false);
 
-/**
- * Propósito: Obtener el año actual para el copyright.
- * Alimenta a: Template del footer.
- * Datos que retorna: Number (Año actual).
- */
 const anioActual = computed(() => new Date().getFullYear());
 
-/**
- * Propósito: Procesar el intento de login del usuario.
- * Alimenta a: Formulario de acceso.
- * Datos que retorna: Void (Navega a /dashboard o setea errorMsg).
- */
 const handleLogin = async () => {
   errorMsg.value = '';
   cargando.value = true;
@@ -112,7 +97,6 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-/* Estructura para Sticky Footer */
 .login-page {
   display: flex;
   flex-direction: column;
@@ -126,10 +110,16 @@ const handleLogin = async () => {
 .main-content-wrapper {
   flex: 1 0 auto;
   display: flex;
-  align-items: center; /* Centra el formulario verticalmente */
+  align-items: center;
 }
 
-/* Efecto Glassmorphism */
+/* Forzamos que el cuadro sea más ancho */
+.custom-login-width {
+  width: 100%;
+  max-width: 550px; /* Aquí ajustamos el ancho horizontal */
+  margin: 0 auto;
+}
+
 .glass-box {
   background: rgba(255, 255, 255, 0.1) !important;
   backdrop-filter: blur(12px);
@@ -138,7 +128,6 @@ const handleLogin = async () => {
   border-radius: 15px;
 }
 
-/* Footer adaptado (idéntico al Dashboard para consistencia) */
 .footer-dashboard {
   flex-shrink: 0;
   background: rgba(0, 0, 0, 0.5);
@@ -183,11 +172,11 @@ const handleLogin = async () => {
   text-decoration: underline;
 }
 
-/* Inputs y tipografía */
 .transparent-input {
   background: rgba(255, 255, 255, 0.9) !important;
   border: none;
   transition: all 0.3s ease;
+  height: 50px; /* Altura cómoda, no exagerada */
 }
 
 .transparent-input:focus {
@@ -203,5 +192,4 @@ const handleLogin = async () => {
 .shadow-lg {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
-
 </style>

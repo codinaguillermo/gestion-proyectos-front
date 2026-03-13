@@ -72,6 +72,12 @@ const router = createRouter({
       name: 'tarea-detail',
       component: () => import('../views/TareaDetailView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/tutoriales',
+      name: 'tutoriales',
+      component: () => import('../views/TutorialesView.vue'),
+      meta: { requiresAuth: true }
     }
   ]
 });

@@ -6,7 +6,7 @@ const api = axios.create({
 });
 
 // INTERCEPTOR DE PEDIDO (REQUEST)
-// Envía automáticamente la llave (token) en cada viaje al servidor.
+// Envía automáticamente el token en cada petición al servidor.
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -16,28 +16,25 @@ api.interceptors.request.use((config) => {
 });
 
 // INTERCEPTOR DE RESPUESTA (RESPONSE)
-// Escucha lo que dice el servidor al volver. Si el servidor dice 401 (Token inválido/expirado)
-// ejecutamos la limpieza y redirección.
 api.interceptors.response.use(
     (response) => {
-        // Si todo salió bien (status 200-299), devolvemos la respuesta normal.
+        // Si todo salió bien, devolvemos la respuesta normal.
         return response;
     },
     (error) => {
-        // Si hubo un error en la respuesta
+        // Si el servidor responde 401 (No autorizado / Token expirado)
         if (error.response && error.response.status === 401) {
-            // 1. Limpiamos los datos locales para seguridad
+            
+            // 1. Limpiamos los datos locales por seguridad
             localStorage.removeItem('token');
             localStorage.removeItem('usuario');
 
-            // 2. Mostramos el aviso al usuario
-            alert("Tu sesión ha expirado o es inválida. Por favor, ingresa tus credenciales nuevamente.");
-
-            // 3. Redirección forzosa al Login que me pasaste
-            window.location.href = "http://eet24proyectos.ddns.net:3000/login";
+            // 2. REDIRECCIÓN DIRECTA (Sin alerts molestos)
+            // Agregamos el parámetro ?session=expired por si querés mostrar un mensaje en el Login
+            window.location.href = "http://eet24proyectos.ddns.net:3000/login?session=expired";
         }
         
-        // Devolvemos el error para que si un componente específico quiere manejarlo, pueda.
+        // Devolvemos el error para que el componente que hizo la llamada pueda manejarlo si quiere
         return Promise.reject(error);
     }
 );

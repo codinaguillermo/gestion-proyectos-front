@@ -34,16 +34,22 @@
                 <span class="is-size-5">Tablero de US</span>
               </a>
             </li>
+            <li :class="{'is-active': tabActiva === 'equipo'}">
+              <a @click="tabActiva = 'equipo'">
+                <span class="icon is-medium"><i class="fas fa-users-cog"></i></span>
+                <span class="is-size-5">Carga por Miembro</span>
+              </a>
+            </li>
             <li :class="{'is-active': tabActiva === 'stats'}">
               <a @click="tabActiva = 'stats'">
-                <span class="icon is-medium"><i class="fas fa-chart-pie"></i></span>
-                <span class="is-size-5">Métricas y Avance</span>
+                <span class="icon is-medium"><i class="fas fa-chart-line"></i></span>
+                <span class="is-size-5">Métricas Avanzadas</span>
               </a>
             </li>
           </ul>
         </div>
 
-        <div v-if="tabActiva === 'backlog'">
+        <div v-if="tabActiva === 'backlog'" class="animate__animated animate__fadeIn">
           <div v-if="cargando" class="notification glass-notification is-info is-size-5">
             <span class="icon"><i class="fas fa-spinner fa-pulse"></i></span> Refrescando datos...
           </div>
@@ -71,52 +77,52 @@
           </div>
         </div>
 
-        <div v-if="tabActiva === 'stats'">
-          <div class="glass-panel p-5 animate__animated animate__fadeIn">
-            <div class="mb-6">
-              <h3 class="title is-4 has-text-white mb-4">
-                <i class="fas fa-users-cog mr-2 has-text-info"></i> Tareas por Integrante
-              </h3>
-              <div class="columns is-multiline">
-                <div v-for="miembro in resumenTareasPorMiembro" :key="miembro.id" class="column is-12-mobile is-6-tablet is-4-desktop">
-                  <div class="box has-background-dark p-4 h-full" style="border: 1px solid rgba(255,255,255,0.1);">
-                    <div class="is-flex is-justify-content-between is-align-items-center mb-4 border-bottom-info pb-2">
-                      <span class="has-text-info has-text-weight-bold is-uppercase is-size-6">{{ miembro.nombre }}</span>
-                      <span class="tag is-rounded is-info is-light">{{ miembro.total }}</span>
+        <div v-if="tabActiva === 'equipo'" class="animate__animated animate__fadeIn">
+          <div class="glass-panel p-5">
+            <h3 class="title is-4 has-text-white mb-5">
+              <i class="fas fa-user-tag mr-2 has-text-info"></i> Desglose de Responsabilidades
+            </h3>
+            <div class="columns is-multiline">
+              <div v-for="miembro in resumenTareasPorMiembro" :key="miembro.id" class="column is-12-mobile is-6-tablet is-4-desktop">
+                <div class="box has-background-dark p-4 h-full" style="border: 1px solid rgba(255,255,255,0.1);">
+                  <div class="is-flex is-justify-content-between is-align-items-center mb-4 border-bottom-info pb-2">
+                    <span class="has-text-info has-text-weight-bold is-uppercase is-size-6">{{ miembro.nombre }}</span>
+                    <span class="tag is-rounded is-info is-light">{{ miembro.total }} tareas</span>
+                  </div>
+                  
+                  <div 
+                    v-for="t in miembro.tareas" 
+                    :key="t.id" 
+                    class="mb-3 p-2 task-link-box" 
+                    @click="irADetalleTarea(t.usId)"
+                  >
+                    <div class="is-size-7 has-text-info-light is-uppercase has-text-weight-bold mb-1">
+                      <i class="fas fa-folder-open mr-1"></i> {{ t.usTitulo }}
                     </div>
-                    
-                    <div 
-                      v-for="t in miembro.tareas" 
-                      :key="t.id" 
-                      class="mb-3 p-2 task-link-box" 
-                      @click="irADetalleTarea(t.usId)"
-                      title="Ir a esta User Story"
-                    >
-                      <div class="is-size-7 has-text-info-light is-uppercase has-text-weight-bold mb-1" style="opacity: 0.9;">
-                        <i class="fas fa-folder-open mr-1"></i> {{ t.usTitulo }}
-                      </div>
-                      <div class="is-flex is-justify-content-between is-align-items-start">
-                        <span class="has-text-white is-size-6" style="line-height: 1.2;">{{ t.titulo }}</span>
-                        <span :class="obtenerClaseEstado(t.estado)" class="is-size-7 has-text-weight-bold ml-2">{{ t.estado }}</span>
-                      </div>
+                    <div class="is-flex is-justify-content-between is-align-items-start">
+                      <span class="has-text-white is-size-6">{{ t.titulo }}</span>
+                      <span :class="obtenerClaseEstado(t.estado)" class="is-size-7 has-text-weight-bold ml-2">{{ t.estado }}</span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
+        <div v-if="tabActiva === 'stats'" class="animate__animated animate__fadeIn">
+          <div class="glass-panel p-5">
             <div v-if="usSinTareas.length > 0" class="notification is-warning is-light mb-6" style="border-left: 8px solid #ffdd57;">
               <div class="is-flex is-align-items-center mb-2">
                 <span class="icon is-medium has-text-warning mr-2"><i class="fas fa-exclamation-triangle"></i></span>
-                <h4 class="title is-5 mb-0 has-text-dark">User Stories sin Tareas</h4>
+                <h4 class="title is-5 mb-0 has-text-dark">User Stories sin Planificar</h4>
               </div>
-              <p class="is-size-6 has-text-dark mb-3">Las historias sin tareas no aparecen en los gráficos de progreso:</p>
+              <p class="is-size-6 has-text-dark mb-3">Estas historias no computan en el avance técnico porque no tienen tareas:</p>
               <div class="tags">
                 <span v-for="us in usSinTareas" :key="us.id" class="tag is-dark">{{ us.titulo }}</span>
               </div>
             </div>
 
-            <hr style="background-color: rgba(255,255,255,0.1);">
             <div class="columns is-centered">
               <div class="column is-11">
                 <StatsProyecto v-if="proyectoId" :proyectoId="proyectoId" class="stats-glass-fix" />
@@ -138,6 +144,7 @@
 </template>
 
 <script setup>
+// [Misma lógica de script que tenías, sin cambios en las funciones]
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../services/api';
@@ -263,20 +270,20 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* [Mismos estilos CSS que tenías, intactos] */
 .dashboard-bg { min-height: 100vh; background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.8)), url('../assets/fondo.jpg'); background-size: cover; background-attachment: fixed; }
 .glass-panel { background: rgba(255, 255, 255, 0.03) !important; backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; }
 .custom-tabs ul { border-bottom: 2px solid rgba(255, 255, 255, 0.2); }
 .custom-tabs li a { color: #ffffff !important; border: 1px solid transparent !important; }
 .custom-tabs li.is-active a { background-color: rgba(52, 152, 219, 0.3) !important; border-bottom-color: #3498db !important; }
 
-/* --- HOVER DINÁMICO MEJORADO --- */
 .hover-tilt-effect {
-  transform: rotate(0deg); /* Siempre alineado perfecto por defecto */
+  transform: rotate(0deg);
   transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
 }
 
 .hover-tilt-effect:hover {
-  transform: rotate(2deg) scale(1.02); /* Solo gira y crece al pasar el mouse */
+  transform: rotate(2deg) scale(1.02);
   z-index: 10;
   box-shadow: 0px 12px 30px rgba(0,0,0,0.45) !important;
 }
