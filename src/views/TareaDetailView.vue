@@ -158,14 +158,15 @@ const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
 
+// Referencias constantes de parámetros de ruta
 const proyectoId = route.params.id;
 const usId = route.params.usId;
-const tareaId = route.params.tareaId;
+const tareaIdParam = route.params.tareaId;
 
 const ID_REVIEW = 4;
 const ID_DONE = 5;
 
-const esEdicion = computed(() => tareaId && tareaId !== 'nueva');
+const esEdicion = computed(() => tareaIdParam && tareaIdParam !== 'nueva');
 const enviando = ref(false);
 const errorValidacion = ref('');
 const horasNuevasDeHoy = ref(0);
@@ -200,6 +201,11 @@ const textoBotonGuardar = computed(() => {
   return 'Guardar Cambios';
 });
 
+/**
+ * Carga los datos iniciales y la tarea si es edición.
+ * Alimenta: El formulario reactivo de la vista.
+ * Retorna: void.
+ */
 const cargarDatos = async () => {
   try {
     const [resM, resUS, resProy] = await Promise.all([
@@ -212,37 +218,57 @@ const cargarDatos = async () => {
     maestras.value.tipos = resM.tipos || [];
     maestras.value.estados = resM.estados || [];
     integrantes.value = resProy.data?.integrantes || resProy.data?.Usuarios || [];
-    tareasHermanas.value = (resUS.data?.tareas || []).filter(t => String(t.id) !== String(tareaId));
+    // Usamos el parámetro de la ruta para filtrar, asegurando consistencia
+    tareasHermanas.value = (resUS.data?.tareas || []).filter(t => String(t.id) !== String(tareaIdParam));
 
     if (!esEdicion.value) {
       if (maestras.value.prioridades.length > 0) form.prioridad_id = maestras.value.prioridades[0].id;
       if (maestras.value.tipos.length > 0) form.tipo_id = maestras.value.tipos[0].id;
-    }
-
-    if (esEdicion.value) {
-      const resT = await api.get(`/tareas/${tareaId}`);
+    } else {
+      const resT = await api.get(`/tareas/${tareaIdParam}`);
       const t = resT.data;
       if (t) {
         Object.assign(form, {
-          id: t.id, titulo: t.titulo, descripcion: t.descripcion,
+          id: t.id, 
+          titulo: t.titulo, 
+          descripcion: t.descripcion,
           responsable_id: t.responsable_id ? Number(t.responsable_id) : null,
-          tipo_id: t.tipo_id, prioridad_id: t.prioridad_id,
-          estado_id: Number(t.estado_id), horas_estimadas: t.horas_estimadas,
+          tipo_id: t.tipo_id, 
+          prioridad_id: t.prioridad_id,
+          estado_id: Number(t.estado_id), 
+          horas_estimadas: t.horas_estimadas,
           horas_reales: Number(t.horasReales || 0),
           criterios_aceptacion: t.criteriosAceptacion || '',
           comentario_cierre: t.comentarioCierre || '',
           link_evidencia: t.linkEvidencia || '',
-          cumpleAceptacion: !!t.cumpleAceptacion, testeado: !!t.testeado,
-          documentado: !!t.documentado, utilizable: !!t.utilizable,
+          cumpleAceptacion: !!t.cumpleAceptacion, 
+          testeado: !!t.testeado,
+          documentado: !!t.documentado, 
+          utilizable: !!t.utilizable,
           dependenciasIds: t.requisitos ? t.requisitos.map(d => d.id) : []
         });
       }
     }
-  } catch (error) { console.error(error); }
+  } catch (error) { console.error("Error al cargar datos:", error); }
 };
 
+/**
+ * Persiste los cambios de la tarea o crea una nueva.
+ * Alimenta: Servicio de API de tareas.
+ * Retorna: Redirección a la vista anterior.
+ */
 const guardarTarea = async () => {
   errorValidacion.value = '';
+  
+  // Verificación de integridad del ID en edición
+  // Este es el punto crítico que fallaba en producción
+  const idFinal = esEdicion.value ? (form.id || tareaIdParam) : null;
+
+  if (esEdicion.value && !idFinal) {
+    errorValidacion.value = "Error de integridad: No se pudo determinar el ID de la tarea.";
+    return;
+  }
+
   const estadoActual = Number(form.estado_id);
   const hsIngresadas = Number(horasNuevasDeHoy.value);
 
@@ -256,6 +282,7 @@ const guardarTarea = async () => {
     return;
   }
 
+  // Validación de dependencias para cierre
   if (estadoActual === ID_DONE && form.dependenciasIds.length > 0) {
     const dependenciasPendientes = tareasHermanas.value.filter(t => 
       form.dependenciasIds.includes(t.id) && 
@@ -264,7 +291,7 @@ const guardarTarea = async () => {
 
     if (dependenciasPendientes.length > 0) {
       const nombres = dependenciasPendientes.map(t => t.titulo).join(', ');
-      errorValidacion.value = `No puedes finalizar esta tarea porque depende de: [${nombres}] que aún no están en DONE.`;
+      errorValidacion.value = `Bloqueo: Dependencias sin finalizar [${nombres}].`;
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -274,14 +301,20 @@ const guardarTarea = async () => {
   try {
     const payload = { 
         ...form, 
+        id: idFinal, // Aseguramos que el payload lleve el ID correcto
         horasReales: Number(form.horas_reales) + hsIngresadas,
         proyecto_id: proyectoId,
         usId: usId
     };
-    if (esEdicion.value) await api.put(`/tareas/${form.id}`, payload);
-    else await api.post('/tareas', payload);
+
+    if (esEdicion.value) {
+      await api.put(`/tareas/${idFinal}`, payload);
+    } else {
+      await api.post('/tareas', payload);
+    }
     router.back();
   } catch (error) {
+    console.error("Error en persistencia:", error);
     errorValidacion.value = error.response?.data?.detalle || error.response?.data?.mensaje || "Error al guardar";
   } finally {
     enviando.value = false;
