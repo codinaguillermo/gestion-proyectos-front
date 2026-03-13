@@ -109,11 +109,14 @@
                 <div v-if="tabActiva === 'equipo'">
                   <div v-if="esAdminOOwner" class="field mb-5 buscador-relativo">
                     <div class="control has-icons-left">
-                      <input class="input is-dark is-rounded" type="text" v-model="busqueda" @input="buscarUsuarios" placeholder="Buscar integrante...">
-                      <span class="icon is-left"><i class="fas fa-search"></i></span>
+                      <input class="input is-dark is-rounded is-medium" type="text" v-model="busqueda" @input="buscarUsuarios" placeholder="Escribe apellido o nombre...">
+                      <span class="icon is-left has-text-info"><i class="fas fa-search"></i></span>
                       <div v-if="resultadosBusqueda.length > 0" class="search-results-floating box p-0">
-                        <a v-for="u in resultadosBusqueda" :key="u.id" @click="seleccionarUsuario(u)" class="dropdown-item py-3">
-                          {{ u.apellido?.toUpperCase() }}, {{ u.nombre }}
+                        <a v-for="u in resultadosBusqueda" :key="u.id" @click="seleccionarUsuario(u)" class="dropdown-item-custom">
+                          <div class="is-flex is-justify-content-between is-align-items-center">
+                            <span><strong>{{ u.apellido?.toUpperCase() }}</strong>, {{ u.nombre }}</span>
+                            <span class="tag is-small is-dark">{{ Number(u.rol_id) === 3 ? 'Alumno' : 'Docente' }}</span>
+                          </div>
                         </a>
                       </div>
                     </div>
@@ -123,9 +126,20 @@
                       <div class="box p-3 is-dark-box">
                         <article class="media is-align-items-center">
                           <figure class="media-left"><div :class="['avatar-circle', obtenerColorAvatar(miembro.rol_id)]">{{ obtenerIniciales(miembro.nombre) }}</div></figure>
-                          <div class="media-content"><p class="has-text-white has-text-weight-bold mb-0">{{ miembro.nombre }} {{ miembro.apellido }}</p></div>
+                          <div class="media-content">
+                            <p class="has-text-white has-text-weight-bold mb-0">{{ miembro.nombre }} {{ miembro.apellido }}</p>
+                            <p class="has-text-grey-light is-size-7" v-if="miembro.telefono">TE: {{ miembro.telefono }}</p>
+                          </div>
                           <div class="media-right is-flex is-align-items-center">
                             <div v-if="calcularPuntos(miembro.id) > 0" class="workload-badge mr-2" :class="getColorCarga(calcularPuntos(miembro.id))">{{ calcularPuntos(miembro.id) }}</div>
+                            <button 
+                              v-if="miembro.telefono" 
+                              class="button is-ghost has-text-success p-0 mr-3" 
+                              title="Enviar WhatsApp"
+                              @click="enviarWhatsapp(miembro.telefono)"
+                            >
+                              <i class="fab fa-whatsapp fa-lg"></i>
+                            </button>
                             <button v-if="esAdminOOwner" class="button is-ghost has-text-danger p-0" @click="quitarMiembro(miembro.id)"><i class="fas fa-user-minus"></i></button>
                           </div>
                         </article>
@@ -135,22 +149,50 @@
                 </div>
 
                 <div v-if="tabActiva === 'entregables'">
-                  <div v-if="esAdminOOwner" class="field has-addons mb-5">
-                    <div class="control is-expanded"><input class="input is-dark" type="text" v-model="nuevoEntregableNombre" placeholder="Nuevo documento..." @keyup.enter="agregarEntregableRAM"></div>
-                    <div class="control"><button class="button is-info" @click="agregarEntregableRAM"><i class="fas fa-plus"></i></button></div>
+                  <div v-if="esAdminOOwner" class="field has-addons mb-6">
+                    <div class="control is-expanded">
+                      <input class="input is-medium custom-input-entregable" type="text" v-model="nuevoEntregableNombre" placeholder="Nombre del nuevo documento..." @keyup.enter="agregarEntregableRAM">
+                    </div>
+                    <div class="control">
+                      <button class="button is-info is-medium" @click="agregarEntregableRAM"><i class="fas fa-plus"></i></button>
+                    </div>
                   </div>
-                  <table class="table is-fullwidth glass-table is-narrow is-size-7">
-                    <thead><tr><th class="has-text-info">Nombre</th><th class="has-text-info">Link Drive</th><th class="has-text-centered has-text-info">E</th><th class="has-text-centered has-text-info">A</th><th v-if="esAdminOOwner"></th></tr></thead>
-                    <tbody>
-                      <tr v-for="(e, index) in form.entregables" :key="index">
-                        <td class="has-text-white"><strong>{{ e.nombre }}</strong></td>
-                        <td><input class="input is-small is-dark h-auto py-0" type="text" v-model="e.link_drive"></td>
-                        <td class="has-text-centered"><input type="checkbox" v-model="e.entregado" :disabled="!esAdminOOwner"></td>
-                        <td class="has-text-centered"><input type="checkbox" v-model="e.aprobado" :disabled="!esAdminOOwner"></td>
-                        <td v-if="esAdminOOwner" class="has-text-centered"><a class="has-text-danger" @click="form.entregables.splice(index, 1)"><i class="fas fa-trash-alt"></i></a></td>
-                      </tr>
-                    </tbody>
-                  </table>
+
+                  <div class="table-container">
+                    <table class="table is-fullwidth glass-table delivery-table-v2">
+                      <thead>
+                        <tr>
+                          <th class="has-text-info">Documento</th>
+                          <th class="has-text-info">Enlace de Drive</th>
+                          <th class="has-text-centered has-text-info">E</th>
+                          <th class="has-text-centered has-text-info">A</th>
+                          <th v-if="esAdminOOwner"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(e, index) in form.entregables" :key="index" class="delivery-row">
+                          <td class="data-text-bright">{{ e.nombre }}</td>
+                          <td>
+                            <div class="field has-addons">
+                              <div class="control is-expanded">
+                                <input class="input custom-input-table" type="text" v-model="e.link_drive" placeholder="Pegue el enlace aquí">
+                              </div>
+                              <div class="control">
+                                <button class="button is-info is-outlined btn-open-link" title="Abrir en nueva pestaña" :disabled="!e.link_drive" @click="abrirEnlace(e.link_drive)">
+                                  <span class="icon is-small"><i class="fas fa-external-link-alt"></i></span>
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="has-text-centered"><input type="checkbox" v-model="e.entregado" :disabled="!esAdminOOwner" class="checkbox-ui"></td>
+                          <td class="has-text-centered"><input type="checkbox" v-model="e.aprobado" :disabled="!esAdminOOwner" class="checkbox-ui"></td>
+                          <td v-if="esAdminOOwner" class="has-text-centered">
+                            <button class="button is-ghost has-text-danger p-0" @click="form.entregables.splice(index, 1)"><i class="fas fa-trash-alt"></i></button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -171,10 +213,7 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      cargando: true,
-      guardando: false,
-      tabActiva: 'alcance',
-      proyectoOriginal: null,
+      cargando: true, guardando: false, tabActiva: 'alcance', proyectoOriginal: null,
       form: {
         id: null, nombre: '', descripcion: '', estado_id: null,
         fecha_cierre_1: '', fecha_cierre_2: '',
@@ -188,13 +227,8 @@ export default {
         { label: 'Alcance Prototipo', key: 'alcancePrototipo', blockKey: 'alcancePrototipoBloqueado' },
         { label: 'Alcance Final', key: 'alcanceFinal', blockKey: 'alcanceFinalBloqueado' }
       ],
-      estadosProyecto: [],
-      prioridades: [],
-      todasLasTareas: [],
-      miembrosAsignados: [],
-      busqueda: '',
-      resultadosBusqueda: [],
-      nuevoEntregableNombre: ''
+      estadosProyecto: [], prioridades: [], todasLasTareas: [], miembrosAsignados: [],
+      busqueda: '', resultadosBusqueda: [], nuevoEntregableNombre: ''
     }
   },
   computed: {
@@ -210,47 +244,37 @@ export default {
       this.cargando = true;
       const id = this.$route.params.id;
       try {
-        const [resConfig, resTareas] = await Promise.all([
-          configService.getTablasMaestras(),
-          tareaService.getAll()
-        ]);
-
+        const [resConfig, resTareas] = await Promise.all([configService.getTablasMaestras(), tareaService.getAll()]);
         this.estadosProyecto = resConfig.estadosProyecto || [];
         this.prioridades = resConfig.prioridades || [];
         this.todasLasTareas = resTareas.data || resTareas;
-
         const resProj = await projectService.getById(id);
-
         if (resProj.success) {
           const p = resProj.data;
           this.proyectoOriginal = p;
-          
           let idDetectado = null;
-          // Lógica de detección de estado por objeto o nombre
           if (p.estado_proyecto && typeof p.estado_proyecto === 'object') {
-            const nombre = p.estado_proyecto.nombre;
-            const match = this.estadosProyecto.find(e => e.nombre.trim().toUpperCase() === nombre.trim().toUpperCase());
+            const match = this.estadosProyecto.find(e => e.nombre.toUpperCase() === p.estado_proyecto.nombre.toUpperCase());
             idDetectado = match ? match.id : null;
-          } else if (typeof p.estado_proyecto === 'string') {
-            const match = this.estadosProyecto.find(e => e.nombre.trim().toUpperCase() === p.estado_proyecto.trim().toUpperCase());
-            idDetectado = match ? match.id : null;
-          } else if (p.estado_id) {
-            idDetectado = p.estado_id;
-          }
-
-          this.form = { 
-            ...p, 
-            estado_id: idDetectado ? Number(idDetectado) : null 
-          };
-          
+          } else if (p.estado_id) { idDetectado = p.estado_id; }
+          this.form = { ...p, estado_id: idDetectado ? Number(idDetectado) : null };
           this.form.entregables = p.entregables ? JSON.parse(JSON.stringify(p.entregables)) : [];
           this.miembrosAsignados = p.integrantes || p.Usuarios || [];
         }
-      } catch (err) {
-        console.error("Error crítico de carga:", err);
-      } finally {
-        this.cargando = false;
-      }
+      } catch (err) { console.error(err); } finally { this.cargando = false; }
+    },
+    enviarWhatsapp(te) {
+      if (!te) return;
+      // Limpiamos el número de cualquier carácter que no sea dígito
+      const numLimpio = String(te).replace(/\D/g, '');
+      // Asumimos código de país si no lo tiene, o lo dejamos tal cual si es internacional
+      const link = `https://wa.me/${numLimpio}`;
+      window.open(link, '_blank');
+    },
+    abrirEnlace(url) {
+      if (!url) return;
+      const link = url.startsWith('http') ? url : `https://${url}`;
+      window.open(link, '_blank');
     },
     agregarEntregableRAM() {
       if (!this.nuevoEntregableNombre.trim()) return;
@@ -259,13 +283,14 @@ export default {
     },
     quitarMiembro(id) { this.miembrosAsignados = this.miembrosAsignados.filter(m => m.id !== id); },
     calcularPuntos(uId) {
-      return (this.todasLasTareas || []).filter(t => Number(t.responsable_id) === Number(uId) && (Number(t.estado_id) === 2 || Number(t.estado_id) === 3)).reduce((acc, t) => acc + (this.prioridades.find(p => p.id === t.prioridad_id)?.peso || 0), 0);
+      return (this.todasLasTareas || []).filter(t => Number(t.responsable_id) === Number(uId) && (Number(t.estado_id) === 2 || Number(t.estado_id) === 3))
+        .reduce((acc, t) => acc + (this.prioridades.find(p => p.id === t.prioridad_id)?.peso || 0), 0);
     },
     getColorCarga(pts) { return pts >= 100 ? 'is-danger-badge' : pts >= 50 ? 'is-warning-badge' : 'is-success-badge'; },
     obtenerColorAvatar(rol) { return Number(rol) === 3 ? 'has-background-success-light has-text-success' : 'has-background-link-light has-text-link'; },
     obtenerIniciales(n) { return n ? n.split(' ').map(x => x[0]).join('').toUpperCase().substring(0, 2) : '?'; },
     async buscarUsuarios() {
-      if (this.busqueda.length < 2) return;
+      if (this.busqueda.length < 2) { this.resultadosBusqueda = []; return; }
       const authStore = useAuthStore();
       const res = await axios.get(`/api/usuarios?q=${this.busqueda}`, { headers: { 'Authorization': `Bearer ${authStore.token}` } });
       const idEscuelaProj = Number(this.proyectoOriginal.escuela_id);
@@ -286,31 +311,62 @@ export default {
       try {
         const authStore = useAuthStore();
         await axios.put(`/api/proyectos/${this.form.id}`, {
-          ...this.form,
-          usuariosIds: this.miembrosAsignados.map(m => m.id),
-          entregables: this.form.entregables
+          ...this.form, usuariosIds: this.miembrosAsignados.map(m => m.id), entregables: this.form.entregables
         }, { headers: { 'Authorization': `Bearer ${authStore.token}` } });
         this.volver();
-      } catch (err) {
-        console.error("Error al guardar:", err);
-      } finally { this.guardando = false; }
+      } catch (err) { console.error(err); } finally { this.guardando = false; }
     },
     volver() { this.$router.push('/dashboard'); }
   },
-  mounted() {
-    this.cargarTodo();
-  }
+  mounted() { this.cargarTodo(); }
 }
 </script>
 
 <style scoped>
-.custom-textarea { font-size: 1.15rem !important; line-height: 1.6; }
-.subtitle.is-3 { letter-spacing: -0.5px; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-.dashboard-bg { min-height: 100vh; background: linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.75)), url('../assets/fondo.jpg'); background-size: cover; background-attachment: fixed; }
+.dashboard-bg { min-height: 100vh; background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.9)), url('../assets/fondo.jpg'); background-size: cover; background-attachment: fixed; }
 .glass-panel { background: rgba(255, 255, 255, 0.05) !important; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
 .custom-tabs li a { color: #bdc3c7 !important; border-bottom: 2px solid transparent !important; }
 .custom-tabs li.is-active a { background-color: rgba(52, 152, 219, 0.2) !important; color: #3498db !important; border-bottom-color: #3498db !important; }
 .border-bottom-info { border-bottom: 2px solid rgba(52, 152, 219, 0.3); }
+
+/* BUSCADOR */
+.buscador-relativo { position: relative; }
+.search-results-floating {
+  position: absolute; top: 100%; left: 0; width: 100%; z-index: 1000;
+  background: rgba(25, 25, 25, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.5); margin-top: 5px;
+  max-height: 250px; overflow-y: auto;
+}
+.dropdown-item-custom { color: #fff !important; display: block; padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); cursor: pointer; }
+.dropdown-item-custom:hover { background: rgba(52, 152, 219, 0.4) !important; }
+
+/* TABLA ENTREGABLES PROFESIONAL */
+.delivery-table-v2 { background: transparent !important; }
+.delivery-table-v2 td { 
+  padding: 1.4rem 0.75rem !important; 
+  vertical-align: middle !important;
+  border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+}
+.data-text-bright { color: #ffffff !important; font-size: 1.1rem !important; font-weight: 700; text-shadow: 0px 0px 8px rgba(255, 255, 255, 0.2); }
+
+.custom-input-table {
+  background: rgba(0, 0, 0, 0.5) !important; color: #3498db !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  height: 2.8rem !important; font-size: 1rem !important; font-weight: 500;
+}
+.btn-open-link { height: 2.8rem !important; border: 1px solid rgba(52, 152, 219, 0.3) !important; background: rgba(52, 152, 219, 0.1) !important; }
+
+.custom-input-entregable {
+  background: rgba(0, 0, 0, 0.4) !important; color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+.custom-input-entregable::placeholder { color: rgba(255, 255, 255, 0.85) !important; opacity: 1 !important; font-weight: 500; }
+
+.checkbox-ui { transform: scale(1.4); cursor: pointer; }
+.delivery-row:hover { background: rgba(255, 255, 255, 0.03) !important; }
+
+/* OTROS */
 .is-dark-box { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; }
 .avatar-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 .workload-badge { min-width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; color: white; }
@@ -318,6 +374,4 @@ export default {
 .is-warning-badge { background: #ffe08a; color: #947600; }
 .is-danger-badge { background: #f14668; }
 .uppercase-label { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; font-weight: bold; }
-.search-results-floating { position: absolute; width: 100%; z-index: 1000; background: #222; border: 1px solid #444; }
-.overflow-y-auto { overflow-y: auto; }
 </style>

@@ -1,45 +1,45 @@
-/* Axios es una librería que funciona como un "cartero" especializado. 
-Su único trabajo es llevar una petición desde tu pantalla de Vue hasta tu 
-servidor de Node.js y traer la respuesta de vuelta.
-Axios entiende que hablas JSON. Cuando el backend le manda datos, Axios ya 
-te los entrega como un objeto de JavaScript listo para usar, sin que tengas que 
-transformarlos manualmente.
-*/
 import axios from 'axios';
 
 // Creamos una instancia de axios configurada
 const api = axios.create({    
-    //baseURL: import.meta.env.VITE_API_BASE_URL || '/api'    
     baseURL: import.meta.env.VITE_API_BASE_URL || '/api'
 });
 
-// Este "interceptor" servirá para que, una vez logueado, 
-// el token se envíe automáticamente en cada pedido.
+// INTERCEPTOR DE PEDIDO (REQUEST)
+// Envía automáticamente la llave (token) en cada viaje al servidor.
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {
-        //Confía en quien porte esta llave, no importa quién sea ni de dónde venga
         config.headers.Authorization = `Bearer ${token}`;
-        /*
-        Authorization: Es el campo donde va la identificación.
-        Bearer: Indica qué tipo de identificación estás usando (un token de portador).
-        ${token}: Es la llave real que generó tu Backend.
-
-        Bearer es la palabra estándar que le avisa al servidor: "Lo que viene a continuación 
-        es un Token JWT, tratalo como tal"
-        */
     }
     return config;
 });
 
+// INTERCEPTOR DE RESPUESTA (RESPONSE)
+// Escucha lo que dice el servidor al volver. Si el servidor dice 401 (Token inválido/expirado)
+// ejecutamos la limpieza y redirección.
+api.interceptors.response.use(
+    (response) => {
+        // Si todo salió bien (status 200-299), devolvemos la respuesta normal.
+        return response;
+    },
+    (error) => {
+        // Si hubo un error en la respuesta
+        if (error.response && error.response.status === 401) {
+            // 1. Limpiamos los datos locales para seguridad
+            localStorage.removeItem('token');
+            localStorage.removeItem('usuario');
+
+            // 2. Mostramos el aviso al usuario
+            alert("Tu sesión ha expirado o es inválida. Por favor, ingresa tus credenciales nuevamente.");
+
+            // 3. Redirección forzosa al Login que me pasaste
+            window.location.href = "http://eet24proyectos.ddns.net:3000/login";
+        }
+        
+        // Devolvemos el error para que si un componente específico quiere manejarlo, pueda.
+        return Promise.reject(error);
+    }
+);
+
 export default api;
-
-/*
-El Flujo Combinado:
-Axios recibe el Token del servidor.
-
-Pinia toma ese Token y le pide al navegador: "Guardame esto en el localStorage".
-
-La próxima vez que Axios tenga que pedir la lista de proyectos, irá al localStorage, 
-sacará el Token y lo enviará al Backend para demostrar quién sos.
-*/

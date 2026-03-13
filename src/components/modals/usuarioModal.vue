@@ -19,6 +19,10 @@ const fileInput = ref(null);
 const selectedFile = ref(null);
 const previewUrl = ref(null);
 
+// --- NUEVA LÓGICA DE TELÉFONO ---
+const codPais = ref('+54');
+const numLocal = ref('');
+
 const form = reactive({
   id: null, nombre: '', apellido: '', email: '', password: '',
   rol_id: 3, curso: '', division: '', telefono: '', activo: true, escuelas_ids: [],
@@ -28,8 +32,6 @@ const form = reactive({
 
 /**
  * Propósito: Identificar si el usuario logueado tiene rango de gestión.
- * Alimentado por: authStore.usuario.
- * Retorna: Boolean.
  */
 const esAdminODocente = computed(() => {
   const rol = Number(authStore.usuario?.rol_id);
@@ -38,8 +40,6 @@ const esAdminODocente = computed(() => {
 
 /**
  * Propósito: Identificar si el registro que se está visualizando pertenece al usuario logueado.
- * Alimentado por: Datos del formulario y authStore.
- * Retorna: Boolean.
  */
 const esPropioPerfil = computed(() => {
   return form.id && Number(authStore.usuario?.id) === Number(form.id);
@@ -67,25 +67,15 @@ const puedeEditarEstructura = computed(() => esAdminODocente.value);
 const puedeEditarDatosPropios = computed(() => esAdminODocente.value || esPropioPerfil.value);
 
 /**
- * Propósito: RESTRICCIÓN DE PRIVACIDAD. Solo el dueño de la cuenta puede alterar su foto.
- * Ni el administrador ni el docente pueden cambiar el avatar de otra persona.
- * Retorna: Boolean.
+ * Propósito: RESTRICCIÓN DE PRIVACIDAD.
  */
 const puedeCambiarAvatar = computed(() => {
-  // Si es un perfil nuevo, el admin puede subir foto.
   if (!esModoEdicion.value) return esAdminODocente.value;
-  // Si es edición, estrictamente el dueño del perfil.
   return esPropioPerfil.value;
 });
 
-/**
- * Propósito: Procesar la selección del archivo de imagen y generar preview.
- * Alimentado por: Input file (change).
- * Retorna: void.
- */
 const onFileSelected = (event) => {
-  if (!puedeCambiarAvatar.value) return; // Salvaguarda lógica
-  
+  if (!puedeCambiarAvatar.value) return; 
   const file = event.target.files[0];
   if (file) {
     if (file.size > 2 * 1024 * 1024) {
@@ -112,6 +102,16 @@ watch(() => props.isActive, (val) => {
 
     const u = props.usuarioEdit;
     if (u && (u.id || u.uid)) {
+      
+      // --- LÓGICA DE DESGLOSE DE TELÉFONO ---
+      if (u.telefono && u.telefono.startsWith('+')) {
+        codPais.value = u.telefono.substring(0, 3); // Toma "+54"
+        numLocal.value = u.telefono.substring(3);   // Toma el resto
+      } else {
+        codPais.value = '+54';
+        numLocal.value = u.telefono || '';
+      }
+
       Object.assign(form, {
         id: u.id || u.uid,
         nombre: u.nombre || '',
@@ -134,17 +134,14 @@ watch(() => props.isActive, (val) => {
 }, { immediate: true });
 
 const resetForm = () => {
+  codPais.value = '+54';
+  numLocal.value = '';
   Object.assign(form, {
     id: null, nombre: '', apellido: '', email: '', password: '',
     rol_id: 3, curso: '', division: 'A', telefono: '', activo: true, escuelas_ids: [], avatar: null, especialidad_id: 1
   });
 };
 
-/**
- * Propósito: Empaquetar datos en FormData y enviar al servicio de usuarios.
- * Alimentado por: Botón "Guardar" o "Actualizar".
- * Emite: 'usuario-guardado' y 'close' en éxito.
- */
 const guardar = async () => {
   enviando.value = true;
   errorMsg.value = '';
@@ -153,6 +150,9 @@ const guardar = async () => {
       throw new Error("Un alumno debe pertenecer a exactamente una escuela.");
     }
 
+    // --- CONCATENACIÓN PARA LA BD ---
+    const telefonoFinal = `${codPais.value}${numLocal.value.trim()}`;
+
     const formData = new FormData();
     formData.append('nombre', form.nombre);
     formData.append('apellido', form.apellido);
@@ -160,14 +160,13 @@ const guardar = async () => {
     formData.append('rol_id', form.rol_id);
     formData.append('curso', form.curso);
     formData.append('division', form.division);
-    formData.append('telefono', form.telefono);
+    formData.append('telefono', telefonoFinal); // Usamos el concatenado
     formData.append('activo', form.activo);
     formData.append('especialidad_id', form.especialidad_id);
     
     if (form.password) formData.append('password', form.password);
     form.escuelas_ids.forEach(id => formData.append('escuelas_ids[]', id));
 
-    // Solo adjuntar si hay archivo seleccionado Y tiene permiso
     if (selectedFile.value && puedeCambiarAvatar.value) {
       formData.append('avatar', selectedFile.value);
     }
@@ -264,7 +263,27 @@ const guardar = async () => {
 
           <div class="column is-6">
             <label class="label">Teléfono</label>
-            <input v-model="form.telefono" class="input" type="text" :disabled="!puedeEditarDatosPropios">
+            <div class="field has-addons">
+              <p class="control">
+                <input 
+                  v-model="codPais" 
+                  class="input has-text-centered has-text-weight-bold" 
+                  type="text" 
+                  style="width: 70px;" 
+                  placeholder="+54"
+                  :disabled="!puedeEditarDatosPropios"
+                >
+              </p>
+              <p class="control is-expanded">
+                <input 
+                  v-model="numLocal" 
+                  class="input" 
+                  type="text" 
+                  placeholder="3624XXXXXX" 
+                  :disabled="!puedeEditarDatosPropios"
+                >
+              </p>
+            </div>
           </div>
 
           <div class="column is-12">
@@ -341,7 +360,6 @@ const guardar = async () => {
 </template>
 
 <style scoped>
-/* Los estilos se mantienen exactamente igual */
 .avatar-container {
   position: relative;
   width: 128px;

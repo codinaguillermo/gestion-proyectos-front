@@ -125,7 +125,7 @@
               </div>
             </div>
 
-            <div v-if="form.id" class="glass-panel p-5 mb-5">
+            <div class="glass-panel p-5 mb-5">
               <label class="label has-text-info is-size-6 mb-3">Checklist de Calidad</label>
               <div class="field" v-for="chk in ['cumpleAceptacion', 'testeado', 'documentado', 'utilizable']" :key="chk">
                 <label class="checkbox has-text-white is-size-7">
@@ -135,7 +135,7 @@
               </div>
             </div>
 
-            <div v-if="form.documentado" class="glass-panel p-5">
+            <div v-if="form.documentado" class="glass-panel p-5 animate__animated animate__fadeIn">
               <label class="label has-text-info is-size-7">Link de Documentación</label>
               <input v-model="form.link_evidencia" class="input is-small custom-input" type="url" placeholder="https://docs.google.com/...">
             </div>
@@ -246,21 +246,17 @@ const guardarTarea = async () => {
   const estadoActual = Number(form.estado_id);
   const hsIngresadas = Number(horasNuevasDeHoy.value);
 
-  // 1. Validación de Horas Estimadas
   if (Number(form.horas_estimadas) <= 0) {
     errorValidacion.value = "Las horas estimadas deben ser mayores a 0.";
     return;
   }
 
-  // 2. Validación de Horas Reales (Time Tracking)
   if (estadoActual !== 1 && estadoActual !== ID_DONE && esEdicion.value && hsIngresadas <= 0) {
     errorValidacion.value = "Debes ingresar las horas trabajadas hoy.";
     return;
   }
 
-  // 3. NUEVA VALIDACIÓN: Bloqueo de dependencias para pasar a DONE
   if (estadoActual === ID_DONE && form.dependenciasIds.length > 0) {
-    // Buscamos si alguna de las tareas de las que depende NO está en DONE
     const dependenciasPendientes = tareasHermanas.value.filter(t => 
       form.dependenciasIds.includes(t.id) && 
       String(t.estado_detalle?.nombre).toUpperCase() !== 'DONE'
@@ -269,8 +265,6 @@ const guardarTarea = async () => {
     if (dependenciasPendientes.length > 0) {
       const nombres = dependenciasPendientes.map(t => t.titulo).join(', ');
       errorValidacion.value = `No puedes finalizar esta tarea porque depende de: [${nombres}] que aún no están en DONE.`;
-      
-      // Hacer scroll al error para que el usuario lo vea
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -301,7 +295,6 @@ onMounted(cargarDatos);
 .dashboard-bg { min-height: 100vh; background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.9)), url('../assets/fondo.jpg'); background-size: cover; background-attachment: fixed; }
 .glass-panel { background: rgba(255, 255, 255, 0.05) !important; backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
 
-/* --- CONTRASTE MÁXIMO --- */
 .custom-input, .custom-input-hs {
   background-color: #fff9e6 !important;
   color: #000000 !important;
@@ -321,6 +314,5 @@ onMounted(cargarDatos);
 }
 
 .custom-input-hs { background-color: #ebf5ff !important; border-color: #3273dc !important; }
-
 .border-info { border: 1px solid #3273dc !important; }
 </style>

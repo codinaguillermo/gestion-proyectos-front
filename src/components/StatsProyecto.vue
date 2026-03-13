@@ -17,7 +17,7 @@
     <div v-else class="columns is-multiline">
       <div class="column is-7">
         <h5 class="subtitle is-5 ml-2 mb-4">
-          <i class="fas fa-tasks mr-2 has-text-grey"></i>Progreso por User Story
+          <i class="fas fa-tasks mr-2 has-text-grey"></i>Progreso por User Story (Sólo UserStories con tareas definidas)
         </h5>
         
         <div v-for="(segmentos, titulo) in avanceAgrupado" :key="titulo" class="us-stat-card mb-4 p-4">

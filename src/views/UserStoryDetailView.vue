@@ -31,24 +31,60 @@
             </div>
           </div>
           <div class="border-top-glass pt-4">
-            <h1 class="title has-text-white is-4 mb-0">{{ esEdicion ? editForm.titulo : 'Definir Nueva Etapa' }}</h1>
+            <h1 class="title has-text-white is-4 mb-0">
+              {{ esEdicion ? editForm.titulo : 'Definir Nueva Etapa / US' }}
+            </h1>
           </div>
         </div>
+
+        <transition name="fade">
+          <div v-if="mensajeExito" class="notification is-success is-light mb-5 animate__animated animate__fadeInDown">
+            <button class="delete" @click="mensajeExito = ''"></button>
+            <span class="icon mr-2"><i class="fas fa-check-circle"></i></span>
+            <strong>¡Excelente!</strong> {{ mensajeExito }}
+          </div>
+        </transition>
+
+        <transition name="fade">
+          <div v-if="errorMsg" class="notification is-danger is-light mb-5 animate__animated animate__shakeX">
+            <button class="delete" @click="errorMsg = ''"></button>
+            <span class="icon mr-2"><i class="fas fa-exclamation-circle"></i></span>
+            <strong>Error:</strong> {{ errorMsg }}
+          </div>
+        </transition>
 
         <div class="columns is-multiline mb-5">
           <div class="column is-8">
             <div class="glass-panel p-5" style="height: 100%;">
               <div class="field mb-5">
                 <label class="label has-text-white is-size-5">Título del Entregable</label>
-                <textarea class="textarea is-medium custom-input" rows="2" v-model="editForm.titulo" :disabled="!puedeGestionarEstructura" placeholder="Ej: Como usuario quiero..."></textarea>
+                <textarea 
+                  class="textarea is-medium custom-input" 
+                  rows="2" 
+                  v-model="editForm.titulo" 
+                  :disabled="!puedeGestionarEstructura" 
+                  placeholder="Ej: Como usuario quiero que el sistema me permita registrar..."
+                ></textarea>
               </div>
               <div class="field mb-5">
                 <label class="label has-text-white is-size-5">Descripción Detallada</label>
-                <textarea class="textarea is-medium custom-input" v-model="editForm.descripcion" rows="4" :disabled="!puedeGestionarEstructura" placeholder="Valor de negocio..."></textarea>
+                <textarea 
+                  class="textarea is-medium custom-input" 
+                  v-model="editForm.descripcion" 
+                  rows="4" 
+                  :disabled="!puedeGestionarEstructura" 
+                  placeholder="Explique el valor de negocio o técnico de este avance..."
+                ></textarea>
               </div>
               <div class="field">
                 <label class="label has-text-white is-size-5">Criterios de Aceptación</label>
-                <textarea class="textarea is-medium custom-input" v-model="editForm.condiciones" rows="3" :disabled="!puedeGestionarEstructura" placeholder="Condiciones para aprobar..."></textarea>
+                <textarea 
+                  class="textarea is-medium custom-input" 
+                  v-model="editForm.condiciones" 
+                  rows="3" 
+                  :disabled="!puedeGestionarEstructura" 
+                  placeholder="Enumere las condiciones para dar por terminada esta US..."
+                ></textarea>
               </div>
             </div>
           </div>
@@ -77,22 +113,9 @@
                 <div class="control has-icons-left">
                   <input type="date" class="input is-medium custom-input" v-model="editForm.fecha_entrega" :disabled="!puedeGestionarEstructura">
                   <span class="icon is-small is-left">
-                    <i class="fas fa-calendar" :class="colorSemaforo"></i>
+                    <i class="fas fa-calendar"></i>
                   </span>
                 </div>
-                <p v-if="editForm.fecha_entrega" class="help mt-2 is-size-6 has-text-weight-bold" :class="colorSemaforo">
-                  <span class="icon is-small"><i class="fas fa-circle"></i></span>
-                  <span class="ml-1 is-uppercase">{{ textoSemaforo }}</span>
-                </p>
-              </div>
-
-              <div class="notification is-info is-light p-5 mt-5">
-                <p class="is-size-5 has-text-dark has-text-weight-medium">
-                  <span class="icon is-medium has-text-info mr-2">
-                    <i class="fas fa-lightbulb"></i>
-                  </span>
-                  <strong>Tip Docente:</strong> Divida la US en tareas pequeñas para reportes diarios.
-                </p>
               </div>
             </div>
           </div>
@@ -119,12 +142,11 @@
                       <th class="has-text-info has-text-centered">Estado</th>
                       <th class="has-text-info has-text-centered">Estimado</th>
                       <th class="has-text-info has-text-centered">Trabajado</th>
-                      <th class="has-text-info has-text-right">Acciones</th>
+                      <th v-if="puedeGestionarEstructura" class="has-text-info has-text-centered">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="tarea in tareas" :key="tarea.id" 
-                        :class="['custom-row-hover', obtenerClaseFilaTarea(tarea)]">
+                    <tr v-for="tarea in tareas" :key="tarea.id" class="custom-row-hover clickable-row" @click="editarTarea(tarea)">
                       <td class="data-text-bright">{{ tarea.titulo }}</td>
                       <td class="data-text-bright">
                         {{ tarea.responsable ? `${tarea.responsable.apellido.toUpperCase()}, ${tarea.responsable.nombre}` : 'SIN ASIGNAR' }}
@@ -136,9 +158,9 @@
                       </td>
                       <td class="has-text-centered data-text-bright">{{ tarea.horas_estimadas || 0 }}h</td>
                       <td class="has-text-centered data-text-bright">{{ tarea.horasReales || 0 }}h</td>
-                      <td class="has-text-right">
-                        <button class="button is-small is-info is-inverted" @click="editarTarea(tarea)">
-                          <i class="fas fa-edit"></i>
+                      <td v-if="puedeGestionarEstructura" class="has-text-centered" @click.stop>
+                        <button class="button is-danger is-inverted is-small" @click="confirmarEliminarTarea(tarea)">
+                          <span class="icon"><i class="fas fa-trash"></i></span>
                         </button>
                       </td>
                     </tr>
@@ -151,6 +173,13 @@
 
       </div>
     </div>
+    
+    <ConfirmarModal 
+      :isActive="isConfirmTareaActive" 
+      :mensaje="`¿Estás seguro de eliminar la tarea?`" 
+      @confirmar="ejecutarEliminacionTarea" 
+      @cancelar="isConfirmTareaActive = false" 
+    />
   </div>
 </template>
 
@@ -159,6 +188,8 @@ import { ref, reactive, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import userStoryService from '../services/userStory.service';
+import tareaService from '../services/tarea.service';
+import ConfirmarModal from '../components/modals/ConfirmarModal.vue';
 import api from '../services/api';
 
 const route = useRoute();
@@ -166,9 +197,13 @@ const router = useRouter();
 const authStore = useAuthStore();
 
 const enviando = ref(false);
+const mensajeExito = ref('');
+const errorMsg = ref('');
 const prioridades = ref([]);
 const estados = ref([]);
 const tareas = ref([]);
+const isConfirmTareaActive = ref(false);
+const tareaAEliminar = ref(null);
 
 const editForm = reactive({
   id: null, proyecto_id: route.params.id, titulo: '', descripcion: '', condiciones: '',
@@ -176,38 +211,6 @@ const editForm = reactive({
 });
 
 const esEdicion = computed(() => !!route.params.usId && route.params.usId !== 'nueva');
-
-const colorSemaforo = computed(() => {
-  if (!editForm.fecha_entrega) return 'has-text-grey';
-  const hoy = new Date(); hoy.setHours(0,0,0,0);
-  const entrega = new Date(editForm.fecha_entrega); entrega.setHours(0,0,0,0);
-  const diffDays = Math.ceil((entrega - hoy) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return 'has-text-danger';
-  if (diffDays <= 3) return 'has-text-warning';
-  return 'has-text-success';
-});
-
-const textoSemaforo = computed(() => {
-  if (!editForm.fecha_entrega) return '';
-  const hoy = new Date(); hoy.setHours(0,0,0,0);
-  const entrega = new Date(editForm.fecha_entrega); entrega.setHours(0,0,0,0);
-  const diffDays = Math.ceil((entrega - hoy) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return 'ENTREGA VENCIDA';
-  if (diffDays === 0) return 'ENTREGA HOY';
-  if (diffDays <= 3) return `CIERRA EN ${diffDays} DÍAS`;
-  return 'A TIEMPO';
-});
-
-const obtenerClaseFilaTarea = (tarea) => {
-  if (String(tarea.estado_detalle?.nombre).toUpperCase() === 'DONE') return '';
-  if (!editForm.fecha_entrega) return '';
-  const hoy = new Date(); hoy.setHours(0,0,0,0);
-  const entrega = new Date(editForm.fecha_entrega); entrega.setHours(0,0,0,0);
-  const diffDays = Math.ceil((entrega - hoy) / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return 'row-critical'; 
-  if (diffDays <= 2) return 'row-warning-blink'; 
-  return '';
-};
 
 const puedeGestionarEstructura = computed(() => {
   const u = authStore.usuario;
@@ -219,6 +222,7 @@ const cargarDatos = async () => {
     const [resP, resE] = await Promise.all([api.get('/common/prioridades-us'), api.get('/common/estados-us')]);
     prioridades.value = resP.data;
     estados.value = resE.data;
+    
     if (esEdicion.value) {
       const resUS = await userStoryService.getById(route.params.usId);
       const us = resUS.data; 
@@ -232,26 +236,62 @@ const cargarDatos = async () => {
 };
 
 const guardarCambios = async () => {
+  errorMsg.value = '';
+  mensajeExito.value = '';
+
+  if (!editForm.titulo || editForm.titulo.trim() === '') {
+    errorMsg.value = "El título es obligatorio.";
+    return;
+  }
+
   enviando.value = true;
+  
   try {
+    const payload = { ...editForm };
+    
+    if (!payload.fecha_entrega || 
+        payload.fecha_entrega === '' || 
+        String(payload.fecha_entrega).toLowerCase().includes('invalid')) {
+      payload.fecha_entrega = null;
+    }
+
     if (esEdicion.value) {
-      await userStoryService.update(editForm.id, editForm);
+      await userStoryService.update(editForm.id, payload);
       router.back();
     } else {
-      const res = await userStoryService.create(editForm);
-      router.replace(`/proyectos/${editForm.proyecto_id}/backlog/${res.data.id}`);
+      const res = await userStoryService.create(payload);
+      const nuevaUS = res.data.id ? res.data : (res.data.tarea || res.data.userStory);
+      
+      if (nuevaUS && nuevaUS.id) {
+        editForm.id = nuevaUS.id;
+        router.replace(`/proyectos/${payload.proyecto_id}/backlog/${nuevaUS.id}`);
+        await cargarDatos();
+        mensajeExito.value = "User Story creada. Ya puedes asignar tareas técnicas.";
+      } else {
+        router.back();
+      }
     }
-  } catch (error) { console.error(error); } finally { enviando.value = false; }
+  } catch (error) {
+    console.error("Error al procesar la US:", error);
+    errorMsg.value = error.response?.data?.mensaje || "Error al conectar con el servidor.";
+  } finally {
+    enviando.value = false;
+  }
 };
 
 const nuevaTarea = () => router.push(`/proyectos/${route.params.id}/backlog/${route.params.usId}/tarea/nueva`);
 const editarTarea = (tarea) => router.push(`/proyectos/${route.params.id}/backlog/${route.params.usId}/tarea/${tarea.id}`);
 
+const confirmarEliminarTarea = (t) => { tareaAEliminar.value = t; isConfirmTareaActive.value = true; };
+const ejecutarEliminacionTarea = async () => {
+  await tareaService.delete(tareaAEliminar.value.id);
+  isConfirmTareaActive.value = false;
+  cargarDatos();
+};
+
 const obtenerClaseEstadoTag = (tarea) => {
   const nombre = String(tarea.estado_detalle?.nombre || '').toUpperCase();
-  if (nombre === 'DONE') return 'is-success';
-  if (nombre === 'TO DO' || nombre === 'PENDIENTE') return 'is-danger';
-  return 'is-warning';
+  return nombre === 'DONE' ? 'is-success' : (nombre === 'BACKLOG' || nombre === 'TO DO' ? 'is-danger' : 'is-warning');
 };
 
 onMounted(cargarDatos);
@@ -260,23 +300,29 @@ onMounted(cargarDatos);
 <style scoped>
 .dashboard-bg { min-height: 100vh; background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.9)), url('../assets/fondo.jpg'); background-size: cover; background-attachment: fixed; }
 .glass-panel { background: rgba(255, 255, 255, 0.05) !important; backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
-.custom-input { background: rgba(0,0,0,0.3) !important; color: white !important; border: 1px solid rgba(255,255,255,0.2) !important; }
 
-/* ESTILO UNIFICADO DE ALTO BRILLO: Letras blancas brillantes para todos los campos */
-.data-text-bright {
-  color: #ffffff !important;
-  font-size: 1.15rem !important;
-  font-weight: 700 !important;
-  text-shadow: 0px 0px 8px rgba(255, 255, 255, 0.2);
+.custom-input { 
+  background: rgba(0,0,0,0.3) !important; 
+  color: white !important; 
+  border: 1px solid rgba(255,255,255,0.2) !important; 
 }
 
-/* FONDOS ELIMINADOS: Las filas ahora son transparentes */
-.row-critical { background-color: transparent !important; }
-.row-warning-blink { background-color: transparent !important; }
+.custom-input::placeholder { color: rgba(255, 255, 255, 0.7) !important; opacity: 1; }
+.custom-input::-webkit-input-placeholder { color: rgba(255, 255, 255, 0.7) !important; }
 
+.data-text-bright { color: #ffffff !important; font-size: 1.15rem !important; font-weight: 700; text-shadow: 0px 0px 8px rgba(255, 255, 255, 0.2); }
 .glass-table { background: transparent !important; }
 .glass-table td { padding: 1.2rem 0.75rem !important; vertical-align: middle; }
-.custom-row-hover:hover { background-color: rgba(255, 255, 255, 0.1) !important; }
+.clickable-row { cursor: pointer; }
+.clickable-row:hover { background-color: rgba(52, 152, 219, 0.15) !important; }
 .letter-spacing-1 { letter-spacing: 1px; }
 .border-top-glass { border-top: 1px solid rgba(255, 255, 255, 0.1); }
+
+/* Animación sutil para las notificaciones */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
 </style>
