@@ -10,7 +10,7 @@
             </button>
             <div>
               <h1 class="title has-text-white is-2 mb-1">Configuración del Proyecto</h1>
-              <p class="subtitle is-3 has-text-info has-text-weight-bold">{{ form.nombre || 'Cargando...' }}</p>
+              <p class="subtitle is-3 has-text-info has-text-weight-bold">{{ form?.nombre || 'Cargando...' }}</p>
             </div>
           </div>
           <div class="level-right">
@@ -28,7 +28,7 @@
           <span class="icon"><i class="fas fa-spinner fa-pulse"></i></span> Obteniendo información del servidor...
         </div>
 
-        <div class="columns is-variable is-5" v-else>
+        <div class="columns is-variable is-5" v-else-if="form && form.id">
           <div class="column is-4">
             <div class="box glass-panel h-full p-5">
               <h3 class="title is-5 has-text-info border-bottom-info pb-3 mb-5 uppercase-label">
@@ -39,7 +39,8 @@
                 <label class="label has-text-grey-lighter is-small uppercase-label">Estado Actual</label>
                 <div class="control has-icons-left">
                   <div class="select is-fullwidth is-dark">
-                    <select v-model.number="form.estado_id" :disabled="!esAdminOOwner">
+                    <select v-model.number="form.estado_id">
+                      <option :value="null" disabled>Seleccione un estado</option>
                       <option v-for="est in estadosProyecto" :key="est.id" :value="Number(est.id)">
                         {{ est.nombre }}
                       </option>
@@ -52,20 +53,20 @@
               <div class="field mb-5">
                 <label class="label has-text-grey-lighter is-small uppercase-label">1er Cierre (Prototipo)</label>
                 <div class="control">
-                  <input class="input is-dark" type="date" v-model="form.fecha_cierre_1" :disabled="!esAdminOOwner">
+                  <input class="input is-dark" type="date" v-model="form.fecha_cierre_1">
                 </div>
               </div>
 
               <div class="field mb-5">
                 <label class="label has-text-grey-lighter is-small uppercase-label">2do Cierre (Final)</label>
                 <div class="control">
-                  <input class="input is-dark" type="date" v-model="form.fecha_cierre_2" :disabled="!esAdminOOwner">
+                  <input class="input is-dark" type="date" v-model="form.fecha_cierre_2">
                 </div>
               </div>
 
               <div class="field mt-6">
                 <label class="label has-text-grey-lighter is-small uppercase-label">Descripción General</label>
-                <textarea class="textarea is-dark" rows="5" v-model="form.descripcion" :disabled="!esAdminOOwner"></textarea>
+                <textarea class="textarea is-dark" rows="5" v-model="form.descripcion"></textarea>
               </div>
             </div>
           </div>
@@ -89,25 +90,15 @@
               <div class="p-5 flex-grow-1 overflow-y-auto" style="max-height: 65vh;">
                 <div v-if="tabActiva === 'alcance'">
                   <div v-for="campo in camposAlcance" :key="campo.key" class="field mb-6">
-                    <label class="label has-text-white is-size-6 is-flex is-justify-content-between mb-3">
-                      <span>{{ campo.label }}</span>
-                      <span v-if="form[campo.blockKey]" class="tag is-success is-light has-text-weight-bold">APROBADO</span>
-                    </label>
-                    <div class="field has-addons">
-                      <div class="control is-expanded">
-                        <textarea class="textarea is-dark custom-textarea" rows="5" v-model="form[campo.key]" :readonly="form[campo.blockKey]"></textarea>
-                      </div>
-                      <div class="control" v-if="esAdminOOwner">
-                        <button class="button is-dark" style="height: 100%" @click="form[campo.blockKey] = !form[campo.blockKey]">
-                          <span class="icon"><i class="fas" :class="form[campo.blockKey] ? 'fa-lock' : 'fa-lock-open'"></i></span>
-                        </button>
-                      </div>
+                    <label class="label has-text-white is-size-6 mb-3">{{ campo.label }}</label>
+                    <div class="control">
+                      <textarea class="textarea is-dark custom-textarea" rows="5" v-model="form[campo.key]"></textarea>
                     </div>
                   </div>
                 </div>
 
                 <div v-if="tabActiva === 'equipo'">
-                  <div v-if="esAdminOOwner" class="field mb-5 buscador-relativo">
+                  <div class="field mb-5 buscador-relativo">
                     <div class="control has-icons-left">
                       <input class="input is-dark is-rounded is-medium" type="text" v-model="busqueda" @input="buscarUsuarios" placeholder="Escribe apellido o nombre...">
                       <span class="icon is-left has-text-info"><i class="fas fa-search"></i></span>
@@ -130,17 +121,8 @@
                             <p class="has-text-white has-text-weight-bold mb-0">{{ miembro.nombre }} {{ miembro.apellido }}</p>
                             <p class="has-text-grey-light is-size-7" v-if="miembro.telefono">TE: {{ miembro.telefono }}</p>
                           </div>
-                          <div class="media-right is-flex is-align-items-center">
-                            <div v-if="calcularPuntos(miembro.id) > 0" class="workload-badge mr-2" :class="getColorCarga(calcularPuntos(miembro.id))">{{ calcularPuntos(miembro.id) }}</div>
-                            <button 
-                              v-if="miembro.telefono" 
-                              class="button is-ghost has-text-success p-0 mr-3" 
-                              title="Enviar WhatsApp"
-                              @click="enviarWhatsapp(miembro.telefono)"
-                            >
-                              <i class="fab fa-whatsapp fa-lg"></i>
-                            </button>
-                            <button v-if="esAdminOOwner" class="button is-ghost has-text-danger p-0" @click="quitarMiembro(miembro.id)"><i class="fas fa-user-minus"></i></button>
+                          <div class="media-right">
+                            <button class="button is-ghost has-text-danger p-0" @click="quitarMiembro(miembro.id)"><i class="fas fa-user-minus"></i></button>
                           </div>
                         </article>
                       </div>
@@ -149,9 +131,9 @@
                 </div>
 
                 <div v-if="tabActiva === 'entregables'">
-                  <div v-if="esAdminOOwner" class="field has-addons mb-6">
+                  <div class="field has-addons mb-6">
                     <div class="control is-expanded">
-                      <input class="input is-medium custom-input-entregable" type="text" v-model="nuevoEntregableNombre" placeholder="Nombre del nuevo documento..." @keyup.enter="agregarEntregableRAM">
+                      <input class="input is-medium custom-input-entregable" type="text" v-model="nuevoEntregableNombre" placeholder="Nombre del nuevo documento o entregable..." @keyup.enter="agregarEntregableRAM">
                     </div>
                     <div class="control">
                       <button class="button is-info is-medium" @click="agregarEntregableRAM"><i class="fas fa-plus"></i></button>
@@ -162,32 +144,30 @@
                     <table class="table is-fullwidth glass-table delivery-table-v2">
                       <thead>
                         <tr>
-                          <th class="has-text-info">Documento</th>
-                          <th class="has-text-info">Enlace de Drive</th>
-                          <th class="has-text-centered has-text-info">E</th>
-                          <th class="has-text-centered has-text-info">A</th>
-                          <th v-if="esAdminOOwner"></th>
+                          <th class="has-text-info">Documento / Item</th>
+                          <th class="has-text-info">Enlace (Drive, Figma, GitHub, etc)</th>
+                          <th class="has-text-centered has-text-info" style="width: 50px;"></th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr v-for="(e, index) in form.entregables" :key="index" class="delivery-row">
-                          <td class="data-text-bright">{{ e.nombre }}</td>
+                          <td class="data-text-bright" style="width: 35%;">{{ e.nombre }}</td>
                           <td>
                             <div class="field has-addons">
                               <div class="control is-expanded">
-                                <input class="input custom-input-table" type="text" v-model="e.link_drive" placeholder="Pegue el enlace aquí">
+                                <input class="input custom-input-table" type="text" v-model="e.link_drive" placeholder="Agregue el enlace aquí">
                               </div>
                               <div class="control">
-                                <button class="button is-info is-outlined btn-open-link" title="Abrir en nueva pestaña" :disabled="!e.link_drive" @click="abrirEnlace(e.link_drive)">
+                                <button class="button is-info is-outlined btn-open-link" title="Abrir enlace" :disabled="!e.link_drive" @click="abrirEnlace(e.link_drive)">
                                   <span class="icon is-small"><i class="fas fa-external-link-alt"></i></span>
                                 </button>
                               </div>
                             </div>
                           </td>
-                          <td class="has-text-centered"><input type="checkbox" v-model="e.entregado" :disabled="!esAdminOOwner" class="checkbox-ui"></td>
-                          <td class="has-text-centered"><input type="checkbox" v-model="e.aprobado" :disabled="!esAdminOOwner" class="checkbox-ui"></td>
-                          <td v-if="esAdminOOwner" class="has-text-centered">
-                            <button class="button is-ghost has-text-danger p-0" @click="form.entregables.splice(index, 1)"><i class="fas fa-trash-alt"></i></button>
+                          <td class="has-text-centered">
+                            <button class="button is-ghost has-text-danger p-0" @click="form.entregables.splice(index, 1)">
+                              <i class="fas fa-trash-alt"></i>
+                            </button>
                           </td>
                         </tr>
                       </tbody>
@@ -197,6 +177,10 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <div v-else-if="!cargando" class="notification is-danger glass-notification">
+          No se pudo cargar la información del proyecto.
         </div>
       </div>
     </div>
@@ -213,30 +197,28 @@ import axios from 'axios';
 export default {
   data() {
     return {
-      cargando: true, guardando: false, tabActiva: 'alcance', proyectoOriginal: null,
+      cargando: true,
+      guardando: false,
+      tabActiva: 'alcance',
+      proyectoOriginal: null,
+      busqueda: '',
+      resultadosBusqueda: [],
+      nuevoEntregableNombre: '',
+      estadosProyecto: [],
+      prioridades: [],
+      todasLasTareas: [],
+      miembrosAsignados: [],
       form: {
         id: null, nombre: '', descripcion: '', estado_id: null,
         fecha_cierre_1: '', fecha_cierre_2: '',
-        objetivo: '', objetivoBloqueado: false,
-        alcancePrototipo: '', alcancePrototipoBloqueado: false,
-        alcanceFinal: '', alcanceFinalBloqueado: false,
+        objetivo: '', alcancePrototipo: '', alcanceFinal: '',
         entregables: []
       },
       camposAlcance: [
-        { label: 'Objetivo General', key: 'objetivo', blockKey: 'objetivoBloqueado' },
-        { label: 'Alcance Prototipo', key: 'alcancePrototipo', blockKey: 'alcancePrototipoBloqueado' },
-        { label: 'Alcance Final', key: 'alcanceFinal', blockKey: 'alcanceFinalBloqueado' }
-      ],
-      estadosProyecto: [], prioridades: [], todasLasTareas: [], miembrosAsignados: [],
-      busqueda: '', resultadosBusqueda: [], nuevoEntregableNombre: ''
-    }
-  },
-  computed: {
-    esAdminOOwner() {
-      const authStore = useAuthStore();
-      const user = authStore.usuario;
-      const ownerId = this.proyectoOriginal ? Number(this.proyectoOriginal.docente_owner_id) : null;
-      return user && (Number(user.rol_id) === 1 || Number(user.id) === ownerId);
+        { label: 'Objetivo General', key: 'objetivo' },
+        { label: 'Alcance Prototipo', key: 'alcancePrototipo' },
+        { label: 'Alcance Final', key: 'alcanceFinal' }
+      ]
     }
   },
   methods: {
@@ -244,32 +226,40 @@ export default {
       this.cargando = true;
       const id = this.$route.params.id;
       try {
-        const [resConfig, resTareas] = await Promise.all([configService.getTablasMaestras(), tareaService.getAll()]);
+        // 1. CARGAMOS CONFIGURACIÓN PRIMERO (Importante para que el Select tenga datos)
+        const [resConfig, resTareas] = await Promise.all([
+          configService.getTablasMaestras(),
+          tareaService.getAll()
+        ]);
         this.estadosProyecto = resConfig.estadosProyecto || [];
         this.prioridades = resConfig.prioridades || [];
         this.todasLasTareas = resTareas.data || resTareas;
+
+        // 2. RECIÉN AHORA BUSCAMOS EL PROYECTO
         const resProj = await projectService.getById(id);
         if (resProj.success) {
           const p = resProj.data;
           this.proyectoOriginal = p;
-          let idDetectado = null;
-          if (p.estado_proyecto && typeof p.estado_proyecto === 'object') {
-            const match = this.estadosProyecto.find(e => e.nombre.toUpperCase() === p.estado_proyecto.nombre.toUpperCase());
-            idDetectado = match ? match.id : null;
-          } else if (p.estado_id) { idDetectado = p.estado_id; }
-          this.form = { ...p, estado_id: idDetectado ? Number(idDetectado) : null };
+          
+          // Mapeamos los campos del proyecto al formulario
+          this.form = {
+            ...p,
+            estado_id: p.estado_id ? Number(p.estado_id) : (p.estado_proyecto?.id ? Number(p.estado_proyecto.id) : null)
+          };
+
+          // Debug para consola: esto te dirá qué ID está intentando cargar
+          console.log("PROYECTO CARGADO:", p.nombre);
+          console.log("ID ESTADO DETECTADO:", this.form.estado_id);
+          console.log("LISTA ESTADOS DISPONIBLES:", this.estadosProyecto);
+
           this.form.entregables = p.entregables ? JSON.parse(JSON.stringify(p.entregables)) : [];
           this.miembrosAsignados = p.integrantes || p.Usuarios || [];
         }
-      } catch (err) { console.error(err); } finally { this.cargando = false; }
-    },
-    enviarWhatsapp(te) {
-      if (!te) return;
-      // Limpiamos el número de cualquier carácter que no sea dígito
-      const numLimpio = String(te).replace(/\D/g, '');
-      // Asumimos código de país si no lo tiene, o lo dejamos tal cual si es internacional
-      const link = `https://wa.me/${numLimpio}`;
-      window.open(link, '_blank');
+      } catch (err) {
+        console.error("Error cargando todo:", err);
+      } finally {
+        this.cargando = false;
+      }
     },
     abrirEnlace(url) {
       if (!url) return;
@@ -278,28 +268,32 @@ export default {
     },
     agregarEntregableRAM() {
       if (!this.nuevoEntregableNombre.trim()) return;
-      this.form.entregables.push({ nombre: this.nuevoEntregableNombre.trim(), link_drive: '', entregado: false, aprobado: false });
+      this.form.entregables.push({
+        nombre: this.nuevoEntregableNombre.trim(),
+        link_drive: ''
+      });
       this.nuevoEntregableNombre = '';
     },
-    quitarMiembro(id) { this.miembrosAsignados = this.miembrosAsignados.filter(m => m.id !== id); },
-    calcularPuntos(uId) {
-      return (this.todasLasTareas || []).filter(t => Number(t.responsable_id) === Number(uId) && (Number(t.estado_id) === 2 || Number(t.estado_id) === 3))
-        .reduce((acc, t) => acc + (this.prioridades.find(p => p.id === t.prioridad_id)?.peso || 0), 0);
+    quitarMiembro(id) {
+      this.miembrosAsignados = this.miembrosAsignados.filter(m => m.id !== id);
     },
-    getColorCarga(pts) { return pts >= 100 ? 'is-danger-badge' : pts >= 50 ? 'is-warning-badge' : 'is-success-badge'; },
-    obtenerColorAvatar(rol) { return Number(rol) === 3 ? 'has-background-success-light has-text-success' : 'has-background-link-light has-text-link'; },
-    obtenerIniciales(n) { return n ? n.split(' ').map(x => x[0]).join('').toUpperCase().substring(0, 2) : '?'; },
+    obtenerColorAvatar(rol) {
+      return Number(rol) === 3 ? 'has-background-success-light has-text-success' : 'has-background-link-light has-text-link';
+    },
+    obtenerIniciales(n) {
+      return n ? n.split(' ').map(x => x[0]).join('').toUpperCase().substring(0, 2) : '?';
+    },
     async buscarUsuarios() {
       if (this.busqueda.length < 2) { this.resultadosBusqueda = []; return; }
-      const authStore = useAuthStore();
-      const res = await axios.get(`/api/usuarios?q=${this.busqueda}`, { headers: { 'Authorization': `Bearer ${authStore.token}` } });
-      const idEscuelaProj = Number(this.proyectoOriginal.escuela_id);
-      this.resultadosBusqueda = res.data.filter(u => {
-        if (!u.activo || this.miembrosAsignados.some(m => m.id === u.id)) return false;
-        if (Number(u.rol_id) !== 3) return true;
-        const schools = u.usuario_escuelas || u.Escuelas || [];
-        return schools.some(rel => Number(rel.escuela_id || rel.id) === idEscuelaProj) || Number(u.escuela_id) === idEscuelaProj;
-      });
+      try {
+        const authStore = useAuthStore();
+        const res = await axios.get(`/api/usuarios?q=${this.busqueda}&escuela_id=${this.proyectoOriginal.escuela_id}`, {
+          headers: { 'Authorization': `Bearer ${authStore.token}` }
+        });
+        this.resultadosBusqueda = res.data.filter(u => {
+          return u.activo && !this.miembrosAsignados.some(m => m.id === u.id);
+        });
+      } catch (err) { console.error(err); }
     },
     seleccionarUsuario(u) {
       this.miembrosAsignados.push({ ...u });
@@ -311,10 +305,11 @@ export default {
       try {
         const authStore = useAuthStore();
         await axios.put(`/api/proyectos/${this.form.id}`, {
-          ...this.form, usuariosIds: this.miembrosAsignados.map(m => m.id), entregables: this.form.entregables
+          ...this.form,
+          usuariosIds: this.miembrosAsignados.map(m => m.id)
         }, { headers: { 'Authorization': `Bearer ${authStore.token}` } });
         this.volver();
-      } catch (err) { console.error(err); } finally { this.guardando = false; }
+      } catch (err) { console.error("Error al guardar:", err); } finally { this.guardando = false; }
     },
     volver() { this.$router.push('/dashboard'); }
   },
@@ -323,55 +318,36 @@ export default {
 </script>
 
 <style scoped>
+/* PLACEHOLDERS UNIFICADOS */
+.custom-input-entregable::placeholder,
+.custom-input-table::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-weight: 400;
+  opacity: 1;
+}
+
+/* INPUTS DE LA TABLA */
+.custom-input-table { 
+  background: rgba(0, 0, 0, 0.5) !important; 
+  color: #ffffff !important; 
+  border: 1px solid rgba(255, 255, 255, 0.1) !important; 
+}
+
 .dashboard-bg { min-height: 100vh; background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.9)), url('../assets/fondo.jpg'); background-size: cover; background-attachment: fixed; }
 .glass-panel { background: rgba(255, 255, 255, 0.05) !important; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
 .custom-tabs li a { color: #bdc3c7 !important; border-bottom: 2px solid transparent !important; }
 .custom-tabs li.is-active a { background-color: rgba(52, 152, 219, 0.2) !important; color: #3498db !important; border-bottom-color: #3498db !important; }
 .border-bottom-info { border-bottom: 2px solid rgba(52, 152, 219, 0.3); }
-
-/* BUSCADOR */
 .buscador-relativo { position: relative; }
-.search-results-floating {
-  position: absolute; top: 100%; left: 0; width: 100%; z-index: 1000;
-  background: rgba(25, 25, 25, 0.98) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px;
-  box-shadow: 0 8px 16px rgba(0,0,0,0.5); margin-top: 5px;
-  max-height: 250px; overflow-y: auto;
-}
+.search-results-floating { position: absolute; top: 100%; left: 0; width: 100%; z-index: 1000; background: rgba(25, 25, 25, 0.98) !important; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; box-shadow: 0 8px 16px rgba(0,0,0,0.5); margin-top: 5px; max-height: 250px; overflow-y: auto; }
 .dropdown-item-custom { color: #fff !important; display: block; padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); cursor: pointer; }
 .dropdown-item-custom:hover { background: rgba(52, 152, 219, 0.4) !important; }
-
-/* TABLA ENTREGABLES PROFESIONAL */
 .delivery-table-v2 { background: transparent !important; }
-.delivery-table-v2 td { 
-  padding: 1.4rem 0.75rem !important; 
-  vertical-align: middle !important;
-  border-bottom: 1px solid rgba(255,255,255,0.05) !important;
-}
-.data-text-bright { color: #ffffff !important; font-size: 1.1rem !important; font-weight: 700; text-shadow: 0px 0px 8px rgba(255, 255, 255, 0.2); }
-
-.custom-input-table {
-  background: rgba(0, 0, 0, 0.5) !important; color: #3498db !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  height: 2.8rem !important; font-size: 1rem !important; font-weight: 500;
-}
-.btn-open-link { height: 2.8rem !important; border: 1px solid rgba(52, 152, 219, 0.3) !important; background: rgba(52, 152, 219, 0.1) !important; }
-
-.custom-input-entregable {
-  background: rgba(0, 0, 0, 0.4) !important; color: white !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-}
-.custom-input-entregable::placeholder { color: rgba(255, 255, 255, 0.85) !important; opacity: 1 !important; font-weight: 500; }
-
-.checkbox-ui { transform: scale(1.4); cursor: pointer; }
-.delivery-row:hover { background: rgba(255, 255, 255, 0.03) !important; }
-
-/* OTROS */
+.delivery-table-v2 td { padding: 1.2rem 0.75rem !important; vertical-align: middle !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
+.data-text-bright { color: #ffffff !important; font-size: 1.1rem !important; font-weight: 600; }
+.btn-open-link { border: 1px solid rgba(52, 152, 219, 0.3) !important; background: rgba(52, 152, 219, 0.1) !important; }
+.custom-input-entregable { background: rgba(0, 0, 0, 0.4) !important; color: white !important; border: 1px solid rgba(255, 255, 255, 0.2) !important; }
 .is-dark-box { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; }
 .avatar-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-.workload-badge { min-width: 25px; height: 25px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: bold; color: white; }
-.is-success-badge { background: #48c78e; }
-.is-warning-badge { background: #ffe08a; color: #947600; }
-.is-danger-badge { background: #f14668; }
 .uppercase-label { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; font-weight: bold; }
 </style>

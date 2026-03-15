@@ -29,46 +29,47 @@ const router = createRouter({
       component: () => import('../views/userStoriesView.vue'),
       meta: { requiresAuth: true }
     },
-    // --- NUEVAS RUTAS PARA USER STORIES (FULL PAGE) ---
+    // --- RUTAS PARA USER STORIES ---
     {
       path: '/proyectos/:id/backlog/nueva',
       name: 'nueva-us',
       component: () => import('../views/UserStoryDetailView.vue'),
-      meta: { requiresAuth: true, roles: [1, 2] } // Solo Admin y Docente pueden crear
+      meta: { requiresAuth: true } // LIBERADO: El alumno puede crear US si es de su proyecto
     },
     {
       path: '/proyectos/:id/backlog/:usId',
       name: 'detalle-us',
       component: () => import('../views/UserStoryDetailView.vue'),
-      meta: { requiresAuth: true } // Alumnos pueden entrar a ver/editar tareas
+      meta: { requiresAuth: true }
     },
-    // --------------------------------------------------
+    // --- ADMINISTRACIÓN (SE MANTIENE RESTRINGIDO) ---
     {
       path: '/usuarios',
       name: 'usuarios',
       component: () => import('../views/usuariosView.vue'),
-      meta: { requiresAuth: true, roles: [1, 2] } 
+      meta: { requiresAuth: true, roles: [1, 2] } // Solo Admin y Docente
     },
     {
       path: '/escuelas',
       name: 'escuelas',
       component: () => import('../views/EscuelasLista.vue'), 
-      meta: { requiresAuth: true, roles: [1, 2] } 
+      meta: { requiresAuth: true, roles: [1, 2] } // Solo Admin y Docente
     },
+    // --- GESTIÓN DE PROYECTO Y SUGERENCIAS ---
     {
       path: '/sugerencias',
       name: 'Sugerencias',
       component: SugerenciasView,
-      meta: { requiresAuth: true, roles: [1, 2] } 
+      meta: { requiresAuth: true, roles: [1, 2] } // Solo Admin y Docente
     },
     {
       path: '/proyectos/:id/configuracion',
       name: 'configurar-proyecto',
       component: () => import('../views/ProyectoConfigView.vue'),
-      meta: { requiresAuth: true, roles: [1, 2] } 
+      meta: { requiresAuth: true } // LIBERADO: La seguridad real la hace el Backend
     },
     {
-      path: '/proyectos/:id/backlog/:usId/tarea/:tareaId', // :tareaId será 'nueva' para crear
+      path: '/proyectos/:id/backlog/:usId/tarea/:tareaId',
       name: 'tarea-detail',
       component: () => import('../views/TareaDetailView.vue'),
       meta: { requiresAuth: true }
@@ -82,6 +83,7 @@ const router = createRouter({
   ]
 });
 
+// GUARD DE NAVEGACIÓN
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore();
   
@@ -89,10 +91,11 @@ router.beforeEach((to, from, next) => {
     return next('/login');
   }
 
+  // Validación de roles solo si la ruta tiene la propiedad 'roles' definida
   if (to.meta.roles) {
     const rolUsuario = Number(authStore.usuario?.rol_id);
     if (!to.meta.roles.includes(rolUsuario)) {
-      console.warn("Acceso denegado por rol insuficiente");
+      console.warn("Acceso denegado por rol insuficiente a:", to.path);
       return next('/dashboard');
     }
   }

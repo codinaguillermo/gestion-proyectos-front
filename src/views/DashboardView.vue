@@ -214,12 +214,15 @@ const puedeGestionar = (proyecto) => {
     const miId = Number(user.id);
     const miRol = Number(user.rol_id || user.rolId);
 
+    // Admin siempre puede
     if (miRol === 1) return true;
-    if (miRol === 2) {
-        const integrantes = proyecto.Usuarios || proyecto.integrantes || [];
-        return Number(proyecto.docente_owner_id) === miId || integrantes.some(i => Number(i.id) === miId);
-    }
-    return false;
+
+    // Si es Docente u Alumno, puede gestionar si es el dueño o si es integrante
+    const integrantes = proyecto.Usuarios || proyecto.integrantes || [];
+    const esDuenio = Number(proyecto.docente_owner_id) === miId;
+    const esIntegrante = integrantes.some(i => Number(i.id) === miId);
+
+    return esDuenio || esIntegrante;
 };
 
 const cargarProyectos = async () => {
