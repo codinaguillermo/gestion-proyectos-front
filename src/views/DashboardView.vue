@@ -80,7 +80,11 @@
                         <i class="fas" :class="puedeGestionar(proyecto) ? 'fa-edit' : 'fa-eye'"></i>
                       </span>
                     </button>
-                    <button v-if="puedeGestionar(proyecto)" class="button is-small is-danger is-inverted" @click.stop="prepararEliminacion(proyecto)">
+                    <button 
+                      v-if="esAdminODocente" 
+                      class="button is-small is-danger is-inverted" 
+                      @click.stop="prepararEliminacion(proyecto)"
+                    >
                       <span class="icon is-small"><i class="fas fa-trash"></i></span>
                     </button>
                   </div>
@@ -189,22 +193,27 @@ const formProyecto = reactive({ nombre: '', descripcion: '', escuela_id: null })
 
 const anioActual = computed(() => new Date().getFullYear());
 
+// Getter de rol centralizado
+const miRol = computed(() => Number(authStore.usuario?.rol_id || authStore.usuario?.rolId));
+
 const esAdminODocente = computed(() => {
-    const rol = Number(authStore.usuario?.rol_id || authStore.usuario?.rolId);
-    return rol === 1 || rol === 2;
+    return miRol.value === 1 || miRol.value === 2;
 });
 
 const proyectosVisibles = computed(() => {
     const user = authStore.usuario;
     if (!user) return [];
     const miId = Number(user.id);
-    const miRol = Number(user.rol_id || user.rolId);
 
-    if (miRol === 1) return proyectos.value;
+    // Admin (1) ve todo
+    if (miRol.value === 1) return proyectos.value;
 
+    // Docente o Alumno: Ven si son dueños o integrantes
     return proyectos.value.filter(p => {
-        const integrantes = p.Usuarios || p.integrantes || p.usuarios || [];
-        return Number(p.docente_owner_id) === miId || integrantes.some(i => Number(i.id) === miId);
+        const integrantes = p.integrantes || p.Usuarios || p.usuarios || [];
+        const esDuenio = Number(p.docente_owner_id) === miId;
+        const esIntegrante = integrantes.some(i => Number(i.id) === miId);
+        return esDuenio || esIntegrante;
     });
 });
 
@@ -212,13 +221,10 @@ const puedeGestionar = (proyecto) => {
     const user = authStore.usuario;
     if (!user) return false;
     const miId = Number(user.id);
-    const miRol = Number(user.rol_id || user.rolId);
 
-    // Admin siempre puede
-    if (miRol === 1) return true;
+    if (miRol.value === 1) return true;
 
-    // Si es Docente u Alumno, puede gestionar si es el dueño o si es integrante
-    const integrantes = proyecto.Usuarios || proyecto.integrantes || [];
+    const integrantes = proyecto.integrantes || proyecto.Usuarios || [];
     const esDuenio = Number(proyecto.docente_owner_id) === miId;
     const esIntegrante = integrantes.some(i => Number(i.id) === miId);
 
@@ -230,8 +236,11 @@ const cargarProyectos = async () => {
     errorMsg.value = ''; 
     try {
         const res = await projectService.getAll();
-        if (res.success) proyectos.value = res.data;
-        else errorMsg.value = res.error;
+        if (res.success) {
+            proyectos.value = res.data;
+        } else {
+            errorMsg.value = res.error;
+        }
     } catch (e) {
         errorMsg.value = "Error al conectar con el servidor";
     } finally {
@@ -257,22 +266,35 @@ const guardarProyecto = async () => {
         const res = await projectService.create(formProyecto);
         if (res.success) {
             isModalActive.value = false;
+            formProyecto.nombre = '';
+            formProyecto.descripcion = '';
+            formProyecto.escuela_id = null;
             await cargarProyectos(); 
         }
     } finally { enviando.value = false; }
 };
 
 const prepararEliminacion = (proyecto) => {
+    // Doble check de seguridad en interfaz
+    if (!esAdminODocente.value) return; 
     proyectoAEliminar.value = proyecto;
     isConfirmActive.value = true;
 };
 
 const ejecutarEliminacion = async () => {
     if (!proyectoAEliminar.value) return;
-    const res = await projectService.delete(proyectoAEliminar.value.id);
-    if (res.success) {
+    try {
+        const res = await projectService.delete(proyectoAEliminar.value.id);
+        if (res.success) {
+            await cargarProyectos();
+        } else {
+            alert(res.error || "No se pudo eliminar el proyecto");
+        }
+    } catch (e) {
+        console.error(e);
+    } finally {
         isConfirmActive.value = false;
-        await cargarProyectos();
+        proyectoAEliminar.value = null;
     }
 };
 
@@ -296,7 +318,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Estilos consolidados */
 .dashboard-bg {
   display: flex;
   flex-direction: column;

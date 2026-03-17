@@ -8,10 +8,10 @@
             <div class="level-left">
               <div class="is-flex is-align-items-center">
                 <button class="button is-ghost has-text-white p-0 mr-4" @click="$router.back()">
-                  <span class="icon"><i class="fas fa-arrow-left"></i></span>
+                  <span class="icon is-medium"><i class="fas fa-arrow-left fa-lg"></i></span>
                 </button>
                 <h2 class="subtitle is-6 has-text-info has-text-weight-bold is-uppercase letter-spacing-1 mb-0">
-                  {{ esEdicion ? 'Editando Entregable' : 'Nueva User Story' }}
+                  {{ esEdicion ? 'Editando User Story' : 'Nueva User Story' }}
                 </h2>
               </div>
             </div>
@@ -38,16 +38,14 @@
         </div>
 
         <transition name="fade">
-          <div v-if="mensajeExito" class="notification is-success is-light mb-5 animate__animated animate__fadeInDown">
-            <button class="delete" @click="mensajeExito = ''"></button>
+          <div v-if="mensajeExito" class="notification is-success is-light mb-5">
             <span class="icon mr-2"><i class="fas fa-check-circle"></i></span>
             <strong>¡Excelente!</strong> {{ mensajeExito }}
           </div>
         </transition>
 
         <transition name="fade">
-          <div v-if="errorMsg" class="notification is-danger is-light mb-5 animate__animated animate__shakeX">
-            <button class="delete" @click="errorMsg = ''"></button>
+          <div v-if="errorMsg" class="notification is-danger is-light mb-5">
             <span class="icon mr-2"><i class="fas fa-exclamation-circle"></i></span>
             <strong>Error:</strong> {{ errorMsg }}
           </div>
@@ -57,13 +55,13 @@
           <div class="column is-8">
             <div class="glass-panel p-5" style="height: 100%;">
               <div class="field mb-5">
-                <label class="label has-text-white is-size-5">Título del Entregable</label>
+                <label class="label has-text-white is-size-5">Título de la US</label>
                 <textarea 
                   class="textarea is-medium custom-input" 
                   rows="2" 
                   v-model="editForm.titulo" 
                   :disabled="!puedeGestionarEstructura" 
-                  placeholder="Ej: Como usuario quiero que el sistema me permita registrar..."
+                  placeholder="Ej: Como usuario quiero que el sistema..."
                 ></textarea>
               </div>
               <div class="field mb-5">
@@ -73,7 +71,7 @@
                   v-model="editForm.descripcion" 
                   rows="4" 
                   :disabled="!puedeGestionarEstructura" 
-                  placeholder="Explique el valor de negocio o técnico de este avance..."
+                  placeholder="Explique el valor de este avance..."
                 ></textarea>
               </div>
               <div class="field">
@@ -83,7 +81,7 @@
                   v-model="editForm.condiciones" 
                   rows="3" 
                   :disabled="!puedeGestionarEstructura" 
-                  placeholder="Enumere las condiciones para dar por terminada esta US..."
+                  placeholder="Condiciones para dar por terminada esta US..."
                 ></textarea>
               </div>
             </div>
@@ -112,9 +110,7 @@
                 <label class="label has-text-white is-size-5">Fecha de Entrega</label>
                 <div class="control has-icons-left">
                   <input type="date" class="input is-medium custom-input" v-model="editForm.fecha_entrega" :disabled="!puedeGestionarEstructura">
-                  <span class="icon is-small is-left">
-                    <i class="fas fa-calendar"></i>
-                  </span>
+                  <span class="icon is-small is-left"><i class="fas fa-calendar"></i></span>
                 </div>
               </div>
             </div>
@@ -129,7 +125,10 @@
                   <h3 class="title is-4 has-text-white mb-0">Tareas Técnicas</h3>
                 </div>
                 <div class="level-right">
-                  <button v-if="puedeGestionarEstructura" class="button is-primary is-small" @click="nuevaTarea">Nueva Tarea</button>
+                  <button v-if="puedeGestionarEstructura" class="button is-primary is-small" @click="nuevaTarea">
+                    <span class="icon is-small"><i class="fas fa-plus"></i></span>
+                    <span>Nueva Tarea</span>
+                  </button>
                 </div>
               </div>
 
@@ -141,7 +140,6 @@
                       <th class="has-text-info">Responsable</th>
                       <th class="has-text-info has-text-centered">Estado</th>
                       <th class="has-text-info has-text-centered">Estimado</th>
-                      <th class="has-text-info has-text-centered">Trabajado</th>
                       <th v-if="puedeGestionarEstructura" class="has-text-info has-text-centered">Acción</th>
                     </tr>
                   </thead>
@@ -157,7 +155,6 @@
                         </span>
                       </td>
                       <td class="has-text-centered data-text-bright">{{ tarea.horas_estimadas || 0 }}h</td>
-                      <td class="has-text-centered data-text-bright">{{ tarea.horasReales || 0 }}h</td>
                       <td v-if="puedeGestionarEstructura" class="has-text-centered" @click.stop>
                         <button class="button is-danger is-inverted is-small" @click="confirmarEliminarTarea(tarea)">
                           <span class="icon"><i class="fas fa-trash"></i></span>
@@ -189,6 +186,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import userStoryService from '../services/userStory.service';
 import tareaService from '../services/tarea.service';
+import { projectService } from '../services/project.services';
 import ConfirmarModal from '../components/modals/ConfirmarModal.vue';
 import api from '../services/api';
 
@@ -202,6 +200,7 @@ const errorMsg = ref('');
 const prioridades = ref([]);
 const estados = ref([]);
 const tareas = ref([]);
+const integrantesProyecto = ref([]);
 const isConfirmTareaActive = ref(false);
 const tareaAEliminar = ref(null);
 
@@ -214,15 +213,25 @@ const esEdicion = computed(() => !!route.params.usId && route.params.usId !== 'n
 
 const puedeGestionarEstructura = computed(() => {
   const u = authStore.usuario;
-  return u && (Number(u.rol_id) === 1 || Number(u.rol_id) === 2);
+  if (!u) return false;
+  if (Number(u.rol_id) === 1 || Number(u.rol_id) === 2) return true;
+  return integrantesProyecto.value.some(m => Number(m.id) === Number(u.id));
 });
 
 const cargarDatos = async () => {
   try {
-    const [resP, resE] = await Promise.all([api.get('/common/prioridades-us'), api.get('/common/estados-us')]);
+    const [resP, resE] = await Promise.all([
+      api.get('/common/prioridades-us'), 
+      api.get('/common/estados-us')
+    ]);
     prioridades.value = resP.data;
     estados.value = resE.data;
     
+    const resProj = await projectService.getById(route.params.id);
+    if (resProj.success) {
+      integrantesProyecto.value = resProj.data.integrantes || resProj.data.Usuarios || [];
+    }
+
     if (esEdicion.value) {
       const resUS = await userStoryService.getById(route.params.usId);
       const us = resUS.data; 
@@ -236,43 +245,23 @@ const cargarDatos = async () => {
 };
 
 const guardarCambios = async () => {
-  errorMsg.value = '';
-  mensajeExito.value = '';
-
-  if (!editForm.titulo || editForm.titulo.trim() === '') {
+  if (!editForm.titulo?.trim()) {
     errorMsg.value = "El título es obligatorio.";
     return;
   }
-
   enviando.value = true;
-  
   try {
     const payload = { ...editForm };
-    
-    if (!payload.fecha_entrega || 
-        payload.fecha_entrega === '' || 
-        String(payload.fecha_entrega).toLowerCase().includes('invalid')) {
+    if (!payload.fecha_entrega || String(payload.fecha_entrega).toLowerCase().includes('invalid')) {
       payload.fecha_entrega = null;
     }
-
     if (esEdicion.value) {
       await userStoryService.update(editForm.id, payload);
-      router.back();
     } else {
-      const res = await userStoryService.create(payload);
-      const nuevaUS = res.data.id ? res.data : (res.data.tarea || res.data.userStory);
-      
-      if (nuevaUS && nuevaUS.id) {
-        editForm.id = nuevaUS.id;
-        router.replace(`/proyectos/${payload.proyecto_id}/backlog/${nuevaUS.id}`);
-        await cargarDatos();
-        mensajeExito.value = "User Story creada. Ya puedes asignar tareas técnicas.";
-      } else {
-        router.back();
-      }
+      await userStoryService.create(payload);
     }
+    router.back();
   } catch (error) {
-    console.error("Error al procesar la US:", error);
     errorMsg.value = error.response?.data?.mensaje || "Error al conectar con el servidor.";
   } finally {
     enviando.value = false;
@@ -281,14 +270,12 @@ const guardarCambios = async () => {
 
 const nuevaTarea = () => router.push(`/proyectos/${route.params.id}/backlog/${route.params.usId}/tarea/nueva`);
 const editarTarea = (tarea) => router.push(`/proyectos/${route.params.id}/backlog/${route.params.usId}/tarea/${tarea.id}`);
-
 const confirmarEliminarTarea = (t) => { tareaAEliminar.value = t; isConfirmTareaActive.value = true; };
 const ejecutarEliminacionTarea = async () => {
   await tareaService.delete(tareaAEliminar.value.id);
   isConfirmTareaActive.value = false;
   cargarDatos();
 };
-
 const obtenerClaseEstadoTag = (tarea) => {
   const nombre = String(tarea.estado_detalle?.nombre || '').toUpperCase();
   return nombre === 'DONE' ? 'is-success' : (nombre === 'BACKLOG' || nombre === 'TO DO' ? 'is-danger' : 'is-warning');
@@ -298,18 +285,24 @@ onMounted(cargarDatos);
 </script>
 
 <style scoped>
-.dashboard-bg { min-height: 100vh; background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.9)), url('../assets/fondo.jpg'); background-size: cover; background-attachment: fixed; }
-.glass-panel { background: rgba(255, 255, 255, 0.05) !important; backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
-
+.dashboard-bg { 
+  min-height: 100vh; 
+  background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.9)), url('../assets/fondo.jpg'); 
+  background-size: cover; 
+  background-attachment: fixed; 
+}
+.glass-panel { 
+  background: rgba(255, 255, 255, 0.05) !important; 
+  backdrop-filter: blur(12px); 
+  border: 1px solid rgba(255,255,255,0.1); 
+  border-radius: 12px; 
+}
 .custom-input { 
   background: rgba(0,0,0,0.3) !important; 
   color: white !important; 
   border: 1px solid rgba(255,255,255,0.2) !important; 
 }
-
 .custom-input::placeholder { color: rgba(255, 255, 255, 0.7) !important; opacity: 1; }
-.custom-input::-webkit-input-placeholder { color: rgba(255, 255, 255, 0.7) !important; }
-
 .data-text-bright { color: #ffffff !important; font-size: 1.15rem !important; font-weight: 700; text-shadow: 0px 0px 8px rgba(255, 255, 255, 0.2); }
 .glass-table { background: transparent !important; }
 .glass-table td { padding: 1.2rem 0.75rem !important; vertical-align: middle; }
@@ -317,12 +310,6 @@ onMounted(cargarDatos);
 .clickable-row:hover { background-color: rgba(52, 152, 219, 0.15) !important; }
 .letter-spacing-1 { letter-spacing: 1px; }
 .border-top-glass { border-top: 1px solid rgba(255, 255, 255, 0.1); }
-
-/* Animación sutil para las notificaciones */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.5s ease;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
+.fade-enter-active, .fade-leave-active { transition: opacity 0.5s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

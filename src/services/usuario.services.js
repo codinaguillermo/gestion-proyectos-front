@@ -28,6 +28,10 @@ export const usuarioService = {
   // Obtener datos de un usuario puntual
   getById(id) {
     return api.get(`/usuarios/${id}`);
+  },
+
+  getProyectosAsignados(id) {
+    return api.get(`/usuarios/${id}/proyectos-asignados`);
   }
 };
 

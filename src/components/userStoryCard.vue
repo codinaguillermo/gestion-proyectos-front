@@ -14,7 +14,7 @@
           <button 
             v-if="showDelete" 
             class="button is-small is-danger is-inverted" 
-            @click.stop="$emit('eliminar', userStory.id)"
+            @click.stop="$emit('eliminar', userStory)"
           >
             <span class="icon is-small"><i class="fas fa-trash"></i></span>
           </button>

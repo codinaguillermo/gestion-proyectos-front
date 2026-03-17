@@ -90,12 +90,7 @@
                     <span class="tag is-rounded is-info is-light">{{ miembro.total }} tareas</span>
                   </div>
                   
-                  <div 
-                    v-for="t in miembro.tareas" 
-                    :key="t.id" 
-                    class="mb-3 p-2 task-link-box" 
-                    @click="irADetalleTarea(t.usId)"
-                  >
+                  <div v-for="t in miembro.tareas" :key="t.id" class="mb-3 p-2 task-link-box" @click="irADetalleTarea(t.usId)">
                     <div class="is-size-7 has-text-info-light is-uppercase has-text-weight-bold mb-1">
                       <i class="fas fa-folder-open mr-1"></i> {{ t.usTitulo }}
                     </div>
@@ -117,12 +112,10 @@
                 <span class="icon is-medium has-text-warning mr-2"><i class="fas fa-exclamation-triangle"></i></span>
                 <h4 class="title is-5 mb-0 has-text-dark">User Stories sin Planificar</h4>
               </div>
-              <p class="is-size-6 has-text-dark mb-3">Estas historias no computan en el avance técnico porque no tienen tareas:</p>
               <div class="tags">
                 <span v-for="us in usSinTareas" :key="us.id" class="tag is-dark">{{ us.titulo }}</span>
               </div>
             </div>
-
             <div class="columns is-centered">
               <div class="column is-11">
                 <StatsProyecto v-if="proyectoId" :proyectoId="proyectoId" class="stats-glass-fix" />
@@ -136,7 +129,7 @@
 
     <ConfirmarModal 
       :isActive="isConfirmActive" 
-      :mensaje="`¿Estás seguro de eliminar la US?`" 
+      :mensaje="`¿Estás seguro de eliminar esta User Story?`" 
       @confirmar="ejecutarEliminacion" 
       @cancelar="isConfirmActive = false" 
     />
@@ -144,7 +137,6 @@
 </template>
 
 <script setup>
-// [Misma lógica de script que tenías, sin cambios en las funciones]
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import api from '../services/api';
@@ -162,10 +154,19 @@ const proyectoId = ref(null);
 const userStories = ref([]);
 const cargando = ref(true);
 const tabActiva = ref('backlog'); 
-
 const isConfirmActive = ref(false);
 const usAEliminar = ref(null);
 const proyectoData = ref(null);
+
+// LÓGICA DE PERMISOS: Admin, Docente o Alumno miembro
+const puedeGestionarBacklog = computed(() => {
+  const user = authStore.usuario;
+  if (!user || !proyectoData.value) return false;
+  if (Number(user.rol_id) === 1 || Number(user.rol_id) === 2) return true;
+  
+  const integrantes = proyectoData.value.integrantes || proyectoData.value.Usuarios || [];
+  return integrantes.some(m => Number(m.id) === Number(user.id));
+});
 
 const resumenTareasPorMiembro = computed(() => {
   const mapa = {};
@@ -173,20 +174,14 @@ const resumenTareasPorMiembro = computed(() => {
     if (us.tareas && Array.isArray(us.tareas)) {
       us.tareas.forEach(t => {
         const responsable = t.responsable;
-        const nombreStr = responsable ? responsable.nombre : 'SIN ASIGNAR';
-        const apellidoStr = (responsable && responsable.apellido) ? responsable.apellido : '';
-        const nombreCompleto = responsable ? `${nombreStr} ${apellidoStr}`.trim() : 'SIN ASIGNAR';
+        const nombreCompleto = responsable ? `${responsable.nombre} ${responsable.apellido || ''}`.trim() : 'SIN ASIGNAR';
         const idResp = responsable ? responsable.id : '0';
-
         if (!mapa[idResp]) {
           mapa[idResp] = { id: idResp, nombre: nombreCompleto, total: 0, tareas: [] };
         }
         mapa[idResp].total++;
         mapa[idResp].tareas.push({
-          id: t.id,
-          titulo: t.titulo,
-          usId: us.id,
-          usTitulo: us.titulo,
+          id: t.id, titulo: t.titulo, usId: us.id, usTitulo: us.titulo,
           estado: t.estado_detalle?.nombre || 'PENDIENTE'
         });
       });
@@ -195,26 +190,16 @@ const resumenTareasPorMiembro = computed(() => {
   return Object.values(mapa).sort((a, b) => b.total - a.total);
 });
 
-const usSinTareas = computed(() => {
-  return userStories.value.filter(us => !us.tareas || us.tareas.length === 0);
-});
+const usSinTareas = computed(() => userStories.value.filter(us => !us.tareas || us.tareas.length === 0));
 
-const irADetalleTarea = (usId) => {
-  router.push(`/proyectos/${proyectoId.value}/backlog/${usId}`);
-};
+const irADetalleTarea = (usId) => router.push(`/proyectos/${proyectoId.value}/backlog/${usId}`);
 
 const obtenerClaseEstado = (estado) => {
   const e = String(estado).toUpperCase();
   if (e === 'DONE' || e === 'FINALIZADO') return 'has-text-success';
-  if (e === 'DOING' || e === 'EN PROCESO' || e === 'WORKING') return 'has-text-warning';
+  if (e === 'DOING' || e === 'EN PROCESO') return 'has-text-warning';
   return 'has-text-danger';
 };
-
-const puedeGestionarBacklog = computed(() => {
-  const user = authStore.usuario;
-  if (!user || !proyectoData.value) return false;
-  return Number(user.rol_id) === 1 || Number(user.rol_id) === 2;
-});
 
 const calcularVencimiento = (us) => {
   if (!us.fecha_entrega || String(us.estado_detalle?.nombre).toUpperCase() === 'DONE') return null;
@@ -227,39 +212,52 @@ const calcularVencimiento = (us) => {
 };
 
 const cargarUserStories = async () => {
+  if (!proyectoId.value) return;
   cargando.value = true;
   try {
     const res = await userStoryService.getByProyecto(proyectoId.value);
     userStories.value = res.data;
-  } finally { cargando.value = false; }
+  } catch (error) {
+    console.error("Error cargando US:", error);
+  } finally { 
+    cargando.value = false; 
+  }
 };
 
 const abrirDetalleUS = (us) => router.push(`/proyectos/${proyectoId.value}/backlog/${us.id}`);
 
-const abrirModalNuevaUS = () => {
-  const id = proyectoId.value || route.params.id;
-  if (id) router.push(`/proyectos/${id}/backlog/nueva`);
-};
+const abrirModalNuevaUS = () => router.push(`/proyectos/${proyectoId.value}/backlog/nueva`);
 
-const prepararEliminacion = (us) => {
-  usAEliminar.value = us;
-  isConfirmActive.value = true;
+const prepararEliminacion = (us) => { 
+  if (!us) return;
+  usAEliminar.value = us; 
+  isConfirmActive.value = true; 
 };
 
 const ejecutarEliminacion = async () => {
-  if (!usAEliminar.value) return;
+  if (!usAEliminar.value || !usAEliminar.value.id) return;
+  
   try {
+    // Usamos await para asegurar que se borre antes de recargar
     await userStoryService.delete(usAEliminar.value.id);
     isConfirmActive.value = false;
+    usAEliminar.value = null;
+    
+    // Recargamos la lista actualizada
     await cargarUserStories(); 
-  } catch (error) { console.error(error); }
+  } catch (error) { 
+    console.error("Error al eliminar US:", error);
+    alert("No se pudo eliminar la User Story.");
+  }
 };
 
 const cargarDatosProyecto = async () => {
   try {
     const res = await api.get(`/proyectos/${proyectoId.value}`);
     proyectoData.value = res.data; 
-  } catch (error) { console.error(error); }
+  } catch (error) { 
+    console.error("Error cargando proyecto:", error); 
+  }
 };
 
 onMounted(() => {
@@ -270,23 +268,15 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* [Mismos estilos CSS que tenías, intactos] */
+/* Tus estilos se mantienen intactos */
 .dashboard-bg { min-height: 100vh; background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.8)), url('../assets/fondo.jpg'); background-size: cover; background-attachment: fixed; }
 .glass-panel { background: rgba(255, 255, 255, 0.03) !important; backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; }
 .custom-tabs ul { border-bottom: 2px solid rgba(255, 255, 255, 0.2); }
 .custom-tabs li a { color: #ffffff !important; border: 1px solid transparent !important; }
 .custom-tabs li.is-active a { background-color: rgba(52, 152, 219, 0.3) !important; border-bottom-color: #3498db !important; }
 
-.hover-tilt-effect {
-  transform: rotate(0deg);
-  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
-}
-
-.hover-tilt-effect:hover {
-  transform: rotate(2deg) scale(1.02);
-  z-index: 10;
-  box-shadow: 0px 12px 30px rgba(0,0,0,0.45) !important;
-}
+.hover-tilt-effect { transform: rotate(0deg); transition: transform 0.2s ease-out, box-shadow 0.2s ease-out; }
+.hover-tilt-effect:hover { transform: rotate(2deg) scale(1.02); z-index: 10; box-shadow: 0px 12px 30px rgba(0,0,0,0.45) !important; }
 
 .card-wrapper { position: relative; border-radius: 12px; overflow: hidden; background-color: rgba(253, 250, 230, 0.95); }
 :deep(.user-story-card-custom) { background-color: transparent !important; box-shadow: none !important; }

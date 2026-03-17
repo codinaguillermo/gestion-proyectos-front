@@ -19,6 +19,11 @@ const fileInput = ref(null);
 const selectedFile = ref(null);
 const previewUrl = ref(null);
 
+// --- LÓGICA PROYECTOS ASIGNADOS ---
+const mostrarProyectosModal = ref(false);
+const proyectosAlumno = ref([]);
+const cargandoProy = ref(false);
+
 // --- NUEVA LÓGICA DE TELÉFONO ---
 const codPais = ref('+54');
 const numLocal = ref('');
@@ -30,17 +35,11 @@ const form = reactive({
   especialidad_id: 1
 });
 
-/**
- * Propósito: Identificar si el usuario logueado tiene rango de gestión.
- */
 const esAdminODocente = computed(() => {
   const rol = Number(authStore.usuario?.rol_id);
   return rol === 1 || rol === 2;
 });
 
-/**
- * Propósito: Identificar si el registro que se está visualizando pertenece al usuario logueado.
- */
 const esPropioPerfil = computed(() => {
   return form.id && Number(authStore.usuario?.id) === Number(form.id);
 });
@@ -48,27 +47,32 @@ const esPropioPerfil = computed(() => {
 const esModoEdicion = computed(() => !!form.id);
 const elUsuarioEsAlumno = computed(() => Number(form.rol_id) === 3);
 
-/**
- * Propósito: Definir el texto de la cabecera del modal según el contexto.
- */
 const tituloModal = computed(() => {
   if (esPropioPerfil.value) return 'Mi Perfil';
   return esModoEdicion.value ? 'Editar Usuario' : 'Nuevo Usuario';
 });
 
-/**
- * Propósito: Bloquear la edición de roles y escuelas a quienes no sean administradores.
- */
+// Función para cargar los proyectos
+const verProyectos = async () => {
+  console.log("BOTÓN PRESIONADO"); // Si esto no sale en Console, el @click no anda
+  mostrarProyectosModal.value = true;
+  cargandoProy.value = true;
+  
+  try {
+    // Usamos el servicio en lugar de axios directo para evitar errores de importación
+    const res = await usuarioService.getProyectosAsignados(form.id); 
+    proyectosAlumno.value = res.data;
+    
+    console.log("DATOS RECIBIDOS:", res.data);
+  } catch (err) {
+    console.error("ERROR EN PETICIÓN:", err);
+  } finally {
+    cargandoProy.value = false;
+  }
+};
+
 const puedeEditarEstructura = computed(() => esAdminODocente.value);
-
-/**
- * Propósito: Permitir la edición de campos de texto (nombre, tel, etc) al dueño o al docente.
- */
 const puedeEditarDatosPropios = computed(() => esAdminODocente.value || esPropioPerfil.value);
-
-/**
- * Propósito: RESTRICCIÓN DE PRIVACIDAD.
- */
 const puedeCambiarAvatar = computed(() => {
   if (!esModoEdicion.value) return esAdminODocente.value;
   return esPropioPerfil.value;
@@ -97,16 +101,15 @@ watch(() => props.isActive, (val) => {
   if (val) {
     errorMsg.value = '';
     selectedFile.value = null;
+    mostrarProyectosModal.value = false;
     if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
     previewUrl.value = null;
 
     const u = props.usuarioEdit;
     if (u && (u.id || u.uid)) {
-      
-      // --- LÓGICA DE DESGLOSE DE TELÉFONO ---
       if (u.telefono && u.telefono.startsWith('+')) {
-        codPais.value = u.telefono.substring(0, 3); // Toma "+54"
-        numLocal.value = u.telefono.substring(3);   // Toma el resto
+        codPais.value = u.telefono.substring(0, 3);
+        numLocal.value = u.telefono.substring(3);
       } else {
         codPais.value = '+54';
         numLocal.value = u.telefono || '';
@@ -149,10 +152,7 @@ const guardar = async () => {
     if (elUsuarioEsAlumno.value && form.escuelas_ids.length !== 1) {
       throw new Error("Un alumno debe pertenecer a exactamente una escuela.");
     }
-
-    // --- CONCATENACIÓN PARA LA BD ---
     const telefonoFinal = `${codPais.value}${numLocal.value.trim()}`;
-
     const formData = new FormData();
     formData.append('nombre', form.nombre);
     formData.append('apellido', form.apellido);
@@ -160,23 +160,19 @@ const guardar = async () => {
     formData.append('rol_id', form.rol_id);
     formData.append('curso', form.curso);
     formData.append('division', form.division);
-    formData.append('telefono', telefonoFinal); // Usamos el concatenado
+    formData.append('telefono', telefonoFinal);
     formData.append('activo', form.activo);
     formData.append('especialidad_id', form.especialidad_id);
-    
     if (form.password) formData.append('password', form.password);
     form.escuelas_ids.forEach(id => formData.append('escuelas_ids[]', id));
-
     if (selectedFile.value && puedeCambiarAvatar.value) {
       formData.append('avatar', selectedFile.value);
     }
-
     if (esModoEdicion.value) {
       await usuarioService.update(form.id, formData);
     } else {
       await usuarioService.create(formData);
     }
-
     emit('usuario-guardado');
     emit('close');
   } catch (err) {
@@ -193,46 +189,35 @@ const guardar = async () => {
     <div class="modal-card">
       <header class="modal-card-head">
         <p class="modal-card-title">{{ tituloModal }}</p>
+        
+        <button 
+          v-if="esModoEdicion" 
+          class="button is-small is-info is-light" 
+          @click="verProyectos"
+        >
+          Ver Proyectos Asignados
+        </button>
+
         <button class="delete" @click="$emit('close')"></button>
       </header>
+      
       <section class="modal-card-body">
         <div v-if="errorMsg" class="notification is-danger is-light py-2">{{ errorMsg }}</div>
 
         <div class="field has-text-centered mb-5">
-           <div 
-            class="avatar-container is-inline-block" 
-            @click="puedeCambiarAvatar ? fileInput.click() : null" 
-            :style="{ cursor: puedeCambiarAvatar ? 'pointer' : 'default' }"
-           >
+           <div class="avatar-container is-inline-block" @click="puedeCambiarAvatar ? fileInput.click() : null" :style="{ cursor: puedeCambiarAvatar ? 'pointer' : 'default' }">
               <figure v-if="previewUrl || form.avatar" class="image is-128x128">
-                <img class="is-rounded" 
-                     :src="previewUrl || `/uploads/avatars/${form.avatar}`"
-                     style="object-fit: cover; height: 128px; width: 128px; border: 2px solid #dbdbdb;">
+                <img class="is-rounded" :src="previewUrl || `/uploads/avatars/${form.avatar}`" style="object-fit: cover; height: 128px; width: 128px; border: 2px solid #dbdbdb;">
               </figure>
-              
               <div v-else class="avatar-placeholder is-rounded">
-                <span class="icon is-large has-text-grey-light">
-                  <i class="fas fa-user-circle fa-5x"></i>
-                </span>
-                <div class="overlay-camera" v-if="puedeCambiarAvatar">
-                  <i class="fas fa-camera"></i>
-                </div>
+                <span class="icon is-large has-text-grey-light"><i class="fas fa-user-circle fa-5x"></i></span>
+                <div class="overlay-camera" v-if="puedeCambiarAvatar"><i class="fas fa-camera"></i></div>
               </div>
            </div>
-           <p class="help mt-2" v-if="puedeCambiarAvatar">Haz clic en la imagen para cambiarla</p>
-           <p class="help mt-2 has-text-grey-light" v-else-if="esModoEdicion">La foto de perfil solo puede ser cambiada por el usuario</p>
         </div>
 
         <div class="columns is-multiline">
-          <input 
-            class="is-hidden" 
-            type="file" 
-            ref="fileInput" 
-            @change="onFileSelected" 
-            accept="image/*" 
-            :disabled="!puedeCambiarAvatar"
-          >
-
+          <input class="is-hidden" type="file" ref="fileInput" @change="onFileSelected" accept="image/*" :disabled="!puedeCambiarAvatar">
           <div class="column is-6">
             <label class="label">Nombre</label>
             <input v-model="form.nombre" class="input" type="text" :disabled="!puedeEditarDatosPropios">
@@ -241,17 +226,14 @@ const guardar = async () => {
             <label class="label">Apellido</label>
             <input v-model="form.apellido" class="input" type="text" :disabled="!puedeEditarDatosPropios">
           </div>
-
           <div class="column is-6">
             <label class="label">Email (Usuario)</label>
             <input v-model="form.email" class="input" type="email" :disabled="!puedeEditarDatosPropios">
           </div>
-          
           <div class="column is-6">
             <label class="label">{{ esModoEdicion ? 'Nueva Contraseña' : 'Contraseña' }}</label>
             <input v-model="form.password" class="input" type="password" placeholder="********" :disabled="!puedeEditarDatosPropios">
           </div>
-
           <div class="column is-6">
             <label class="label">Rol</label>
             <div class="select is-fullwidth">
@@ -260,43 +242,21 @@ const guardar = async () => {
               </select>
             </div>
           </div>
-
           <div class="column is-6">
             <label class="label">Teléfono</label>
             <div class="field has-addons">
-              <p class="control">
-                <input 
-                  v-model="codPais" 
-                  class="input has-text-centered has-text-weight-bold" 
-                  type="text" 
-                  style="width: 70px;" 
-                  placeholder="+54"
-                  :disabled="!puedeEditarDatosPropios"
-                >
-              </p>
-              <p class="control is-expanded">
-                <input 
-                  v-model="numLocal" 
-                  class="input" 
-                  type="text" 
-                  placeholder="3624XXXXXX" 
-                  :disabled="!puedeEditarDatosPropios"
-                >
-              </p>
+              <p class="control"><input v-model="codPais" class="input has-text-centered has-text-weight-bold" type="text" style="width: 70px;" placeholder="+54" :disabled="!puedeEditarDatosPropios"></p>
+              <p class="control is-expanded"><input v-model="numLocal" class="input" type="text" placeholder="3624XXXXXX" :disabled="!puedeEditarDatosPropios"></p>
             </div>
           </div>
-
           <div class="column is-12">
             <label class="label">Escuela/s</label>
             <div class="select is-multiple is-fullwidth">
                 <select v-model="form.escuelas_ids" multiple :size="3" :disabled="!puedeEditarEstructura">
-                    <option v-for="e in escuelas" :key="e.id" :value="e.id">
-                      {{ e.nombre_corto }} | {{ e.nombre_largo }}
-                    </option>
+                    <option v-for="e in escuelas" :key="e.id" :value="e.id">{{ e.nombre_corto }} | {{ e.nombre_largo }}</option>
                 </select>
             </div>
           </div>
-
           <template v-if="elUsuarioEsAlumno">
             <div class="column is-6">
               <label class="label">Curso</label>
@@ -333,15 +293,11 @@ const guardar = async () => {
               <label class="label">Especialidad (Solo Escuelas Técnicas)</label>
               <div class="select is-fullwidth">
                 <select v-model="form.especialidad_id" :disabled="!puedeEditarDatosPropios">
-                  <option v-for="esp in especialidades" :key="esp.id" :value="esp.id">
-                    {{ esp.nombre }}
-                  </option>
+                  <option v-for="esp in especialidades" :key="esp.id" :value="esp.id">{{ esp.nombre }}</option>
                 </select>
               </div>
-              <p class="help">Seleccione "Ninguna" si la escuela no es técnica.</p>
             </div>
           </template>
-
           <div class="column is-12" v-if="esAdminODocente">
             <label class="checkbox">
               <input type="checkbox" v-model="form.activo" :disabled="!puedeEditarEstructura || esPropioPerfil"> Usuario Activo
@@ -349,6 +305,7 @@ const guardar = async () => {
           </div>
         </div>
       </section>
+      
       <footer class="modal-card-foot is-justify-content-flex-end">
         <button class="button" @click="$emit('close')">Cancelar</button>
         <button class="button is-success" :class="{'is-loading': enviando}" @click="guardar">
@@ -357,40 +314,53 @@ const guardar = async () => {
       </footer>
     </div>
   </div>
+
+  <div class="modal" :class="{'is-active': mostrarProyectosModal}">
+    <div class="modal-background" @click="mostrarProyectosModal = false"></div>
+    <div class="modal-content">
+      <div class="box has-background-dark has-text-white">
+        <h3 class="title is-5 has-text-white">Proyectos de {{ form.nombre }}</h3>
+        <hr class="has-background-grey">
+        
+        <div v-if="cargandoProy" class="has-text-centered p-4">
+          <button class="button is-ghost is-loading is-large"></button>
+        </div>
+
+        <table v-else class="table is-fullwidth is-narrow has-background-transparent has-text-white">
+          <thead>
+            <tr>
+              <th class="has-text-grey-light">Proyecto</th>
+              <th class="has-text-grey-light">Escuela</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in proyectosAlumno" :key="p.id">
+              <td class="has-text-weight-semibold has-text-white">
+                {{ p.nombre }}
+              </td>
+              <td class="has-text-info has-text-weight-bold">
+                {{ p.escuela }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div v-if="proyectosAlumno.length === 0 && !cargandoProy" class="has-text-centered p-4">
+          <p class="has-text-grey">Este usuario no tiene proyectos asignados.</p>
+        </div>
+
+        <button class="button is-small is-fullwidth mt-3" @click="mostrarProyectosModal = false">Cerrar</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-.avatar-container {
-  position: relative;
-  width: 128px;
-  height: 128px;
-  border-radius: 50%;
-  transition: opacity 0.3s;
-}
-.avatar-container:hover {
-  opacity: 0.8;
-}
-.avatar-placeholder {
-  width: 128px;
-  height: 128px;
-  background-color: #f5f5f5;
-  border: 2px dashed #dbdbdb;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-.is-rounded {
-  border-radius: 50% !important;
-}
-.overlay-camera {
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  color: white;
-  padding: 4px 0;
-  font-size: 0.8rem;
-}
+/* Tus estilos anteriores */
+.has-background-transparent { background-color: transparent !important; }
+.avatar-container { position: relative; width: 128px; height: 128px; border-radius: 50%; transition: opacity 0.3s; }
+.avatar-container:hover { opacity: 0.8; }
+.avatar-placeholder { width: 128px; height: 128px; background-color: #f5f5f5; border: 2px dashed #dbdbdb; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+.is-rounded { border-radius: 50% !important; }
+.overlay-camera { position: absolute; bottom: 0; width: 100%; background: rgba(0, 0, 0, 0.4); color: white; padding: 4px 0; font-size: 0.8rem; }
 </style>
