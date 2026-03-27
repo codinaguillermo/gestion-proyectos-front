@@ -123,10 +123,61 @@
 
             <div class="glass-panel p-5 mb-5">
               <label class="label has-text-info is-size-6 mb-3">Checklist de Calidad</label>
-              <div class="field" v-for="chk in ['cumpleAceptacion', 'testeado', 'documentado', 'utilizable']" :key="chk">
+              
+              <div class="field">
                 <label class="checkbox has-text-white is-size-7">
-                  <input type="checkbox" v-model="form[chk]" :disabled="!tienePermisoEstructura" class="mr-2">
-                  {{ chk.toUpperCase() }}
+                  <input type="checkbox" v-model="form.cumpleAceptacion" :disabled="!tienePermisoEstructura" class="mr-2">
+                  CUMPLE ACEPTACIÓN
+                </label>
+              </div>
+
+              <div class="field">
+                <label class="checkbox has-text-white is-size-7">
+                  <input type="checkbox" v-model="form.testeado" :disabled="!tienePermisoEstructura" class="mr-2">
+                  TESTEADO
+                </label>
+              </div>
+
+              <div class="field">
+                <label class="checkbox has-text-white is-size-7">
+                  <input type="checkbox" v-model="form.documentado" :disabled="!tienePermisoEstructura" class="mr-2">
+                  DOCUMENTADO
+                </label>
+              </div>
+
+              <div v-if="form.documentado" class="field mt-3 mb-4 animate__animated animate__fadeIn">
+                <label class="label is-size-7 has-text-info">Enlace de Evidencia</label>
+                <div class="field has-addons">
+                  <div class="control is-expanded has-icons-left">
+                    <input 
+                      v-model="form.link_evidencia" 
+                      class="input is-small custom-input" 
+                      type="url" 
+                      placeholder="https://drive.google.com/..."
+                    >
+                    <span class="icon is-small is-left">
+                      <i class="fas fa-link"></i>
+                    </span>
+                  </div>
+                  <div class="control">
+                    <button 
+                      class="button is-small is-info" 
+                      title="Abrir en nueva pestaña"
+                      :disabled="!esUrlValida"
+                      @click="abrirEnlace"
+                    >
+                      <span class="icon is-small">
+                        <i class="fas fa-external-link-alt"></i>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field">
+                <label class="checkbox has-text-white is-size-7">
+                  <input type="checkbox" v-model="form.utilizable" :disabled="!tienePermisoEstructura" class="mr-2">
+                  UTILIZABLE
                 </label>
               </div>
             </div>
@@ -159,13 +210,26 @@ const errorValidacion = ref('');
 const maestras = ref({ estados: [], prioridades: [], tipos: [] });
 const integrantes = ref([]);
 
-// FIX: Inicializamos con 1 para evitar el NOT NULL de la DB
+/**
+ * Propósito: Estado reactivo del formulario de tarea técnica.
+ */
 const form = reactive({
-  id: null, titulo: '', descripcion: '', responsable_id: null,
-  tipo_id: 1, prioridad_id: 1, estado_id: 1, 
-  horas_estimadas: 0, horas_reales: 0,
-  cumpleAceptacion: false, testeado: false, documentado: false, utilizable: false,
-  criterios_aceptacion: '', comentario_cierre: '',
+  id: null, 
+  titulo: '', 
+  descripcion: '', 
+  responsable_id: null,
+  tipo_id: 1, 
+  prioridad_id: 1, 
+  estado_id: 1, 
+  horas_estimadas: 0, 
+  horas_reales: 0,
+  cumpleAceptacion: false, 
+  testeado: false, 
+  documentado: false, 
+  utilizable: false,
+  link_evidencia: '',
+  criterios_aceptacion: '', 
+  comentario_cierre: '',
   usId: usId 
 });
 
@@ -186,6 +250,23 @@ const textoBotonGuardar = computed(() => {
   return 'Guardar Cambios';
 });
 
+// Validación simple de URL para habilitar el botoncito
+const esUrlValida = computed(() => {
+  return form.link_evidencia && form.link_evidencia.startsWith('http');
+});
+
+/**
+ * Propósito: Abrir la URL escrita en el textbox en una pestaña nueva.
+ */
+const abrirEnlace = () => {
+  if (form.link_evidencia) {
+    window.open(form.link_evidencia, '_blank');
+  }
+};
+
+/**
+ * Propósito: Cargar tablas maestras, integrantes y datos de la tarea.
+ */
 const cargarDatos = async () => {
   try {
     const [resM, resProy] = await Promise.all([
@@ -203,24 +284,22 @@ const cargarDatos = async () => {
       const t = resT.data;
       
       if (t) {
-        // 🚀 EL FIX: Mapeo manual y explícito
         form.id = t.id;
-        form.titulo = t.titulo; // <--- Si esto estaba como t.nombre, no cargaba
+        form.titulo = t.titulo;
         form.descripcion = t.descripcion || '';
         form.responsable_id = t.responsable_id ? Number(t.responsable_id) : null;
         form.tipo_id = Number(t.tipo_id) || 1;
         form.prioridad_id = Number(t.prioridad_id) || 1;
         form.estado_id = Number(t.estado_id) || 1;
         form.horas_estimadas = t.horas_estimadas || 0;
-        form.horas_reales = t.horas_reales || 0;
+        form.horas_reales = t.horasReales || t.horas_reales || 0;
         
-        // Checklist (Sequelize devuelve booleanos o 1/0)
         form.cumpleAceptacion = !!t.cumpleAceptacion;
         form.testeado = !!t.testeado;
         form.documentado = !!t.documentado;
         form.utilizable = !!t.utilizable;
 
-        // Ojo con estos nombres que vienen de la DB (snake_case)
+        form.link_evidencia = t.linkEvidencia || t.link_evidencia || '';
         form.criterios_aceptacion = t.criteriosAceptacion || t.criterios_aceptacion || '';
         form.comentario_cierre = t.comentarioCierre || t.comentario_cierre || '';
       }
@@ -230,31 +309,26 @@ const cargarDatos = async () => {
   }
 };
 
+/**
+ * Propósito: Guardar o actualizar la tarea.
+ */
 const guardarTarea = async () => {
   errorValidacion.value = '';
-  
-  // LOG DE CONTROL: Si este log sale vacío, el problema es el v-model
-  console.log("Datos a enviar:", form.titulo); 
-
   if (!form.titulo?.trim()) {
     errorValidacion.value = "El título es obligatorio.";
     return;
   }
-
   enviando.value = true;
   try {
     const payload = { 
-        ...form, // Aquí va el título
+        ...form,
         proyecto_id: Number(proyectoId), 
         usId: Number(usId) 
     };
-
     if (esEdicion.value) {
       await api.put(`/tareas/${tareaIdParam}`, payload);
     } else {
-      // POST para crear
-      const res = await api.post('/tareas', payload);
-      console.log("Respuesta del servidor:", res.data); // Chequeá si acá viene el título
+      await api.post('/tareas', payload);
     }
     router.back();
   } catch (error) {
@@ -271,4 +345,7 @@ onMounted(cargarDatos);
 .dashboard-bg { min-height: 100vh; background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.9)), url('../assets/fondo.jpg'); background-size: cover; background-attachment: fixed; }
 .glass-panel { background: rgba(255, 255, 255, 0.05) !important; backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
 .custom-input, .custom-select select { background-color: #fff9e6 !important; color: #000 !important; border: 2px solid #dcd6c0 !important; font-weight: 600 !important; }
+/* Estilo para que el campo link parezca un addon integrado */
+.field.has-addons .control .button { height: 100%; }
+.animate__animated { animation-duration: 0.4s; }
 </style>
