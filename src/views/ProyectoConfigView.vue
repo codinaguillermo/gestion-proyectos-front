@@ -41,7 +41,7 @@
                   <div class="select is-fullwidth is-dark">
                     <select v-model.number="form.estado_id">
                       <option :value="null" disabled>Seleccione un estado</option>
-                      <option v-for="est in estadosProyecto" :key="est.id" :value="Number(est.id)">
+                      <option v-for="est in estadosProyecto" :key="est.id" :value="est.id">
                         {{ est.nombre }}
                       </option>
                     </select>
@@ -222,41 +222,65 @@ export default {
     }
   },
   methods: {
+    /**
+     * Propósito: Carga inicial de datos maestros y detalles del proyecto.
+     * Quién la llama: mounted()
+     * Retorna: void (actualiza el estado reactivo del componente)
+     */
     async cargarTodo() {
       this.cargando = true;
       const id = this.$route.params.id;
       try {
-        // 1. CARGAMOS CONFIGURACIÓN PRIMERO (Importante para que el Select tenga datos)
+        // 1. Cargamos tablas maestras y normalizamos IDs a Number
         const [resConfig, resTareas] = await Promise.all([
           configService.getTablasMaestras(),
           tareaService.getAll()
         ]);
-        this.estadosProyecto = resConfig.estadosProyecto || [];
+        
+        // Normalizamos la lista de una para que el HTML la reciba limpia
+        this.estadosProyecto = (resConfig.estadosProyecto || []).map(e => ({
+          ...e,
+          id: Number(e.id)
+        }));
+        console.table(this.estadosProyecto);
+        console.log("Tipo de form.estado_id:", typeof this.form.estado_id, "Valor:", this.form.estado_id);
+        
         this.prioridades = resConfig.prioridades || [];
         this.todasLasTareas = resTareas.data || resTareas;
 
-        // 2. RECIÉN AHORA BUSCAMOS EL PROYECTO
+        // 2. Cargamos el proyecto
         const resProj = await projectService.getById(id);
         if (resProj.success) {
           const p = resProj.data;
           this.proyectoOriginal = p;
           
-          // Mapeamos los campos del proyecto al formulario
-          this.form = {
-            ...p,
-            estado_id: p.estado_id ? Number(p.estado_id) : (p.estado_proyecto?.id ? Number(p.estado_proyecto.id) : null)
-          };
+          const idEstado = p.estado_id ? Number(p.estado_id) : (p.EstadoProyecto?.id ? Number(p.EstadoProyecto.id) : null);
 
-          // Debug para consola: esto te dirá qué ID está intentando cargar
-          console.log("PROYECTO CARGADO:", p.nombre);
-          console.log("ID ESTADO DETECTADO:", this.form.estado_id);
-          console.log("LISTA ESTADOS DISPONIBLES:", this.estadosProyecto);
-
+          // SETEO DE TODAS LAS PROPIEDADES (Mantenemos tu lógica intacta)
+          this.form.id = p.id;
+          this.form.nombre = p.nombre;
+          this.form.descripcion = p.descripcion;
+          this.form.fecha_cierre_1 = p.fecha_cierre_1;
+          this.form.fecha_cierre_2 = p.fecha_cierre_2;
+          this.form.objetivo = p.objetivo;
+          this.form.alcancePrototipo = p.alcancePrototipo;
+          this.form.alcanceFinal = p.alcanceFinal;
           this.form.entregables = p.entregables ? JSON.parse(JSON.stringify(p.entregables)) : [];
           this.miembrosAsignados = p.integrantes || p.Usuarios || [];
+
+          // EL TRUCO PARA EL SELECT:
+          // Primero lo forzamos a null y luego al valor real en el siguiente ciclo de renderizado
+          this.form.estado_id = null; 
+
+          this.$nextTick(() => {
+            this.form.estado_id = idEstado;
+            console.log("REACTIVIDAD FORZADA - ESTADO FINAL:", this.form.estado_id);
+          });
+
+          console.log("PROYECTO CARGADO:", p.nombre);
         }
       } catch (err) {
-        console.error("Error cargando todo:", err);
+        console.error("Error crítico en carga de datos:", err);
       } finally {
         this.cargando = false;
       }
@@ -313,7 +337,9 @@ export default {
     },
     volver() { this.$router.push('/dashboard'); }
   },
-  mounted() { this.cargarTodo(); }
+  mounted() {
+    this.cargarTodo();
+  }
 }
 </script>
 
