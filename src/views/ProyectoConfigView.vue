@@ -343,5 +343,24 @@ export default {
 .avatar-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 .uppercase-label { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; font-weight: bold; }
 .is-dark-box { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; }
-.delivery-table-v2 td { border-bottom: 1px solid rgba(255,255,255,0.05) !important; color: white; vertical-align: middle; }
+
+/* FIX DE TABLA TRANSPARENTE */
+.glass-table {
+  background-color: transparent !important;
+}
+
+.delivery-table-v2, 
+.delivery-table-v2 thead, 
+.delivery-table-v2 tbody, 
+.delivery-table-v2 tr {
+  background-color: transparent !important;
+}
+
+.delivery-table-v2 td, 
+.delivery-table-v2 th {
+  background-color: transparent !important;
+  border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+  color: white;
+  vertical-align: middle;
+}
 </style>
