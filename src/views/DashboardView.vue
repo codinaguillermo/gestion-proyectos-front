@@ -31,6 +31,7 @@
             <thead>
               <tr>
                 <th class="has-text-info">Escuela</th> 
+                <th class="has-text-info has-text-centered">Viable</th>
                 <th class="has-text-info has-text-centered">Cierre 1</th>
                 <th class="has-text-info has-text-centered">Cierre 2</th>
                 <th class="has-text-info">Nombre</th>
@@ -52,6 +53,16 @@
                     {{ proyecto.escuela?.nombre_corto || 'Global' }}
                   </span>
                 </td>
+                
+                <td class="has-text-centered">
+                  <span v-if="proyecto.viable" class="icon has-text-success" title="Proyecto Avalado Técnicamente">
+                    <i class="fas fa-check-circle fa-lg"></i>
+                  </span>
+                  <span v-else class="icon has-text-grey-dark" title="Pendiente de aprobación técnica">
+                    <i class="fas fa-hourglass-half"></i>
+                  </span>
+                </td>
+
                 <td class="has-text-centered">
                   <span class="semaforo-led" 
                         :style="{ backgroundColor: calcularSemaforo(proyecto.fecha_cierre_1).color }"
@@ -91,7 +102,7 @@
                 </td>
               </tr>
               <tr v-if="proyectosVisibles.length === 0">
-                <td colspan="8" class="has-text-centered has-text-grey-light py-6">
+                <td colspan="9" class="has-text-centered has-text-grey-light py-6">
                   <i class="fas fa-folder-open fa-3x mb-3"></i><br>
                   No tienes proyectos asignados actualmente.
                 </td>
@@ -105,7 +116,7 @@
     <footer class="footer-dashboard">
         <div class="footer-container">
             <div class="footer-info">
-                Gestión de Proyectos Estudiantiles <span class="version-badge">v2.1.4</span>
+                Gestión de Proyectos Estudiantiles <span class="version-badge">v2.2.0</span>
             </div>
             <div class="footer-credits">
                 &copy; {{ anioActual }} | Creado por Ing. Guillermo Codina.
@@ -193,8 +204,10 @@ const formProyecto = reactive({ nombre: '', descripcion: '', escuela_id: null })
 
 const anioActual = computed(() => new Date().getFullYear());
 
-// Getter de rol centralizado
-const miRol = computed(() => Number(authStore.usuario?.rol_id || authStore.usuario?.rolId));
+const miRol = computed(() => {
+    const rol = authStore.usuario?.rol_id || authStore.usuario?.rolId;
+    return rol ? Number(rol) : 99;
+});
 
 const esAdminODocente = computed(() => {
     return miRol.value === 1 || miRol.value === 2;
@@ -205,10 +218,8 @@ const proyectosVisibles = computed(() => {
     if (!user) return [];
     const miId = Number(user.id);
 
-    // Admin (1) ve todo
     if (miRol.value === 1) return proyectos.value;
 
-    // Docente o Alumno: Ven si son dueños o integrantes
     return proyectos.value.filter(p => {
         const integrantes = p.integrantes || p.Usuarios || p.usuarios || [];
         const esDuenio = Number(p.docente_owner_id) === miId;
@@ -261,6 +272,8 @@ const prepararEdicion = (proyecto) => {
 
 const guardarProyecto = async () => {
     if (!formProyecto.nombre || !formProyecto.escuela_id) return; 
+    if (!esAdminODocente.value) return;
+
     enviando.value = true;
     try {
         const res = await projectService.create(formProyecto);
@@ -275,14 +288,13 @@ const guardarProyecto = async () => {
 };
 
 const prepararEliminacion = (proyecto) => {
-    // Doble check de seguridad en interfaz
     if (!esAdminODocente.value) return; 
     proyectoAEliminar.value = proyecto;
     isConfirmActive.value = true;
 };
 
 const ejecutarEliminacion = async () => {
-    if (!proyectoAEliminar.value) return;
+    if (!proyectoAEliminar.value || !esAdminODocente.value) return;
     try {
         const res = await projectService.delete(proyectoAEliminar.value.id);
         if (res.success) {

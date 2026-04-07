@@ -83,6 +83,9 @@
                   <li :class="{'is-active': tabActiva === 'equipo'}">
                     <a @click="tabActiva = 'equipo'"><span class="icon"><i class="fas fa-users"></i></span><span>Equipo ({{ miembrosAsignados.length }})</span></a>
                   </li>
+                  <li :class="{'is-active': tabActiva === 'viabilidad'}">
+                    <a @click="tabActiva = 'viabilidad'"><span class="icon"><i class="fas fa-shield-check"></i></span><span>Viabilidad</span></a>
+                  </li>
                   <li :class="{'is-active': tabActiva === 'entregables'}">
                     <a @click="tabActiva = 'entregables'"><span class="icon"><i class="fas fa-file-upload"></i></span><span>Entregables</span></a>
                   </li>
@@ -148,6 +151,55 @@
                   </div>
                 </div>
 
+                <div v-if="tabActiva === 'viabilidad'" class="animate__animated animate__fadeIn">
+                  <div class="box is-dark-box p-5 mb-5">
+                    <div class="field">
+                      <label class="label has-text-white is-size-5 uppercase-label">Aprobación de Anteproyecto</label>
+                      <div class="control mt-4">
+                        <label class="checkbox has-text-white is-size-4" :class="{'is-disabled': !esDocente}">
+                          <input 
+                            type="checkbox" 
+                            v-model="form.viable" 
+                            class="mr-3"
+                            :disabled="!esDocente"
+                          >
+                          PROYECTO VALIDADO / VIABLE
+                        </label>
+                      </div>                      
+                    </div>
+                  </div>
+
+                  <div class="field mb-5">
+                    <label class="label has-text-white uppercase-label">Documentación de Respaldo</label>
+                    <div class="field has-addons mt-3">
+                      <div class="control is-expanded has-icons-left">
+                        <input 
+                          class="input is-dark is-medium" 
+                          type="text" 
+                          v-model="form.documentoViabilidadLink" 
+                          placeholder="Link del documento..."
+                          :disabled="!esDocente"
+                        >
+                        <span class="icon is-left has-text-info"><i class="fas fa-link"></i></span>
+                      </div>
+                      <div class="control">
+                        <button class="button is-info is-medium" :disabled="!form.documentoViabilidadLink" @click="abrirEnlace(form.documentoViabilidadLink)">
+                          <i class="fas fa-external-link-alt"></i>
+                        </button>
+                      </div>
+                    </div>
+                    <p class="help has-text-grey-lighter is-size-6 mt-2">
+                      Link al archivo digitalizado que acredita la aprobación.
+                    </p>
+                  </div>
+
+                  <article v-if="form.viable && !form.documentoViabilidadLink" class="message is-warning is-small">
+                    <div class="message-body">
+                      <strong>Falta Respaldo:</strong> No se puede considerar viable sin el link al documento digitalizado.
+                    </div>
+                  </article>
+                </div>
+
                 <div v-if="tabActiva === 'entregables'" class="animate__animated animate__fadeIn">
                   <div class="field has-addons mb-6">
                     <div class="control is-expanded">
@@ -199,6 +251,22 @@
         </div>
       </div>
     </div>
+
+    <div class="modal" :class="{'is-active': showModalError}">
+      <div class="modal-background" @click="showModalError = false"></div>
+      <div class="modal-card">
+        <header class="modal-card-head has-background-danger">
+          <p class="modal-card-title has-text-white">Error de Validación</p>
+          <button class="delete" @click="showModalError = false"></button>
+        </header>
+        <section class="modal-card-body">
+          <p class="has-text-weight-semibold is-size-5">{{ modalErrorMsg }}</p>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+          <button class="button is-danger" @click="showModalError = false">Entendido</button>
+        </footer>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -209,6 +277,11 @@ import { tareaService } from '../services/tarea.service';
 import { useAuthStore } from '../stores/auth';
 import axios from 'axios';
 
+/**
+ * ProyectoConfigView.vue
+ * Provee la gestión de viabilidad restringida a docentes.
+ * Comentario: Cada función incluye su propósito y retorno.
+ */
 export default {
   data() {
     return {
@@ -223,10 +296,15 @@ export default {
       prioridades: [],
       todasLasTareas: [],
       miembrosAsignados: [],
+      // Manejo de Modales
+      showModalError: false,
+      modalErrorMsg: '',
       form: {
         id: null, nombre: '', descripcion: '', estado_id: null,
         fecha_cierre_1: '', fecha_cierre_2: '',
         objetivo: '', alcancePrototipo: '', alcanceFinal: '',
+        viable: false,
+        documentoViabilidadLink: '',
         entregables: []
       },
       camposAlcance: [
@@ -236,7 +314,22 @@ export default {
       ]
     }
   },
+  computed: {
+    /**
+     * Propósito: Validar si el usuario tiene rol Docente (2) o Admin (1).
+     * Retorna: Boolean
+     */
+    esDocente() {
+      const authStore = useAuthStore();
+      const rolId = Number(authStore.usuario?.rol_id || authStore.usuario?.rolId);
+      return rolId === 1 || rolId === 2;
+    }
+  },
   methods: {
+    /**
+     * Propósito: Cargar datos iniciales del proyecto y tablas maestras.
+     * Retorna: Promise<void>
+     */
     async cargarTodo() {
       this.cargando = true;
       const id = this.$route.params.id;
@@ -258,6 +351,8 @@ export default {
             id: p.id, nombre: p.nombre, descripcion: p.descripcion,
             fecha_cierre_1: p.fecha_cierre_1, fecha_cierre_2: p.fecha_cierre_2,
             objetivo: p.objetivo, alcancePrototipo: p.alcancePrototipo, alcanceFinal: p.alcanceFinal,
+            viable: p.viable || false,
+            documentoViabilidadLink: p.documentoViabilidadLink || '',
             entregables: p.entregables ? JSON.parse(JSON.stringify(p.entregables)) : []
           });
           this.miembrosAsignados = p.integrantes || p.Usuarios || [];
@@ -266,10 +361,18 @@ export default {
         }
       } catch (err) { console.error(err); } finally { this.cargando = false; }
     },
+    /**
+     * Propósito: Abrir enlaces externos (ej Drive).
+     * Retorna: void
+     */
     abrirEnlace(url) {
       if (!url) return;
       window.open(url.startsWith('http') ? url : `https://${url}`, '_blank');
     },
+    /**
+     * Propósito: Añadir entregable a la lista temporal.
+     * Retorna: void
+     */
     agregarEntregableRAM() {
       if (!this.nuevoEntregableNombre.trim()) return;
       this.form.entregables.push({ nombre: this.nuevoEntregableNombre.trim(), link_drive: '' });
@@ -278,6 +381,10 @@ export default {
     quitarMiembro(id) { this.miembrosAsignados = this.miembrosAsignados.filter(m => m.id !== id); },
     obtenerColorAvatar(rol) { return Number(rol) === 3 ? 'has-background-success-light has-text-success' : 'has-background-link-light has-text-link'; },
     obtenerIniciales(n) { return n ? n.split(' ').map(x => x[0]).join('').toUpperCase().substring(0, 2) : '?'; },
+    /**
+     * Propósito: Buscar usuarios para el equipo.
+     * Retorna: Promise<void>
+     */
     async buscarUsuarios() {
       if (this.busqueda.length < 2) { this.resultadosBusqueda = []; return; }
       try {
@@ -293,15 +400,38 @@ export default {
       this.busqueda = '';
       this.resultadosBusqueda = [];
     },
+    /**
+     * Propósito: Persistir cambios con validación de viabilidad mediante Modal.
+     * Retorna: Promise<void>
+     */
     async confirmarCambios() {
-      if (!this.form.nombre.trim()) return alert("Nombre obligatorio");
+      if (!this.form.nombre.trim()) {
+        this.modalErrorMsg = "El nombre del proyecto es obligatorio.";
+        this.showModalError = true;
+        return;
+      }
+
+      // Validación de viabilidad con documento obligatorio
+      if (this.form.viable && !this.form.documentoViabilidadLink) {
+        this.modalErrorMsg = "Atención Profe: Para marcar el proyecto como VIABLE debe adjuntar el link del documento digitalizado de respaldo.";
+        this.showModalError = true;
+        this.tabActiva = 'viabilidad';
+        return;
+      }
+
       this.guardando = true;
       try {
         const authStore = useAuthStore();
-        await axios.put(`/api/proyectos/${this.form.id}`, { ...this.form, usuariosIds: this.miembrosAsignados.map(m => m.id) }, 
-          { headers: { 'Authorization': `Bearer ${authStore.token}` } });
+        await axios.put(`/api/proyectos/${this.form.id}`, { 
+          ...this.form, 
+          usuariosIds: this.miembrosAsignados.map(m => m.id) 
+        }, { headers: { 'Authorization': `Bearer ${authStore.token}` } });
         this.volver();
-      } catch (err) { console.error(err); } finally { this.guardando = false; }
+      } catch (err) { 
+        console.error(err); 
+        this.modalErrorMsg = "Error de conexión con el servidor.";
+        this.showModalError = true;
+      } finally { this.guardando = false; }
     },
     volver() { this.$router.push('/dashboard'); }
   },
@@ -313,7 +443,6 @@ export default {
 .dashboard-bg { min-height: 100vh; background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.9)), url('../assets/fondo.jpg'); background-size: cover; background-attachment: fixed; }
 .glass-panel { background: rgba(255, 255, 255, 0.05) !important; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
 
-/* FIX DE TEXTAREAS Y CONTENEDORES */
 .custom-textarea {
   width: 100% !important;
   max-width: 100% !important;
@@ -344,23 +473,12 @@ export default {
 .uppercase-label { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; font-weight: bold; }
 .is-dark-box { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; }
 
-/* FIX DE TABLA TRANSPARENTE */
-.glass-table {
-  background-color: transparent !important;
-}
-
-.delivery-table-v2, 
-.delivery-table-v2 thead, 
-.delivery-table-v2 tbody, 
-.delivery-table-v2 tr {
-  background-color: transparent !important;
-}
-
-.delivery-table-v2 td, 
-.delivery-table-v2 th {
+.glass-table { background-color: transparent !important; }
+.delivery-table-v2 td, .delivery-table-v2 th {
   background-color: transparent !important;
   border-bottom: 1px solid rgba(255,255,255,0.05) !important;
   color: white;
   vertical-align: middle;
 }
+.is-disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
