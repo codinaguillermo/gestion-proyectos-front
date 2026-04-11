@@ -133,7 +133,8 @@
                       </div>
                     </div>
                   </div>
-                  <div class="columns is-multiline">
+                  
+                  <div class="columns is-multiline mb-6">
                     <div class="column is-6" v-for="miembro in miembrosAsignados" :key="miembro.id">
                       <div class="box p-3 is-dark-box">
                         <article class="media is-align-items-center">
@@ -143,9 +144,46 @@
                             <p class="has-text-grey-light is-size-7" v-if="miembro.telefono">TE: {{ miembro.telefono }}</p>
                           </div>
                           <div class="media-right">
-                            <button class="button is-ghost has-text-danger p-0" @click="quitarMiembro(miembro.id)"><i class="fas fa-user-minus"></i></button>
+                            <div class="buttons">
+                              <button 
+                                v-if="esDocente && Number(miembro.rol_id) === 3" 
+                                class="button is-ghost has-text-info p-0 mr-3" 
+                                @click="abrirModalSeguimiento(miembro)"
+                                title="Agregar Seguimiento"
+                              >
+                                <i class="fas fa-chart-line"></i>
+                              </button>
+                              <button class="button is-ghost has-text-danger p-0" @click="quitarMiembro(miembro.id)"><i class="fas fa-user-minus"></i></button>
+                            </div>
                           </div>
                         </article>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-if="esDocente" class="monitor-desempeno mt-6 pt-5 border-top-info">
+                    <h4 class="title is-6 has-text-info uppercase-label mb-5">
+                      <i class="fas fa-microchip mr-2"></i> Monitor de Desempeño (Promedios)
+                    </h4>
+                    
+                    <div v-if="statsSeguimiento.length === 0" class="notification is-dark is-size-7 has-text-centered">
+                      <i class="fas fa-exclamation-triangle mr-2"></i> Se requieren calificaciones cualitativas para reflejar el desempeño del equipo.
+                    </div>
+
+                    <div v-else class="columns is-multiline">
+                      <div class="column is-12" v-for="stat in statsSeguimiento" :key="stat.alumno">
+                        <div class="is-flex is-justify-content-between is-align-items-center mb-1">
+                          <a class="has-text-info is-size-7 has-text-weight-semibold is-underlined" @click="verDetalleAlumno(stat)">
+                            {{ stat.alumno }}
+                          </a>
+                          <span class="tag is-dark is-small">Promedio: {{ stat.promedio }} ({{ stat.cantidad }} ev.)</span>
+                        </div>
+                        <progress 
+                          class="progress is-small" 
+                          :class="obtenerColorBarra(stat.promedio)" 
+                          :value="stat.promedio" 
+                          max="3"
+                        ></progress>
                       </div>
                     </div>
                   </div>
@@ -267,6 +305,22 @@
         </footer>
       </div>
     </div>
+
+    <SeguimientoModal 
+      v-if="mostrarModalSeguimiento" 
+      :alumno="alumnoSeleccionado" 
+      :proyectoId="form.id" 
+      @close="mostrarModalSeguimiento = false"
+      @success="cargarStats"
+    />
+
+    <DetalleSeguimientoModal
+      v-if="mostrarDetalle"
+      :alumno="alumnoSeleccionado"
+      :proyectoId="form.id"
+      @close="mostrarDetalle = false"
+    />
+
   </div>
 </template>
 
@@ -274,15 +328,14 @@
 import { configService } from '../services/config.service';
 import { projectService } from '../services/project.services';
 import { tareaService } from '../services/tarea.service';
+import seguimientoService from '../services/seguimiento.service';
+import SeguimientoModal from '../components/modals/SeguimientoModal.vue';
+import DetalleSeguimientoModal from '../components/modals/DetalleSeguimientoModal.vue'; 
 import { useAuthStore } from '../stores/auth';
 import axios from 'axios';
 
-/**
- * ProyectoConfigView.vue
- * Provee la gestión de viabilidad restringida a docentes.
- * Comentario: Cada función incluye su propósito y retorno.
- */
 export default {
+  components: { SeguimientoModal, DetalleSeguimientoModal },
   data() {
     return {
       cargando: true,
@@ -296,7 +349,10 @@ export default {
       prioridades: [],
       todasLasTareas: [],
       miembrosAsignados: [],
-      // Manejo de Modales
+      mostrarModalSeguimiento: false,
+      mostrarDetalle: false, // NUEVO
+      alumnoSeleccionado: null,
+      statsSeguimiento: [],
       showModalError: false,
       modalErrorMsg: '',
       form: {
@@ -315,10 +371,6 @@ export default {
     }
   },
   computed: {
-    /**
-     * Propósito: Validar si el usuario tiene rol Docente (2) o Admin (1).
-     * Retorna: Boolean
-     */
     esDocente() {
       const authStore = useAuthStore();
       const rolId = Number(authStore.usuario?.rol_id || authStore.usuario?.rolId);
@@ -326,10 +378,6 @@ export default {
     }
   },
   methods: {
-    /**
-     * Propósito: Cargar datos iniciales del proyecto y tablas maestras.
-     * Retorna: Promise<void>
-     */
     async cargarTodo() {
       this.cargando = true;
       const id = this.$route.params.id;
@@ -358,33 +406,55 @@ export default {
           this.miembrosAsignados = p.integrantes || p.Usuarios || [];
           this.form.estado_id = null; 
           this.$nextTick(() => { this.form.estado_id = idEstado; });
+          
+          if (this.esDocente) this.cargarStats();
         }
       } catch (err) { console.error(err); } finally { this.cargando = false; }
     },
-    /**
-     * Propósito: Abrir enlaces externos (ej Drive).
-     * Retorna: void
-     */
+
+    async cargarStats() {
+        try {
+            const res = await seguimientoService.getStats(this.form.id);
+            if (res.data.success) {
+                this.statsSeguimiento = res.data.data;
+            }
+        } catch (error) { console.error("Error stats:", error); }
+    },
+
+    verDetalleAlumno(stat) {
+        const alumnoObj = this.miembrosAsignados.find(m => `${m.nombre} ${m.apellido}` === stat.alumno);
+        if (alumnoObj) {
+            this.alumnoSeleccionado = alumnoObj;
+            this.mostrarDetalle = true;
+        }
+    },
+
+    obtenerColorBarra(promedio) {
+        if (promedio <= 1.5) return 'is-danger';
+        if (promedio <= 2.2) return 'is-warning';
+        return 'is-success';
+    },
+
+    abrirModalSeguimiento(alumno) {
+        this.alumnoSeleccionado = alumno;
+        this.mostrarModalSeguimiento = true;
+    },
+
     abrirEnlace(url) {
       if (!url) return;
       window.open(url.startsWith('http') ? url : `https://${url}`, '_blank');
     },
-    /**
-     * Propósito: Añadir entregable a la lista temporal.
-     * Retorna: void
-     */
+
     agregarEntregableRAM() {
       if (!this.nuevoEntregableNombre.trim()) return;
       this.form.entregables.push({ nombre: this.nuevoEntregableNombre.trim(), link_drive: '' });
       this.nuevoEntregableNombre = '';
     },
+
     quitarMiembro(id) { this.miembrosAsignados = this.miembrosAsignados.filter(m => m.id !== id); },
     obtenerColorAvatar(rol) { return Number(rol) === 3 ? 'has-background-success-light has-text-success' : 'has-background-link-light has-text-link'; },
     obtenerIniciales(n) { return n ? n.split(' ').map(x => x[0]).join('').toUpperCase().substring(0, 2) : '?'; },
-    /**
-     * Propósito: Buscar usuarios para el equipo.
-     * Retorna: Promise<void>
-     */
+
     async buscarUsuarios() {
       if (this.busqueda.length < 2) { this.resultadosBusqueda = []; return; }
       try {
@@ -395,15 +465,13 @@ export default {
         this.resultadosBusqueda = res.data.filter(u => u.activo && !this.miembrosAsignados.some(m => m.id === u.id));
       } catch (err) { console.error(err); }
     },
+
     seleccionarUsuario(u) {
       this.miembrosAsignados.push({ ...u });
       this.busqueda = '';
       this.resultadosBusqueda = [];
     },
-    /**
-     * Propósito: Persistir cambios con validación de viabilidad mediante Modal.
-     * Retorna: Promise<void>
-     */
+
     async confirmarCambios() {
       if (!this.form.nombre.trim()) {
         this.modalErrorMsg = "El nombre del proyecto es obligatorio.";
@@ -411,7 +479,6 @@ export default {
         return;
       }
 
-      // Validación de viabilidad con documento obligatorio
       if (this.form.viable && !this.form.documentoViabilidadLink) {
         this.modalErrorMsg = "Atención Profe: Para marcar el proyecto como VIABLE debe adjuntar el link del documento digitalizado de respaldo.";
         this.showModalError = true;
@@ -464,6 +531,8 @@ export default {
 .custom-tabs li.is-active a { background-color: rgba(52, 152, 219, 0.2) !important; color: #3498db !important; border-bottom-color: #3498db !important; }
 
 .border-bottom-info { border-bottom: 2px solid rgba(52, 152, 219, 0.3); }
+.border-top-info { border-top: 2px solid rgba(52, 152, 219, 0.3); } 
+
 .buscador-relativo { position: relative; }
 .search-results-floating { position: absolute; top: 100%; left: 0; width: 100%; z-index: 1000; background: rgba(25, 25, 25, 0.98) !important; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; margin-top: 5px; max-height: 250px; overflow-y: auto; }
 .dropdown-item-custom { color: #fff !important; display: block; padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); cursor: pointer; }
@@ -481,4 +550,6 @@ export default {
   vertical-align: middle;
 }
 .is-disabled { opacity: 0.5; cursor: not-allowed; }
+
+.progress.is-dark { background-color: rgba(255, 255, 255, 0.1); }
 </style>
