@@ -58,34 +58,44 @@ const BASE_URL = 'https://www.youtube.com/watch?v=MXGakfEteT0';
 
 const tutoriales = ref([
   { 
+    titulo: 'Introducción', 
+    descripcion: '¿Qué es GEPRES?.',
+    url: 'https://drive.google.com/file/d/1Gm8xiyEqPxKrtF91RQEWwnQk79dFXpBS/view?usp=sharing' 
+  },
+  { 
+    titulo: 'El Tablero de control - Dashboards', 
+    descripcion: 'Primer pantalla con la que nos encontramos al iniciar sesion de usuario.',
+    url: 'https://drive.google.com/file/d/1WHLarDOY9qSmZ0o2j7b7qvSUIvVgA9j2/view?usp=sharing' 
+  },
+  { 
     titulo: 'Primeros Pasos: Crear y Editar Proyectos', 
-    descripcion: 'Aprende a configurar tu espacio de trabajo y gestionar los integrantes del equipo.',
-    url: BASE_URL 
+    descripcion: 'Aprende a configurar el proyecto y gestionar los integrantes del equipo.',
+    url: 'https://drive.google.com/file/d/1E9rZdoUm23LnChBM9gy0E0P-zXGR-fy_/view?usp=sharing' 
   },
   { 
-    titulo: 'Dominando el Backlog: Crear y Editar US', 
+    titulo: 'El Backlog: Crear y Editar US y gestionar tareas', 
     descripcion: 'Cómo definir entregables, prioridades y fechas de entrega de forma correcta.',
-    url: BASE_URL 
+    url: 'https://drive.google.com/file/d/1LROqAHS9PB4_3DFHzNlx_FwZTOlq3UAq/view?usp=sharing' 
   },
   { 
-    titulo: 'Gestión de Tareas y Registro de Horas', 
-    descripcion: 'Carga tus tareas técnicas, asocia responsables y registra tu esfuerzo diario.',
-    url: BASE_URL 
+    titulo: 'Evaluar a los alumnos', 
+    descripcion: 'Poder ir evaluando con calificaciones cualitativas a los alumnos durante el desarrollo de sus proyectos',
+    url: 'https://drive.google.com/file/d/1211Y1KIFjkQUNGaAF4pEhLuUUhDnm7BM/view?usp=sharing' 
   },
   { 
-    titulo: 'Ciclo de Vida: De Pendiente a Revisión', 
-    descripcion: 'El flujo de estados y cómo enviar tareas para que el docente las audite.',
-    url: BASE_URL 
+    titulo: 'Modulo Usuarios', 
+    descripcion: 'Los docentes pueden crear nuevos usuarios y asignar roles.',
+    url: 'https://drive.google.com/file/d/16Ug2pERIZl5ENea3edOCpjrN17trz03Z/view?usp=sharing' 
   },
   { 
-    titulo: 'Entendiendo las Métricas y Gráficos', 
-    descripcion: 'Cómo leer el análisis de carga y rendimiento de tu equipo.',
-    url: BASE_URL 
+    titulo: 'Módulo Escuelas', 
+    descripcion: 'Los docentes pueden crear y editar escuelas.',
+    url: 'https://drive.google.com/file/d/1O-n6o2S26Ko4Yt0OKAvpUOhnFkLHIra8/view?usp=sharing' 
   },
   { 
-    titulo: 'Configuración de Perfil y Notificaciones', 
-    descripcion: 'Personaliza tu cuenta y mantente al tanto de los cambios en tus proyectos.',
-    url: BASE_URL 
+    titulo: 'Sugerencias y errores', 
+    descripcion: 'Permite dejar mensajes de nuevas sugerencias de cambios o mejoras de GEPRES para el desarrollador de la plataforma WEB.',
+    url: 'https://drive.google.com/file/d/1uoWdW-3bgYEUCOqtmrL4MbEoD9UUhwMS/view?usp=sharing' 
   }
 ]);
 </script>
