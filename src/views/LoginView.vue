@@ -44,7 +44,7 @@
         <div class="footer-container">
             <div class="footer-info">
                 GEPRES
-                <span class="version-badge">v2.3.0</span>
+                <span class="version-badge">v2.3.1</span>
             </div>
 
             <div class="footer-credits">
@@ -172,16 +172,36 @@ const handleLogin = async () => {
   text-decoration: underline;
 }
 
+/* Estilo del Input reforzado para visibilidad total */
 .transparent-input {
   background: rgba(255, 255, 255, 0.9) !important;
   border: none;
   transition: all 0.3s ease;
-  height: 50px; /* Altura cómoda, no exagerada */
+  height: 50px;
+  /* FUERZA EL COLOR DEL TEXTO EN NEGRO */
+  color: #1a1a1a !important; 
+  font-weight: 500;
 }
 
 .transparent-input:focus {
   background: white !important;
+  color: #000000 !important;
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* BLINDAJE DEL PLACEHOLDER (el texto de sugerencia) */
+.transparent-input::placeholder {
+  color: #666666 !important; /* Gris oscuro para que se lea siempre */
+  opacity: 1; /* Necesario para Firefox */
+}
+
+/* BLINDAJE DEL AUTOCOMPLETADO (Evita el fondo azul/amarillo feo) */
+.transparent-input:-webkit-autofill,
+.transparent-input:-webkit-autofill:hover, 
+.transparent-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #1a1a1a !important;
+  -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 1) inset !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .title {
