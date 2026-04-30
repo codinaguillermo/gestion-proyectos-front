@@ -44,7 +44,7 @@
         <div class="footer-container">
             <div class="footer-info">
                 GEPRES
-                <span class="version-badge">v2.3.1</span>
+                <span class="version-badge">v2.3.2</span>
             </div>
 
             <div class="footer-credits">

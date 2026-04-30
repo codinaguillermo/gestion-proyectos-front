@@ -67,7 +67,7 @@
 
               <div class="field mt-6">
                 <label class="label has-text-grey-lighter is-small uppercase-label">Notas del Proyecto</label>
-                <textarea class="textarea is-dark" rows="6" v-model="form.descripcion" placeholder="Notas adicionales..."></textarea>
+                <textarea class="textarea is-dark" rows="10" v-model="form.descripcion" placeholder="Notas adicionales..."></textarea>
               </div>
             </div>
           </div>
