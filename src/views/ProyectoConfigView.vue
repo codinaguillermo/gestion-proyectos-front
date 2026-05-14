@@ -94,9 +94,11 @@
 
               <div class="p-5 flex-grow-1">
                 
+                
                 <div v-if="tabActiva === 'alcance'" class="animate__animated animate__fadeIn">
+                  <!-- TÍTULO DEL PROYECTO -->
                   <div class="field mb-6">
-                    <label class="label has-text-white is-size-6 mb-3">TÍTULO DEL PROYECTO</label>
+                    <label class="label has-text-white is-size-6 mb-3 uppercase-label">TÍTULO DEL PROYECTO</label>
                     <div class="control">
                       <input 
                         class="input is-dark is-medium custom-input-title" 
@@ -106,13 +108,33 @@
                     </div>
                   </div>
 
+                  <!-- OBJETIVO Y ALCANCE (UNIFICADOS Y CON CANDADO) -->
                   <div v-for="campo in camposAlcance" :key="campo.key" class="field mb-6">
-                    <label class="label has-text-white is-size-6 mb-3 uppercase-label">{{ campo.label }}</label>
+                    <div class="is-flex is-justify-content-between is-align-items-center mb-3">
+                      <label class="label has-text-white is-size-6 mb-0 uppercase-label">{{ campo.label }}</label>
+                      
+                      <!-- BOTÓN DEL CANDADO: Solo visible para Docentes -->
+                      <button 
+                        v-if="esDocente" 
+                        class="button is-small" 
+                        :class="form[campo.key + 'Bloqueado'] ? 'is-danger' : 'is-success is-outlined'"
+                        @click="form[campo.key + 'Bloqueado'] = !form[campo.key + 'Bloqueado']"
+                        type="button"
+                      >
+                        <span class="icon is-small">
+                          <i :class="form[campo.key + 'Bloqueado'] ? 'fas fa-lock' : 'fas fa-lock-open'"></i>
+                        </span>
+                        <span>{{ form[campo.key + 'Bloqueado'] ? 'Bloqueado' : 'Abierto' }}</span>
+                      </button>
+                    </div>
+
                     <div class="control">
                       <textarea 
                         class="textarea is-dark custom-textarea" 
                         rows="4" 
                         v-model="form[campo.key]"
+                        :disabled="!esDocente && form[campo.key + 'Bloqueado']"
+                        :placeholder="(!esDocente && form[campo.key + 'Bloqueado']) ? 'Contenido bloqueado por el docente' : 'Escriba aquí...'"
                       ></textarea>
                     </div>
                   </div>
@@ -358,15 +380,15 @@ export default {
       form: {
         id: null, nombre: '', descripcion: '', estado_id: null,
         fecha_cierre_1: '', fecha_cierre_2: '',
-        objetivo: '', alcancePrototipo: '', alcanceFinal: '',
+        objetivo: '', 
+        alcanceFinal: '', 
         viable: false,
         documentoViabilidadLink: '',
         entregables: []
       },
       camposAlcance: [
         { label: 'Objetivo General', key: 'objetivo' },
-        { label: 'Alcance Prototipo', key: 'alcancePrototipo' },
-        { label: 'Alcance Final', key: 'alcanceFinal' }
+        { label: 'Alcance del Proyecto', key: 'alcanceFinal' } // Renombramos y quitamos Prototipo
       ]
     }
   },
@@ -396,9 +418,17 @@ export default {
           this.proyectoOriginal = p;
           const idEstado = p.estado_id ? Number(p.estado_id) : (p.EstadoProyecto?.id ? Number(p.EstadoProyecto.id) : null);
           Object.assign(this.form, {
-            id: p.id, nombre: p.nombre, descripcion: p.descripcion,
-            fecha_cierre_1: p.fecha_cierre_1, fecha_cierre_2: p.fecha_cierre_2,
-            objetivo: p.objetivo, alcancePrototipo: p.alcancePrototipo, alcanceFinal: p.alcanceFinal,
+            id: p.id,
+            nombre: p.nombre,
+            descripcion: p.descripcion,
+            fecha_cierre_1: p.fecha_cierre_1,
+            fecha_cierre_2: p.fecha_cierre_2,
+            objetivo: p.objetivo,
+            alcanceFinal: p.alcanceFinal,
+            // Sincronización de candados con la Base de Datos
+            objetivoBloqueado: p.objetivoBloqueado || false,
+            alcanceFinalBloqueado: p.alcanceFinalBloqueado || false,
+            // Gestión de viabilidad y entregables
             viable: p.viable || false,
             documentoViabilidadLink: p.documentoViabilidadLink || '',
             entregables: p.entregables ? JSON.parse(JSON.stringify(p.entregables)) : []

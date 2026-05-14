@@ -12,7 +12,7 @@
               <div class="field mb-5">
                 <label class="label has-text-white is-size-5">Email</label>
                 <div class="control has-icons-left">                  
-                  <input v-model="email" type="email" placeholder="e.g. guille@gmail.com" class="input transparent-input is-medium" required>
+                  <input v-model="email" type="email" placeholder="una cuenta de email" class="input transparent-input is-medium" required>
                   <span class="icon is-small is-left">📧</span>
                 </div>
               </div>
@@ -44,7 +44,7 @@
         <div class="footer-container">
             <div class="footer-info">
                 GEPRES
-                <span class="version-badge">v2.3.2</span>
+                <span class="version-badge">v2.4.0</span>
             </div>
 
             <div class="footer-credits">
