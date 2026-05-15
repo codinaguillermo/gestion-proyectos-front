@@ -52,9 +52,14 @@
                 <span class="icon is-small mr-2"><i class="fas fa-lightbulb has-text-warning"></i></span>
                 Sugerencias y Errores
               </router-link>
+
+              <router-link v-if="esDocenteOAdmin" to="/mensajeria" class="navbar-item">
+                <span class="icon is-small mr-2"><i class="fas fa-envelope-open-text has-text-info"></i></span>
+                Mensajería Docente
+              </router-link>
               
-  
               <hr v-if="esDocenteOAdmin" class="navbar-divider">
+
               <router-link v-if="esDocenteOAdmin" to="/tutoriales" class="navbar-item">
                 <span class="icon is-small mr-2 has-text-danger"><i class="fas fa-play-circle"></i></span>
                 Tutoriales GEPRES

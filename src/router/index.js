@@ -3,6 +3,7 @@ import { useAuthStore } from '../stores/auth';
 import LoginView from '../views/LoginView.vue';
 import HomeView from '../views/HomeView.vue';
 import SugerenciasView from '../views/SugerenciasView.vue';
+import MensajeriaView from '../views/MensajeriaView.vue';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -79,6 +80,12 @@ const router = createRouter({
       name: 'tutoriales',
       component: () => import('../views/TutorialesView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/mensajeria',
+      name: 'mensajeria',
+      component: MensajeriaView,
+      meta: { requiresAuth: true } // Para que pida login
     }
   ]
 });
