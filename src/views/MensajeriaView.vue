@@ -32,7 +32,7 @@
         </div>
       </div>
 
-      <div v-if="cargando" class="notification glass-notification is-info">
+      <div v-if="cargando" class="field notification glass-notification is-info">
         <i class="fas fa-spinner fa-pulse mr-2"></i> Cargando tus mensajes...
       </div>
 
@@ -153,6 +153,7 @@
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { notaService } from '../services/nota.service';
+import { usuarioService } from '../services/usuario.services';
 import api from '../services/api';
 
 const authStore = useAuthStore();
@@ -237,7 +238,23 @@ const obtenerColorTipo = (t) => {
   return 'is-warning';
 };
 
-onMounted(cargarDatos);
+/**
+ * Propósito: Inicializar la vista cargando las notas y ejecutando la limpieza física y lógica del contador de mensajes nuevos.
+ * Quién la llama: Invocado automáticamente por el ciclo de montaje de Vue al ingresar a la pantalla.
+ * Qué datos retorna: void.
+ */
+onMounted(async () => {
+  await cargarDatos();
+  try {
+    // 1. Sincronizar la base de datos poniendo en cero el campo del registro
+    await usuarioService.resetContadorMensajes();
+    
+    // 2. Limpiar el estado reactivo global en Pinia para ocultar la burbuja roja
+    authStore.limpiarContadorMensajes();
+  } catch (error) {
+    console.error("Error al reiniciar el indicador de notificaciones de mensajería:", error);
+  }
+});
 </script>
 
 <style scoped>

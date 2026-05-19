@@ -52,14 +52,14 @@
               </div>
 
               <div class="field mb-5">
-                <label class="label has-text-grey-lighter is-small uppercase-label">1er Cierre (Prototipo)</label>
+                <label class="label has-text-grey-lighter is-small uppercase-label">Fecha 1er Cierre</label>
                 <div class="control">
                   <input class="input is-dark" type="date" v-model="form.fecha_cierre_1">
                 </div>
               </div>
 
               <div class="field mb-5">
-                <label class="label has-text-grey-lighter is-small uppercase-label">2do Cierre (Final)</label>
+                <label class="label has-text-grey-lighter is-small uppercase-label">Fecha 2do Cierre</label>
                 <div class="control">
                   <input class="input is-dark" type="date" v-model="form.fecha_cierre_2">
                 </div>
@@ -131,7 +131,7 @@
                     <div class="control">
                       <textarea 
                         class="textarea is-dark custom-textarea" 
-                        rows="4" 
+                        rows="6" 
                         v-model="form[campo.key]"
                         :disabled="!esDocente && form[campo.key + 'Bloqueado']"
                         :placeholder="(!esDocente && form[campo.key + 'Bloqueado']) ? 'Contenido bloqueado por el docente' : 'Escriba aquí...'"

@@ -62,6 +62,24 @@ export const useAuthStore = defineStore('auth', {
       localStorage.setItem('user', JSON.stringify(this.usuario));
       
       console.log("Store: Datos de usuario actualizados correctamente.");
+    },
+
+    /**
+     * Propósito: Limpiar localmente en el estado de Pinia y en el disco el contador de mensajes sin leer del usuario logueado.
+     * Alimentado por: Ciclo onMounted de la vista MensajeriaView.vue al ingresar al listado.
+     * Datos que recibe: ninguno.
+     * Datos que retorna: void.
+     */
+    limpiarContadorMensajes() {
+      if (this.usuario) {
+        // 1. Ponemos a cero el campo reactivo en memoria
+        this.usuario.mensajes_sin_leer = 0;
+        
+        // 2. Sincronizamos el almacenamiento persistente para conservar el cambio al refrescar
+        localStorage.setItem('user', JSON.stringify(this.usuario));
+        
+        console.log("Store: Contador de mensajes sin leer reiniciado a cero.");
+      }
     }
   }
 });

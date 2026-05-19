@@ -32,6 +32,15 @@ export const usuarioService = {
 
   getProyectosAsignados(id) {
     return api.get(`/usuarios/${id}/proyectos-asignados`);
+  },
+
+  /**
+   * Propósito: Enviar una petición PUT para reiniciar a cero el contador de mensajes sin leer del usuario en la Base de Datos.
+   * Quién la llama: Ciclo de vida onMounted de la vista MensajeriaView.vue.
+   * Qué datos retorna: Promesa de Axios con el resultado de la operación (success: true).
+   */
+  resetContadorMensajes() {
+    return api.put('/usuarios/reset-mensajes');
   }
 };
 

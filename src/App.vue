@@ -9,6 +9,18 @@
 
       <div class="navbar-menu is-active">
         <div class="navbar-end">
+          
+          <div v-if="esDocenteOAdmin && authStore.usuario?.mensajes_sin_leer > 0" class="navbar-item">
+            <router-link to="/mensajeria" class="button is-ghost has-text-white p-2 icon-mensaje-contenedor" title="Mensajería Docente">
+              <span class="icon is-medium">
+                <i class="fas fa-envelope fa-lg"></i>
+              </span>
+              <span class="badge-facebook">
+                {{ authStore.usuario.mensajes_sin_leer }}
+              </span>
+            </router-link>
+          </div>
+
           <div class="navbar-item is-flex is-align-items-center">
             <figure class="image is-32x32 mr-3">
               <img 
@@ -31,7 +43,7 @@
             </span>
           </div>
 
-          <div class="navbar-item has-dropdown is-hoverable">
+          <div class="navbar-item has-dropdown is-arrowless is-hoverable">
             <a class="navbar-link is-arrowless">
               <span class="icon has-text-white">
                 <i class="fas fa-cog"></i> 
@@ -227,5 +239,32 @@ onMounted(() => {
     height: 32px;
     font-size: 0.75rem;
     font-weight: bold;
+}
+
+/* Contenedor relativo del ícono de mensajes para anclar el globo flotante */
+.icon-mensaje-contenedor {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Burbuja indicadora de mensajes nuevos al estilo Facebook */
+.badge-facebook {
+  position: absolute;
+  top: 0px;
+  right: -2px;
+  background-color: #f14668; /* Rojo is-danger de Bulma */
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border-radius: 2904a5px;
+  padding: 1px 5px;
+  line-height: 1;
+  text-align: center;
+  min-width: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  z-index: 10;
 }
 </style>
