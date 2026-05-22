@@ -1,0 +1,827 @@
+<template>
+  <div class="dashboard-bg">
+    <div class="main-content-wrapper">
+      <div class="container mt-0 pt-6 px-4 pb-6">
+        
+        <div class="level mb-6 glass-panel p-5">
+          <div class="level-left">
+            <button class="button is-ghost has-text-white p-0 mr-5" @click="volver">
+              <span class="icon is-large"><i class="fas fa-arrow-left fa-lg"></i></span>
+            </button>
+            <div>
+              <h1 class="title has-text-white is-2 mb-1">Configuración del Proyecto</h1>
+              <p class="subtitle is-6 has-text-grey-light uppercase-label">Gestión de datos generales y alcances</p>
+            </div>
+          </div>
+          <div class="level-right">
+            <div class="buttons">
+              <button class="button is-light is-outlined" @click="volver">Cancelar</button>
+              <button class="button is-success is-medium has-text-weight-bold" @click="confirmarCambios" :class="{'is-loading': guardando}">
+                <span class="icon"><i class="fas fa-save"></i></span>
+                <span>GUARDAR CAMBIOS</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="cargando" class="notification glass-notification is-info">
+          <span class="icon"><i class="fas fa-spinner fa-pulse"></i></span> Obteniendo información del servidor...
+        </div>
+
+        <div class="columns is-variable is-5" v-else-if="form && form.id">
+          
+          <div class="column is-4">
+            <div class="box glass-panel p-5" style="height: 100%;">
+              <h3 class="title is-5 has-text-info border-bottom-info pb-3 mb-5 uppercase-label">
+                <i class="fas fa-calendar-alt mr-2"></i> Hitos y Estado
+              </h3>
+
+              <div class="field mb-5">
+                <label class="label has-text-grey-lighter is-small uppercase-label">Estado Actual</label>
+                <div class="control has-icons-left">
+                  <div class="select is-fullwidth is-dark" :class="{'is-disabled': !esDocente}">
+                    <select v-model.number="form.estado_id" :disabled="!esDocente">
+                      <option :value="null" disabled>Seleccione un estado</option>
+                      <option v-for="est in estadosProyecto" :key="est.id" :value="est.id">
+                        {{ est.nombre }}
+                      </option>
+                    </select>
+                  </div>
+                  <span class="icon is-left has-text-info"><i class="fas fa-signal"></i></span>
+                </div>
+              </div>
+
+              <div class="field mb-5">
+                <label class="label has-text-grey-lighter is-small uppercase-label">Fecha 1er Cierre</label>
+                <div class="control">
+                  <input class="input is-dark" type="date" v-model="form.fecha_cierre_1" :disabled="!esDocente">
+                </div>
+              </div>
+
+              <div class="field mb-5">
+                <label class="label has-text-grey-lighter is-small uppercase-label">Fecha 2do Cierre</label>
+                <div class="control">
+                  <input class="input is-dark" type="date" v-model="form.fecha_cierre_2" :disabled="!esDocente">
+                </div>
+              </div>
+
+              <div class="field mt-6">
+                <label class="label compromise-label has-text-grey-lighter is-small uppercase-label">Notas del Proyecto</label>
+                <textarea class="textarea is-dark" rows="10" v-model="form.descripcion" :disabled="!esDocente" placeholder="Notas adicionales..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="column is-8">
+            <div class="box glass-panel p-0 is-flex is-flex-direction-column" style="min-height: 600px;">
+              
+              <div class="tabs is-boxed is-fullwidth mb-0 custom-tabs">
+                <ul>
+                  <li :class="{'is-active': tabActiva === 'alcance'}">
+                    <a @click="tabActiva = 'alcance'"><span class="icon"><i class="fas fa-bullseye"></i></span><span>Alcances</span></a>
+                  </li>
+                  <li :class="{'is-active': tabActiva === 'equipo'}">
+                    <a @click="tabActiva = 'equipo'"><span class="icon"><i class="fas fa-users"></i></span><span>Equipo ({{ miembrosAsignados.length }})</span></a>
+                  </li>
+                  <li :class="{'is-active': tabActiva === 'viabilidad'}">
+                    <a @click="tabActiva = 'viabilidad'"><span class="icon"><i class="fas fa-graduation-cap"></i></span><span>Calificaciones</span></a>
+                  </li>
+                  <li :class="{'is-active': tabActiva === 'entregables'}">
+                    <a @click="tabActiva = 'entregables'"><span class="icon"><i class="fas fa-file-upload"></i></span><span>Entregables</span></a>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="p-5 flex-grow-1">
+                
+                <div v-if="tabActiva === 'alcance'" class="animate__animated animate__fadeIn">
+                  <div class="field mb-6">
+                    <label class="label has-text-white is-size-6 mb-3 uppercase-label">TÍTULO DEL PROYECTO</label>
+                    <div class="control">
+                      <input 
+                        class="input is-dark is-medium custom-input-title" 
+                        type="text" 
+                        v-model="form.nombre"
+                        :disabled="!esDocente"
+                      >
+                    </div>
+                  </div>
+
+                  <div v-for="campo in camposAlcance" :key="campo.key" class="field mb-6">
+                    <div class="is-flex is-justify-content-between is-align-items-center mb-3">
+                      <label class="label has-text-white is-size-6 mb-0 uppercase-label">{{ campo.label }}</label>
+                      
+                      <button 
+                        v-if="esDocente" 
+                        class="button is-small" 
+                        :class="form[campo.key + 'Bloqueado'] ? 'is-danger' : 'is-success is-outlined'"
+                        @click="form[campo.key + 'Bloqueado'] = !form[campo.key + 'Bloqueado']"
+                        type="button"
+                      >
+                        <span class="icon is-small">
+                          <i :class="form[campo.key + 'Bloqueado'] ? 'fas fa-lock' : 'fas fa-lock-open'"></i>
+                        </span>
+                        <span>{{ form[campo.key + 'Bloqueado'] ? 'Bloqueado' : 'Abierto' }}</span>
+                      </button>
+                    </div>
+
+                    <div class="control">
+                      <textarea 
+                        class="textarea is-dark custom-textarea" 
+                        rows="6" 
+                        v-model="form[campo.key]"
+                        :disabled="!esDocente && form[campo.key + 'Bloqueado']"
+                        :placeholder="(!esDocente && form[campo.key + 'Bloqueado']) ? 'Contenido bloqueado por el docente' : 'Escriba aquí...'"
+                      ></textarea>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="tabActiva === 'equipo'" class="animate__animated animate__fadeIn">
+                  <div class="field mb-5 buscador-relativo" v-if="esDocente">
+                    <div class="control has-icons-left">
+                      <input class="input is-dark is-rounded is-medium" type="text" v-model="busqueda" @input="buscarUsuarios" placeholder="Escribe apellido o nombre...">
+                      <span class="icon is-left has-text-info"><i class="fas fa-search"></i></span>
+                      <div v-if="resultadosBusqueda.length > 0" class="search-results-floating box p-0">
+                        <a v-for="u in resultadosBusqueda" :key="u.id" @click="seleccionarUsuario(u)" class="dropdown-item-custom">
+                          <div class="is-flex is-justify-content-between is-align-items-center">
+                            <span><strong>{{ u.apellido?.toUpperCase() }}</strong>, {{ u.nombre }}</span>
+                            <span class="tag is-small is-dark">{{ Number(u.rol_id) === 3 ? 'Alumno' : 'Docente' }}</span>
+                          </div>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="columns is-multiline mb-6">
+                    <div class="column is-6" v-for="miembro in miembrosAsignados" :key="miembro.id">
+                      <div class="box p-3 is-dark-box">
+                        <article class="media is-align-items-center">
+                          <figure class="media-left"><div :class="['avatar-circle', obtenerColorAvatar(miembro.rol_id)]">{{ obtenerIniciales(miembro.nombre) }}</div></figure>
+                          <div class="media-content">
+                            <p class="has-text-white has-text-weight-bold mb-0">{{ miembro.nombre }} {{ miembro.apellido }}</p>
+                            <p class="has-text-grey-light is-size-7" v-if="miembro.telefono">TE: {{ miembro.telefono }}</p>
+                          </div>
+                          <div class="media-right">
+                            <div class="buttons">
+                              <button 
+                                v-if="esDocente && Number(miembro.rol_id) === 3" 
+                                class="button is-ghost has-text-info p-0 mr-3" 
+                                @click="abrirModalSeguimiento(miembro)"
+                                title="Agregar Seguimiento"
+                              >
+                                <i class="fas fa-chart-line"></i>
+                              </button>
+                              <button v-if="esDocente" class="button is-ghost has-text-danger p-0" @click="quitarMiembro(miembro.id)"><i class="fas fa-user-minus"></i></button>
+                            </div>
+                          </div>
+                        </article>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-if="esDocente" class="monitor-desempeno mt-6 pt-5 border-top-info">
+                    <h4 class="title is-6 has-text-info uppercase-label mb-5">
+                      <i class="fas fa-microchip mr-2"></i> Monitor de Desempeño (Promedios)
+                    </h4>
+                    
+                    <div v-if="statsSeguimiento.length === 0" class="notification is-dark is-size-7 has-text-centered">
+                      <i class="fas fa-exclamation-triangle mr-2"></i> Se requieren calificaciones cualitativas para reflejar el desempeño del equipo.
+                    </div>
+
+                    <div v-else class="columns is-multiline">
+                      <div class="column is-12" v-for="stat in statsSeguimiento" :key="stat.alumno">
+                        <div class="is-flex is-justify-content-between is-align-items-center mb-1">
+                          <a class="has-text-info is-size-7 has-text-weight-semibold is-underlined" @click="verDetalleAlumno(stat)">
+                            {{ stat.alumno }}
+                          </a>
+                          <span class="tag is-dark is-small">Promedio: {{ stat.promedio }} ({{ stat.cantidad }} ev.)</span>
+                        </div>
+                        <progress 
+                          class="progress is-small" 
+                          :class="obtenerColorBarra(stat.promedio)" 
+                          :value="stat.promedio" 
+                          max="3"
+                        ></progress>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="tabActiva === 'viabilidad'" class="animate__animated animate__fadeIn">
+                  
+                  <div class="box is-dark-box p-5 mb-5">
+                    <div class="field">
+                      <label class="label has-text-white is-size-5 uppercase-label">Aprobación de Anteproyecto</label>
+                      <div class="control mt-4">
+                        <label class="checkbox has-text-white is-size-4" :class="{'is-disabled': !esDocente}">
+                          <input 
+                            type="checkbox" 
+                            v-model="form.viable" 
+                            class="mr-3"
+                            :disabled="!esDocente"
+                          >
+                          PROYECTO VALIDADO / VIABLE
+                        </label>
+                      </div>                      
+                    </div>
+                  </div>
+
+                  <div class="field mb-5">
+                    <label class="label has-text-white uppercase-label">Documentación de Respaldo</label>
+                    <div class="field has-addons mt-3">
+                      <div class="control is-expanded has-icons-left">
+                        <input 
+                          class="input is-dark is-medium" 
+                          type="text" 
+                          v-model="form.documentoViabilidadLink" 
+                          placeholder="Link del documento..."
+                          :disabled="!esDocente"
+                        >
+                        <span class="icon is-left has-text-info"><i class="fas fa-link"></i></span>
+                      </div>
+                      <div class="control">
+                        <button class="button is-info is-medium" :disabled="!form.documentoViabilidadLink" @click="abrirEnlace(form.documentoViabilidadLink)">
+                          <i class="fas fa-external-link-alt"></i>
+                        </button>
+                      </div>
+                    </div>
+                    <p class="help class has-text-grey-lighter is-size-6 mt-2">
+                      Link al archivo digitalizado que acredita la aprobación.
+                    </p>
+                  </div>
+
+                  <article v-if="form.viable && !form.documentoViabilidadLink" class="message is-warning is-small mb-6">
+                    <div class="message-body">
+                      <strong>Falta Respaldo:</strong> No se puede considerar viable sin el link al documento digitalizado.
+                    </div>
+                  </article>
+
+                  <hr class="has-background-grey-dark my-6">
+
+                  <div class="box is-dark-box p-5 mb-5" v-if="esDocente">
+                    <h3 class="title is-5 has-text-info uppercase-label mb-4">
+                      <i class="fas fa-pen-nib mr-2"></i> Registrar Evaluación del Proceso
+                    </h3>
+                    <form @submit.prevent="crearCalificacionDiaria">
+                      <div class="columns">
+                        <div class="column is-7">
+                          <div class="field">
+                            <label class="label has-text-grey-light is-small uppercase-label">Concepto / Hito Evaluado</label>
+                            <div class="control has-icons-left">
+                              <div class="select is-fullwidth is-dark">
+                                <select v-model.number="notaForm.hito_id" required>
+                                  <option :value="null" disabled>Seleccione qué se califica...</option>
+                                  <option v-for="hito in listaHitos" :key="hito.id" :value="hito.id">
+                                    {{ hito.nombre }}
+                                  </option>
+                                </select>
+                              </div>
+                              <span class="icon is-left has-text-info"><i class="fas fa-tasks"></i></span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="column is-5">
+                          <div class="field">
+                            <label class="label has-text-grey-light is-small uppercase-label">Nota Numérica (0 al 10)</label>
+                            <div class="control has-icons-left">
+                              <input 
+                                class="input is-dark" 
+                                type="number" 
+                                step="0.1" 
+                                min="0" 
+                                max="10" 
+                                v-model.number="notaForm.nota" 
+                                placeholder="Ej: 7.50" 
+                                required
+                              >
+                              <span class="icon is-left has-text-info"><i class="fas fa-star-half-alt"></i></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="field mb-4">
+                        <label class="label has-text-grey-light is-small uppercase-label">Descripción o Feedback del Día</label>
+                        <div class="control">
+                          <textarea 
+                            class="textarea is-dark" 
+                            rows="2" 
+                            v-model="notaForm.descripcion" 
+                            placeholder="Escriba los motivos o justificación de la nota..."
+                          ></textarea>
+                        </div>
+                      </div>
+
+                      <div class="has-text-right">
+                        <button class="button is-info has-text-weight-bold uppercase-label" :class="{'is-loading': cargandoEnvioNota}" type="submit">
+                          Asentar Nota
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+
+                  <div class="box is-dark-box p-5 mb-4">
+                    <div class="is-flex is-justify-content-between is-align-items-center mb-2">
+                      <h4 class="title is-6 has-text-white uppercase-label mb-0">
+                        <i class="fas fa-chart-bar mr-2"></i> Estado de Rendimiento Grupal
+                      </h4>
+                      <span class="tag is-medium has-text-weight-bold" :class="obtenerColorNota(promedioProyecto)">
+                        PROMEDIO: {{ promedioProyecto }} / 10
+                      </span>
+                    </div>
+                    <progress 
+                      class="progress is-medium mt-2" 
+                      :class="obtenerColorNota(promedioProyecto)" 
+                      :value="promedioProyecto" 
+                      max="10"
+                    ></progress>
+                  </div>
+
+                  <div class="box is-dark-box p-0 mb-5 field-accordion">
+                    <button 
+                      class="button is-dark is-fullwidth is-flex is-justify-content-between is-align-items-center p-5 custom-accordion-btn" 
+                      type="button"
+                      @click="accordionAbierto = !accordionAbierto"
+                    >
+                      <span class="has-text-weight-bold uppercase-label has-text-info">
+                        <i class="fas fa-history mr-2"></i> Ver Desglose de Evaluaciones Diarias ({{ notasHistorial.length }})
+                      </span>
+                      <span class="icon">
+                        <i :class="accordionAbierto ? 'fas fa-chevron-up' : 'fas fa-chevron-down'"></i>
+                      </span>
+                    </button>
+
+                    <div v-if="accordionAbierto" class="p-4 animate__animated animate__slideInDown animate__faster container-table-accordion">
+                      <div v-if="cargandoHistorial" class="has-text-centered py-4 has-text-grey-light">
+                        <span class="icon"><i class="fas fa-spinner fa-pulse"></i></span> Buscando registros...
+                      </div>
+                      <div v-else-if="notasHistorial.length === 0" class="notification is-dark is-size-7 has-text-centered my-0">
+                        No se registran evaluaciones numéricas asignadas a este proyecto todavía.
+                      </div>
+                      <div class="table-container" v-else>
+                        <table class="table is-fullwidth glass-table delivery-table-v2 mb-0">
+                          <thead>
+                            <tr>
+                              <th class="has-text-info is-size-7 uppercase-label">Día / Hora</th>
+                              <th class="has-text-info is-size-7 uppercase-label">Concepto</th>
+                              <th class="has-text-info is-size-7 uppercase-label has-text-centered">Nota</th>
+                              <th class="has-text-info is-size-7 uppercase-label">Evaluador</th>
+                              <th class="has-text-info is-size-7 uppercase-label">Motivo / Detalle</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="nota in notasHistorial" :key="nota.id">
+                              <td class="is-size-7 custom-date-font">{{ convertirFechaLocal(nota.fecha) }}</td>
+                              <td class="has-text-weight-bold is-size-7">{{ nota.hito_detail || nota.hito_node || nota.hito_detalle?.nombre }}</td>
+                              <td class="has-text-centered"><span class="tag has-text-weight-bold" :class="obtenerColorNota(nota.nota)">{{ nota.nota }}</span></td>
+                              <td class="is-size-7 has-text-grey-lighter">{{ nota.docente_calificador?.apellido }}, {{ nota.docente_calificador?.nombre }}</td>
+                              <td class="is-size-7 desc-cell-format" :title="nota.descripcion">{{ nota.descripcion || '-' }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <div v-if="tabActiva === 'entregables'" class="animate__animated animate__fadeIn">
+                  <div class="field has-addons mb-6">
+                    <div class="control is-expanded">
+                      <input class="input is-medium custom-input-entregable" type="text" v-model="nuevoEntregableNombre" placeholder="Nuevo entregable..." @keyup.enter="agregarEntregableRAM">
+                    </div>
+                    <div class="control">
+                      <button class="button is-info is-medium" @click="agregarEntregableRAM"><i class="fas fa-plus"></i></button>
+                    </div>
+                  </div>
+
+                  <div class="table-container">
+                    <table class="table is-fullwidth glass-table delivery-table-v2">
+                      <thead>
+                        <tr>
+                          <th class="has-text-info">Documento</th>
+                          <th class="has-text-info">Enlace</th>
+                          <th style="width: 50px;"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(e, index) in form.entregables" :key="index">
+                          <td class="data-text-bright">{{ e.nombre }}</td>
+                          <td>
+                            <div class="field has-addons">
+                              <div class="control is-expanded">
+                                <input class="input custom-input-table is-small" type="text" v-model="e.link_drive">
+                              </div>
+                              <div class="control">
+                                <button class="button is-info is-small is-outlined" :disabled="!e.link_drive" @click="abrirEnlace(e.link_drive)">
+                                  <i class="fas fa-external-link-alt"></i>
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="has-text-centered">
+                            <button class="button is-ghost has-text-danger p-0" @click="form.entregables.splice(index, 1)">
+                              <i class="fas fa-trash-alt"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" :class="{'is-active': showModalError}">
+      <div class="modal-background" @click="showModalError = false"></div>
+      <div class="modal-card">
+        <header class="modal-card-head has-background-danger">
+          <p class="modal-card-title has-text-white">Error de Validation</p>
+          <button class="delete" @click="showModalError = false"></button>
+        </header>
+        <section class="modal-card-body">
+          <p class="has-text-weight-semibold is-size-5">{{ modalErrorMsg }}</p>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+          <button class="button is-danger" @click="showModalError = false">Entendido</button>
+        </footer>
+      </div>
+    </div>
+
+    <SeguimientoModal 
+      v-if="mostrarModalSeguimiento" 
+      :alumno="alumnoSeleccionado" 
+      :proyectoId="form.id" 
+      @close="mostrarModalSeguimiento = false"
+      @success="cargarStats"
+    />
+
+    <DetalleSeguimientoModal
+      v-if="mostrarDetalle"
+      :alumno="alumnoSeleccionado"
+      :proyectoId="form.id"
+      @close="mostrarDetalle = false"
+    />
+
+  </div>
+</template>
+
+<script>
+import { configService } from '../services/config.service';
+import { projectService } from '../services/project.services';
+import { tareaService } from '../services/tarea.service';
+import seguimientoService from '../services/seguimiento.service';
+import calificacionServices from '../services/calificacion.service';
+import SeguimientoModal from '../components/modals/SeguimientoModal.vue';
+import DetalleSeguimientoModal from '../components/modals/DetalleSeguimientoModal.vue'; 
+import { useAuthStore } from '../stores/auth';
+import axios from 'axios';
+
+export default {
+  components: { SeguimientoModal, DetalleSeguimientoModal },
+  data() {
+    return {
+      cargando: true,
+      guardando: false,
+      tabActiva: 'alcance',
+      proyectoOriginal: null,
+      busqueda: '',
+      resultadosBusqueda: [],
+      nuevoEntregableNombre: '',
+      estadosProyecto: [],
+      prioridades: [],
+      todasLasTareas: [],
+      miembrosAsignados: [],
+      mostrarModalSeguimiento: false,
+      mostrarDetalle: false, 
+      alumnoSeleccionado: null,
+      statsSeguimiento: [],
+      showModalError: false,
+      modalErrorMsg: '',
+
+      accordionAbierto: false,
+      cargandoHistorial: false,
+      cargandoEnvioNota: false,
+      listaHitos: [],
+      notasHistorial: [],
+      notaForm: {
+        hito_id: null,
+        nota: null,
+        descripcion: ''
+      },
+
+      form: {
+        id: null, nombre: '', descripcion: '', estado_id: null,
+        fecha_cierre_1: '', fecha_cierre_2: '',
+        objetivo: '', 
+        alcanceFinal: '', 
+        viable: false,
+        documentoViabilidadLink: '',
+        entregables: []
+      },
+      camposAlcance: [
+        { label: 'Objetivo General', key: 'objetivo' },
+        { label: 'Alcance del Proyecto', key: 'alcanceFinal' } 
+      ]
+    }
+  },
+  computed: {
+    /**
+     * Propósito: Validar reactivamente si las credenciales en caché corresponden al perfil docente o directivo.
+     * Quién la llama: Evaluada en las directivas estructurales v-if y de inhabilitación :disabled del template bulma.
+     * Qué datos retorna: Booleano (true si es rol directivo 1 o docente 2, false para alumnos u otros).
+     */
+    esDocente() {
+      const authStore = useAuthStore();
+      const rolId = Number(authStore.usuario?.rol_id || authStore.usuario?.rolId);
+      return rolId === 1 || rolId === 2;
+    },
+    /**
+     * Propósito: Calcular de forma reactiva en memoria el promedio exacto del proyecto basado en el historial.
+     * Quién la llama: Invocada directamente por la sección del semáforo/barra en el template.
+     * Qué datos retorna: Número flotante con un decimal de precisión (ej: 7.5).
+     */
+    promedioProyecto() {
+      if (!this.notasHistorial || this.notasHistorial.length === 0) return 0;
+      const suma = this.notasHistorial.reduce((acc, curr) => acc + Number(curr.nota), 0);
+      return Number((suma / this.notasHistorial.length).toFixed(1));
+    }
+  },
+  methods: {
+    async cargarTodo() {
+      this.cargando = true;
+      const id = this.$route.params.id;
+      try {
+        const [resConfig, resTareas] = await Promise.all([
+          configService.getTablasMaestras(),
+          tareaService.getAll()
+        ]);
+        this.estadosProyecto = (resConfig.estadosProyecto || []).map(e => ({ ...e, id: Number(e.id) }));
+        this.prioridades = resConfig.prioridades || [];
+        this.todasLasTareas = resTareas.data || resTareas;
+
+        const resProj = await projectService.getById(id);
+        if (resProj.success) {
+          const p = resProj.data;
+          this.proyectoOriginal = p;
+          const idEstado = p.estado_id ? Number(p.estado_id) : (p.EstadoProyecto?.id ? Number(p.EstadoProyecto.id) : null);
+          Object.assign(this.form, {
+            id: p.id,
+            nombre: p.nombre,
+            descripcion: p.descripcion,
+            fecha_cierre_1: p.fecha_cierre_1,
+            fecha_cierre_2: p.fecha_cierre_2,
+            objetivo: p.objetivo,
+            alcanceFinal: p.alcanceFinal,
+            objetivoBloqueado: p.objetivoBloqueado || false,
+            alcanceFinalBloqueado: p.alcanceFinalBloqueado || false,
+            viable: p.viable || false,
+            documentoViabilidadLink: p.documentoViabilidadLink || '',
+            entregables: p.entregables ? JSON.parse(JSON.stringify(p.entregables)) : []
+          });
+          this.miembrosAsignados = p.integrantes || p.Usuarios || [];
+          this.form.estado_id = null; 
+          this.$nextTick(() => { this.form.estado_id = idEstado; });
+          
+          this.recuperarHistorialNotas();
+          if (this.esDocente) {
+             this.cargarStats();
+             this.cargarHitosSelector();
+          }
+        }
+      } catch (err) { console.error(err); } finally { this.cargando = false; }
+    },
+
+    /**
+     * Propósito: Cargar los hitos maestros desde el endpoint de common para poblar el combo selector.
+     * Quién la llama: Invocada automáticamente en el mounted si el usuario es docente.
+     */
+    async cargarHitosSelector() {
+      try {
+        const respuesta = await calificacionServices.obtenerHitosMaestros();
+        this.listaHitos = respuesta.data || respuesta;
+      } catch (error) {
+        console.error("Error al cargar hitos del backend:", error);
+      }
+    },
+
+    /**
+     * Propósito: Recuperar todo el historial cronológico de calificaciones del proyecto para armar el promedio y la tabla.
+     * Quién la llama: Invocada en la carga inicial y tras dar de alta una nueva nota.
+     */
+    async recuperarHistorialNotas() {
+      this.cargandoHistorial = true;
+      try {
+        const historial = await calificacionServices.obtenerCalificaciones(this.$route.params.id);
+        this.notasHistorial = historial;
+      } catch (error) {
+        console.error("Error al traer historial de notas:", error);
+      } finally {
+        this.cargandoHistorial = false;
+      }
+    },
+
+    /**
+     * Propósito: Enviar el formulario del día, guardar el registro en MySQL y re-calcular el promedio del proyecto en caliente.
+     * Quién la llama: Disparada por el submit del formulario interno de calificaciones.
+     */
+    async crearCalificacionDiaria() {
+      if (!this.notaForm.hito_id || this.notaForm.nota === null) return;
+      this.cargandoEnvioNota = true;
+      try {
+        const respuesta = await calificacionServices.registrarCalificacion(this.form.id, this.notaForm);
+        if (respuesta.calificacion) {
+          this.notasHistorial.unshift(respuesta.calificacion);
+        }
+        this.notaForm.hito_id = null;
+        this.notaForm.nota = null;
+        this.notaForm.descripcion = '';
+      } catch (error) {
+        console.error("Error registrando nota:", error);
+        this.modalErrorMsg = error.response?.data?.mensaje || "Error al procesar la nota académica.";
+        this.showModalError = true;
+      } finally {
+        this.cargandoEnvioNota = false;
+      }
+    },
+
+    /**
+     * Propósito: Retornar la clase CSS semántica de Bulma de acuerdo con el rendimiento del promedio.
+     * Quién la llama: Invocada por la barra de progreso, tags de notas y etiquetas.
+     */
+    obtenerColorNota(nota) {
+      const v = Number(nota);
+      if (v < 4) return 'is-danger'; 
+      if (v < 6) return 'is-warning'; 
+      return 'is-success'; 
+    },
+
+    /**
+     * Propósito: Traducir las fechas ISO del motor MySQL a un formato legible local argentino.
+     */
+    convertirFechaLocal(stringFecha) {
+      if (!stringFecha) return '-';
+      const d = new Date(stringFecha);
+      return d.toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
+
+    async cargarStats() {
+        try {
+            const res = await seguimientoService.getStats(this.form.id);
+            if (res.data.success) {
+                this.statsSeguimiento = res.data.data;
+            }
+        } catch (error) { console.error("Error stats:", error); }
+    },
+
+    verDetalleAlumno(stat) {
+        const alumnoObj = this.miembrosAsignados.find(m => `${m.nombre} ${m.apellido}` === stat.alumno);
+        if (alumnoObj) {
+            this.alumnoSeleccionado = alumnoObj;
+            this.mostrarDetalle = true;
+        }
+    },
+
+    obtenerColorBarra(promedio) {
+        if (promedio <= 1.5) return 'is-danger';
+        if (promedio <= 2.2) return 'is-warning';
+        return 'is-success';
+    },
+
+    abrirModalSeguimiento(alumno) {
+        this.alumnoSeleccionado = alumno;
+        this.mostrarModalSeguimiento = true;
+    },
+
+    abrirEnlace(url) {
+      if (!url) return;
+      window.open(url.startsWith('http') ? url : `https://${url}`, '_blank');
+    },
+
+    agregarEntregableRAM() {
+      if (!this.nuevoEntregableNombre.trim()) return;
+      this.form.entregables.push({ nombre: this.nuevoEntregableNombre.trim(), link_drive: '' });
+      this.nuevoEntregableNombre = '';
+    },
+
+    quitarMiembro(id) { this.miembrosAsignados = this.miembrosAsignados.filter(m => m.id !== id); },
+    obtenerColorAvatar(rol) { return Number(rol) === 3 ? 'has-background-success-light has-text-success' : 'has-background-link-light has-text-link'; },
+    obtenerIniciales(n) { return n ? n.split(' ').map(x => x[0]).join('').toUpperCase().substring(0, 2) : '?'; },
+
+    async buscarUsuarios() {
+      if (this.busqueda.length < 2) { this.resultadosBusqueda = []; return; }
+      try {
+        const authStore = useAuthStore();
+        const res = await axios.get(`/api/usuarios?q=${this.busqueda}&escuela_id=${this.proyectoOriginal.escuela_id}`, {
+          headers: { 'Authorization': `Bearer ${authStore.token}` }
+        });
+        this.resultadosBusqueda = res.data.filter(u => u.activo && !this.miembrosAsignados.some(m => m.id === u.id));
+      } catch (err) { console.error(err); }
+    },
+
+    seleccionarUsuario(u) {
+      this.miembrosAsignados.push({ ...u });
+      this.busqueda = '';
+      this.resultadosBusqueda = [];
+    },
+
+    async confirmarCambios() {
+      if (!this.form.nombre.trim()) {
+        this.modalErrorMsg = "El nombre del proyecto es obligatorio.";
+        this.showModalError = true;
+        return;
+      }
+
+      if (this.form.viable && !this.form.documentoViabilidadLink) {
+        this.modalErrorMsg = "Atención Profe: Para marcar el proyecto como VIABLE debe adjuntar el link del documento digitalizado de respaldo.";
+        this.showModalError = true;
+        this.tabActiva = 'viabilidad';
+        return;
+      }
+
+      this.guardando = true;
+      try {
+        const authStore = useAuthStore();
+        await axios.put(`/api/proyectos/${this.form.id}`, { 
+          ...this.form, 
+          usuariosIds: this.miembrosAsignados.map(m => m.id) 
+        }, { headers: { 'Authorization': `Bearer ${authStore.token}` } });
+        this.volver();
+      } catch (err) { 
+        console.error(err); 
+        this.modalErrorMsg = "Error de conexión con el servidor.";
+        this.showModalError = true;
+      } finally { this.guardando = false; }
+    },
+    volver() { this.$router.push('/dashboard'); }
+  },
+  mounted() { this.cargarTodo(); }
+}
+</script>
+
+<style scoped>
+.dashboard-bg { min-height: 100vh; background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.9)), url('../assets/fondo.jpg'); background-size: cover; background-attachment: fixed; }
+.glass-panel { background: rgba(255, 255, 255, 0.05) !important; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; }
+
+.custom-textarea {
+  width: 100% !important;
+  max-width: 100% !important;
+  background: rgba(0, 0, 0, 0.4) !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  resize: vertical;
+}
+
+.custom-input-title {
+  background: rgba(52, 152, 219, 0.15) !important;
+  color: #3498db !important;
+  border: 1px solid rgba(52, 152, 219, 0.4) !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+}
+
+.custom-tabs li a { color: #bdc3c7 !important; border-bottom: 2px solid transparent !important; }
+.custom-tabs li.is-active a { background-color: rgba(52, 152, 219, 0.2) !important; color: #3498db !important; border-bottom-color: #3498db !important; }
+
+.border-bottom-info { border-bottom: 2px solid rgba(52, 152, 219, 0.3); }
+.border-top-info { border-top: 2px solid rgba(52, 152, 219, 0.3); } 
+
+.buscador-relativo { position: relative; }
+.search-results-floating { position: absolute; top: 100%; left: 0; width: 100%; z-index: 1000; background: rgba(25, 25, 25, 0.98) !important; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; margin-top: 5px; max-height: 250px; overflow-y: auto; }
+.dropdown-item-custom { color: #fff !important; display: block; padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); cursor: pointer; }
+.dropdown-item-custom:hover { background: rgba(52, 152, 219, 0.4) !important; }
+
+.avatar-circle { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+.uppercase-label { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; font-weight: bold; }
+.is-dark-box { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; }
+
+.glass-table { background-color: transparent !important; }
+.delivery-table-v2 td, .delivery-table-v2 th {
+  background-color: transparent !important;
+  border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+  color: white;
+  vertical-align: middle;
+}
+.is-disabled { opacity: 0.5; cursor: not-allowed; }
+
+.progress.is-dark { background-color: rgba(255, 255, 255, 0.1); }
+
+.field-accordion { border: 1px solid rgba(52, 152, 219, 0.2); overflow: hidden; border-radius: 8px; }
+.custom-accordion-btn { background: rgba(20, 20, 20, 0.5) !important; border: none !important; text-align: left; cursor: pointer; transition: background 0.2s ease; }
+.custom-accordion-btn:hover { background: rgba(52, 152, 219, 0.1) !important; }
+.container-table-accordion { background: rgba(0, 0, 0, 0.3); border-top: 1px solid rgba(255,255,255,0.05); max-height: 350px; overflow-y: auto; }
+.custom-date-font { font-family: monospace; color: #a4b0be !important; }
+.desc-cell-format { max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #cbd5e1 !important; }
+</style>

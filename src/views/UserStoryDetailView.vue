@@ -125,7 +125,7 @@
                   <h3 class="title is-4 has-text-white mb-0">Tareas Técnicas</h3>
                 </div>
                 <div class="level-right">
-                  <button v-if="puedeGestionarEstructura" class="button is-primary is-small" @click="nuevaTarea">
+                  <button class="button is-primary is-small" @click="nuevaTarea">
                     <span class="icon is-small"><i class="fas fa-plus"></i></span>
                     <span>Nueva Tarea</span>
                   </button>
@@ -140,7 +140,7 @@
                       <th class="has-text-info">Responsable</th>
                       <th class="has-text-info has-text-centered">Estado</th>
                       <th class="has-text-info has-text-centered">Estimado</th>
-                      <th v-if="puedeGestionarEstructura" class="has-text-info has-text-centered">Acción</th>
+                      <th class="has-text-info has-text-centered">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -155,7 +155,7 @@
                         </span>
                       </td>
                       <td class="has-text-centered data-text-bright">{{ tarea.horas_estimadas || 0 }}h</td>
-                      <td v-if="puedeGestionarEstructura" class="has-text-centered" @click.stop>
+                      <td class="has-text-centered" @click.stop>
                         <button class="button is-danger is-inverted is-small" @click="confirmarEliminarTarea(tarea)">
                           <span class="icon"><i class="fas fa-trash"></i></span>
                         </button>
@@ -206,7 +206,7 @@ const tareaAEliminar = ref(null);
 
 const editForm = reactive({
   id: null, proyecto_id: route.params.id, titulo: '', descripcion: '', condiciones: '',
-  prioridad_id: 2, estado_id: 1, fecha_entrega: ''
+  prioridad_id: 2, estado_id: 1, fecha_delivery: ''
 });
 
 const esEdicion = computed(() => !!route.params.usId && route.params.usId !== 'nueva');
@@ -270,11 +270,36 @@ const guardarCambios = async () => {
 
 const nuevaTarea = () => router.push(`/proyectos/${route.params.id}/backlog/${route.params.usId}/tarea/nueva`);
 const editarTarea = (tarea) => router.push(`/proyectos/${route.params.id}/backlog/${route.params.usId}/tarea/${tarea.id}`);
-const confirmarEliminarTarea = (t) => { tareaAEliminar.value = t; isConfirmTareaActive.value = true; };
+const confirmarEliminarTarea = (t) => {
+  console.log("Tarea seleccionada para borrar:", t);
+  tareaAEliminar.value = t;
+  isConfirmTareaActive.value = true;
+};
+
 const ejecutarEliminacionTarea = async () => {
-  await tareaService.delete(tareaAEliminar.value.id);
-  isConfirmTareaActive.value = false;
-  cargarDatos();
+  console.log("Ejecutando confirmación de borrado para ID:", tareaAEliminar.value?.id);
+  
+  if (!tareaAEliminar.value?.id) {
+    console.error("No hay un ID de tarea válido para eliminar.");
+    isConfirmTareaActive.value = false;
+    return;
+  }
+
+  try {
+    // 1. Enviamos el borrado físico o lógico al backend
+    await tareaService.delete(tareaAEliminar.value.id);
+    mensajeExito.value = "Tarea eliminada correctamente.";
+    errorMsg.value = "";
+  } catch (error) {
+    console.error("Error al intentar borrar la tarea desde el servicio:", error);
+    errorMsg.value = error.response?.data?.mensaje || "El servidor rechazó la eliminación de la tarea.";
+  } finally {
+    // 2. Garantizamos el cierre del modal bajo cualquier circunstancia (éxito o falla)
+    isConfirmTareaActive.value = false;
+    tareaAEliminar.value = null;
+    // 3. Recargamos la estructura completa del backend
+    cargarDatos();
+  }
 };
 const obtenerClaseEstadoTag = (tarea) => {
   const nombre = String(tarea.estado_detalle?.nombre || '').toUpperCase();
