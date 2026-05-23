@@ -22,7 +22,6 @@
         <div v-if="cargando" class="notification glass-notification is-info"><span class="icon"><i class="fas fa-spinner fa-pulse"></i></span> Obteniendo información del servidor...</div>
 
         <div class="columns is-variable is-5" v-else-if="form && form.id">
-          
           <div class="column is-4">
             <div class="box glass-panel p-5" style="height: 100%;">
               <h3 class="title is-5 has-text-info border-bottom-info pb-3 mb-5 uppercase-label"><i class="fas fa-calendar-alt mr-2"></i> Hitos y Estado</h3>
@@ -48,7 +47,7 @@
                   <li :class="{'is-active': tabActiva === 'alcance'}"><a @click="tabActiva = 'alcance'"><span class="icon"><i class="fas fa-bullseye"></i></span><span>Alcances</span></a></li>
                   <li :class="{'is-active': tabActiva === 'equipo'}"><a @click="tabActiva = 'equipo'"><span class="icon"><i class="fas fa-users"></i></span><span>Equipo ({{ miembrosAsignados.length }})</span></a></li>
                   <li :class="{'is-active': tabActiva === 'viabilidad'}"><a @click="tabActiva = 'viabilidad'"><span class="icon"><i class="fas fa-graduation-cap"></i></span><span>Calificaciones</span></a></li>
-                  <li :class="{'is-active': tabActiva === 'entregables'}"><a @click="tabActiva = 'entregables'"><span class="icon"><i class="fas fa-file-upload"></i></span><span>Entregables</span></a></li>
+                  <li :class="{'is-active': tabActiva === 'entregables'}"><a @click="tabActiva = 'entregables'"><span class="icon"><i class="fas fa-file-upload"></i></span><span>Documentaciones</span></a></li>
                 </ul>
               </div>
 
@@ -141,11 +140,22 @@
                 </div>
 
                 <div v-if="tabActiva === 'entregables'" class="animate__animated animate__fadeIn">
-                  <div class="field has-addons mb-6"><div class="control is-expanded"><input class="input is-medium custom-input-entregable" type="text" v-model="nuevoEntregableNombre" placeholder="Nuevo entregable..." @keyup.enter="agregarEntregableRAM"></div><div class="control"><button class="button is-info is-medium" @click="agregarEntregableRAM"><i class="fas fa-plus"></i></button></div></div>
+                  <div class="field has-addons mb-6"><div class="control is-expanded"><input class="input is-medium custom-input-entregable" type="text" v-model="nuevoEntregableNombre" placeholder="Nuevo documento..." @keyup.enter="agregarEntregableRAM"></div><div class="control"><button class="button is-info is-medium" @click="agregarEntregableRAM"><i class="fas fa-plus"></i></button></div></div>
                   <div class="table-container">
                     <table class="table is-fullwidth glass-table delivery-table-v2">
                       <thead><tr><th class="has-text-info">Documento</th><th class="has-text-info">Enlace</th><th style="width: 50px;"></th></tr></thead>
-                      <tbody><tr v-for="(e, index) in form.entregables" :key="index"><td class="data-text-bright">{{ e.nombre }}</td><td><div class="field has-addons"><div class="control is-expanded"><input class="input custom-input-table is-small" type="text" v-model="e.link_drive"></div><div class="control"><button class="button is-info is-small is-outlined" :disabled="!e.link_drive" @click="abrirEnlace(e.link_drive)"><i class="fas fa-external-link-alt"></i></button></div></div></td><td class="has-text-centered"><button class="button is-ghost has-text-danger p-0" @click="form.entregables.splice(index, 1)"><i class="fas fa-trash-alt"></i></button></td></tr></tbody>
+                      <tbody>
+                        <tr v-for="(e, index) in form.entregables" :key="index">
+                          <td class="data-text-bright">{{ e.nombre }}</td>
+                          <td>
+                            <div class="field has-addons">
+                              <div class="control is-expanded"><input class="input custom-input-table is-small" type="text" v-model="e.link_drive"></div>
+                              <div class="control"><button class="button is-info is-small is-outlined" :disabled="!e.link_drive" @click="abrirEnlace(e.link_drive)"><i class="fas fa-external-link-alt"></i></button></div>
+                            </div>
+                          </td>
+                          <td class="has-text-centered"><button class="button is-ghost has-text-danger p-0" @click="prepararEliminacion(index)"><i class="fas fa-trash-alt"></i></button></td>
+                        </tr>
+                      </tbody>
                     </table>
                   </div>
                 </div>
@@ -153,6 +163,15 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="modal" :class="{'is-active': mostrarModalConfirmacion}">
+      <div class="modal-background" @click="mostrarModalConfirmacion = false"></div>
+      <div class="modal-card">
+        <header class="modal-card-head has-background-warning"><p class="modal-card-title has-text-white">Confirmar eliminación</p></header>
+        <section class="modal-card-body">¿Estás seguro de que deseas eliminar este documento? Esta acción no se puede deshacer.</section>
+        <footer class="modal-card-foot is-justify-content-flex-end"><button class="button" @click="mostrarModalConfirmacion = false">Cancelar</button><button class="button is-danger" @click="confirmarEliminar">Eliminar</button></footer>
       </div>
     </div>
 
@@ -191,26 +210,15 @@ export default {
       modalErrorMsg: '', accordionAbierto: false, cargandoHistorial: false, cargandoEnvioNota: false, listaHitos: [], notasHistorial: [],
       notaForm: { hito_id: null, nota: null, descripcion: '' },
       form: { id: null, nombre: '', descripcion: '', estado_id: null, fecha_cierre_1: '', fecha_cierre_2: '', objetivo: '', alcanceFinal: '', viable: false, documentoViabilidadLink: '', entregables: [] },
-      camposAlcance: [ { label: 'Objetivo General', key: 'objetivo' }, { label: 'Alcance del Proyecto', key: 'alcanceFinal' } ]
+      camposAlcance: [ { label: 'Objetivo General', key: 'objetivo' }, { label: 'Alcance del Proyecto', key: 'alcanceFinal' } ],
+      mostrarModalConfirmacion: false, indiceEliminar: null
     }
   },
   computed: {
-    /** * Propósito: Validar reactivamente si las credenciales corresponden al perfil docente/directivo. 
-     * Alimenta a: Directivas v-if y :disabled del template. 
-     * Retorna: Booleano (true si rol_id es 1 o 2). 
-     */
     esDocente() { const authStore = useAuthStore(); const rolId = Number(authStore.usuario?.rol_id || authStore.usuario?.rolId); return rolId === 1 || rolId === 2; },
-    /** * Propósito: Calcular el promedio exacto del proyecto basado en el historial de notas. 
-     * Alimenta a: Barra de progreso grupal en el template. 
-     * Retorna: Número flotante (ej: 7.5). 
-     */
     promedioProyecto() { return (!this.notasHistorial?.length) ? 0 : Number((this.notasHistorial.reduce((acc, curr) => acc + Number(curr.nota), 0) / this.notasHistorial.length).toFixed(1)); }
   },
   methods: {
-    /** * Propósito: Cargar los datos iniciales, configuraciones maestras y el proyecto específico. 
-     * Alimenta a: Estado interno del componente al iniciar. 
-     * Retorna: Void. 
-     */
     async cargarTodo() {
       this.cargando = true;
       try {
@@ -225,95 +233,31 @@ export default {
         }
       } catch (err) { console.error(err); } finally { this.cargando = false; }
     },
-    /** * Propósito: Cargar el selector de hitos evaluativos desde el backend. 
-     * Alimenta a: Select de registro de notas en el template (solo docentes). 
-     * Retorna: Void. 
-     */
+    /** * Propósito: Prepara el índice para eliminar entregable. */
+    prepararEliminacion(index) { this.indiceEliminar = index; this.mostrarModalConfirmacion = true; },
+    /** * Propósito: Ejecuta la eliminación tras confirmar. */
+    confirmarEliminar() { if (this.indiceEliminar !== null) { this.form.entregables.splice(this.indiceEliminar, 1); this.mostrarModalConfirmacion = false; this.indiceEliminar = null; } },
     async cargarHitosSelector() { try { this.listaHitos = (await calificacionServices.obtenerHitosMaestros()).data || await calificacionServices.obtenerHitosMaestros(); } catch (e) { console.error(e); } },
-    /** * Propósito: Recuperar historial cronológico de notas. 
-     * Alimenta a: Tabla de desglose y cálculo de promedio general. 
-     * Retorna: Void. 
-     */
     async recuperarHistorialNotas() { this.cargandoHistorial = true; try { this.notasHistorial = await calificacionServices.obtenerCalificaciones(this.$route.params.id); } catch (e) { console.error(e); } finally { this.cargandoHistorial = false; } },
-    /** * Propósito: Enviar nueva calificación al motor MySQL y refrescar tabla. 
-     * Alimenta a: Base de datos y reactividad del historial. 
-     * Retorna: Void. 
-     */
     async crearCalificacionDiaria() {
       if (!this.notaForm.hito_id || this.notaForm.nota === null) return;
       this.cargandoEnvioNota = true;
       try { const res = await calificacionServices.registrarCalificacion(this.form.id, this.notaForm); if (res.calificacion) this.notasHistorial.unshift(res.calificacion); this.notaForm = { hito_id: null, nota: null, descripcion: '' }; } 
       catch (e) { console.error(e); this.modalErrorMsg = e.response?.data?.mensaje || "Error al procesar."; this.showModalError = true; } finally { this.cargandoEnvioNota = false; }
     },
-    /** * Propósito: Determinar color semántico Bulma según valor numérico. 
-     * Alimenta a: Clases CSS de las etiquetas de notas. 
-     * Retorna: String (clase CSS). 
-     */
     obtenerColorNota(n) { return Number(n) < 4 ? 'is-danger' : (Number(n) < 6 ? 'is-warning' : 'is-success'); },
-    /** * Propósito: Traducir ISO date a formato argentino. 
-     * Alimenta a: Celdas de fechas en tablas del template. 
-     * Retorna: String. 
-     */
     convertirFechaLocal(f) { return f ? new Date(f).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'; },
-    /** * Propósito: Cargar métricas de seguimiento de los integrantes. 
-     * Alimenta a: Bloque "Monitor de Desempeño" del equipo. 
-     * Retorna: Void. 
-     */
     async cargarStats() { try { const res = await seguimientoService.getStats(this.form.id); if (res.data.success) this.statsSeguimiento = res.data.data; } catch (e) { console.error(e); } },
-    /** * Propósito: Encontrar alumno específico en el array del equipo para mostrar detalle. 
-     * Alimenta a: Modal DetalleSeguimientoModal. 
-     * Retorna: Void. 
-     */
     verDetalleAlumno(stat) { const a = this.miembrosAsignados.find(m => `${m.nombre} ${m.apellido}` === stat.alumno); if (a) { this.alumnoSeleccionado = a; this.mostrarDetalle = true; } },
-    /** * Propósito: Determinar color para la barra de seguimiento según escala 0-3. 
-     * Alimenta a: Clases CSS de los progress bar de seguimiento. 
-     * Retorna: String (clase CSS). 
-     */
     obtenerColorBarra(p) { return p <= 1.5 ? 'is-danger' : (p <= 2.2 ? 'is-warning' : 'is-success'); },
-    /** * Propósito: Abrir modal para asignar nuevo registro a un alumno. 
-     * Alimenta a: Modal SeguimientoModal. 
-     * Retorna: Void. 
-     */
     abrirModalSeguimiento(a) { this.alumnoSeleccionado = a; this.mostrarModalSeguimiento = true; },
-    /** * Propósito: Abrir enlace en nueva pestaña, formateando URL. 
-     * Alimenta a: Botón de link externo. 
-     * Retorna: Void. 
-     */
     abrirEnlace(url) { if (url) window.open(url.startsWith('http') ? url : `https://${url}`, '_blank'); },
-    /** * Propósito: Añadir nuevo entregable localmente al form.entregables. 
-     * Alimenta a: Array reactivo de entregables antes de guardado final. 
-     * Retorna: Void. 
-     */
     agregarEntregableRAM() { if (this.nuevoEntregableNombre.trim()) { this.form.entregables.push({ nombre: this.nuevoEntregableNombre.trim(), link_drive: '' }); this.nuevoEntregableNombre = ''; } },
-    /** * Propósito: Eliminar integrante localmente del equipo. 
-     * Alimenta a: Array reactivo de miembros. 
-     * Retorna: Void. 
-     */
     quitarMiembro(id) { this.miembrosAsignados = this.miembrosAsignados.filter(m => m.id !== id); },
-    /** * Propósito: Determinar color de avatar según tipo de usuario (alumno/docente). 
-     * Alimenta a: Clases CSS del div avatar. 
-     * Retorna: String (clase CSS). 
-     */
     obtenerColorAvatar(r) { return Number(r) === 3 ? 'has-background-success-light has-text-success' : 'has-background-link-light has-text-link'; },
-    /** * Propósito: Generar letras iniciales del nombre de usuario. 
-     * Alimenta a: Texto interno del div avatar. 
-     * Retorna: String. 
-     */
     obtenerIniciales(n) { return n ? n.split(' ').map(x => x[0]).join('').toUpperCase().substring(0, 2) : '?'; },
-    /** * Propósito: Consumir API para filtrar usuarios de la misma escuela. 
-     * Alimenta a: Caja flotante de resultados del buscador. 
-     * Retorna: Void. 
-     */
     async buscarUsuarios() { if (this.busqueda.length < 2) return this.resultadosBusqueda = []; try { const res = await axios.get(`/api/usuarios?q=${this.busqueda}&escuela_id=${this.proyectoOriginal.escuela_id}`, { headers: { 'Authorization': `Bearer ${useAuthStore().token}` } }); this.resultadosBusqueda = res.data.filter(u => u.activo && !this.miembrosAsignados.some(m => m.id === u.id)); } catch (err) { console.error(err); } },
-    /** * Propósito: Adjuntar usuario seleccionado desde el buscador al array del equipo. 
-     * Alimenta a: Array reactivo de miembros. 
-     * Retorna: Void. 
-     */
     seleccionarUsuario(u) { this.miembrosAsignados.push({ ...u }); this.busqueda = ''; this.resultadosBusqueda = []; },
-    /** * Propósito: Validar formulario y enviar PUT general para guardar el proyecto. 
-     * Alimenta a: Backend / Base de datos. 
-     * Retorna: Void. 
-     */
     async confirmarCambios() {
       if (!this.form.nombre.trim()) return (this.modalErrorMsg = "El nombre del proyecto es obligatorio.", this.showModalError = true);
       if (this.form.viable && !this.form.documentoViabilidadLink) return (this.modalErrorMsg = "Atención Profe: Para marcar el proyecto como VIABLE debe adjuntar el link del documento digitalizado de respaldo.", this.showModalError = true, this.tabActiva = 'viabilidad');
@@ -321,10 +265,6 @@ export default {
       try { await axios.put(`/api/proyectos/${this.form.id}`, { ...this.form, usuariosIds: this.miembrosAsignados.map(m => m.id) }, { headers: { 'Authorization': `Bearer ${useAuthStore().token}` } }); this.volver(); } 
       catch (e) { console.error(e); this.modalErrorMsg = "Error de conexión con el servidor."; this.showModalError = true; } finally { this.guardando = false; }
     },
-    /** * Propósito: Abandonar la vista actual y retornar al panel general. 
-     * Alimenta a: Vue Router. 
-     * Retorna: Void. 
-     */
     volver() { this.$router.push('/dashboard'); }
   },
   mounted() { this.cargarTodo(); }
