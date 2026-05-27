@@ -6,7 +6,7 @@
         <div style="flex: 1;">
           <span class="tag is-info is-light is-small mr-2" style="vertical-align: middle;">US-{{ userStory.id }}</span>
           <h3 class="subtitle is-6 mb-0 is-inline-block custom-title-clamp has-text-black">
-            <strong>{{ userStory.titulo }}</strong>
+            {{ userStory.titulo }}
           </h3>
         </div>
         
