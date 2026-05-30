@@ -82,13 +82,17 @@
                       </div>
                     </div>
                   </div>
+                  
                   <div class="monitor-desempeno mt-6 pt-5 border-top-info">
                     <h4 class="title is-6 has-text-info uppercase-label mb-5"><i class="fas fa-microchip mr-2"></i> Monitor de Desempeño (Promedios)</h4>
-                    <div v-if="statsSeguimiento.length === 0" class="notification is-dark is-size-7 has-text-centered"><i class="fas fa-exclamation-triangle mr-2"></i> Se requieren calificaciones cualitativas para reflejar el desempeño del equipo.</div>
+                    <div v-if="statsSeguimiento.length === 0" class="notification is-dark is-size-6 has-text-centered"><i class="fas fa-exclamation-triangle mr-2"></i> Se requieren calificaciones cualitativas para reflejar el desempeño del equipo.</div>
                     <div v-else class="columns is-multiline">
                       <div class="column is-12" v-for="stat in statsSeguimiento" :key="stat.alumno">
-                        <div class="is-flex is-justify-content-between is-align-items-center mb-1"><a class="has-text-info is-size-7 has-text-weight-semibold is-underlined" @click="verDetalleAlumno(stat)">{{ stat.alumno }}</a><span class="tag is-dark is-small">Promedio: {{ stat.promedio }} ({{ stat.cantidad }} ev.)</span></div>
-                        <progress class="progress is-small" :class="obtenerColorBarra(stat.promedio)" :value="stat.promedio" max="3"></progress>
+                        <div class="is-flex is-justify-content-between is-align-items-center mb-2">
+                          <a class="has-text-info is-size-5 has-text-weight-bold is-underlined" @click="verDetalleAlumno(stat)">{{ stat.alumno }}</a>
+                          <span class="tag is-dark is-medium is-size-6 has-text-weight-bold">Promedio: {{ stat.promedio }} ({{ stat.cantidad }} ev.)</span>
+                        </div>
+                        <progress class="progress is-medium mt-1" :class="obtenerColorBarra(stat.promedio)" :value="stat.promedio" max="3"></progress>
                       </div>
                     </div>
                   </div>
