@@ -59,6 +59,11 @@
                 <span class="icon is-small mr-2"><i class="fas fa-school"></i></span>
                 Gestionar Escuelas
               </router-link>
+              
+              <router-link v-if="esDocenteOAdmin" to="/gestion-curricular" class="navbar-item">
+                <span class="icon is-small mr-2"><i class="fas fa-book"></i></span>
+                Especialidades y Materias
+              </router-link>
 
               <router-link v-if="esDocenteOAdmin" to="/sugerencias" class="navbar-item">
                 <span class="icon is-small mr-2"><i class="fas fa-lightbulb has-text-warning"></i></span>
@@ -127,6 +132,8 @@ const roles = ref([]);
 
 /**
  * Propósito: Determinar la visibilidad de la barra de navegación basada en autenticación y ruta.
+ * A quién alimenta: Template de App.vue (directiva v-if del nav).
+ * Qué retorna: Booleano true/false.
  */
 const mostrarNavbar = computed(() => {
   const rutasSinNavbar = ['/login', '/'];
@@ -135,6 +142,8 @@ const mostrarNavbar = computed(() => {
 
 /**
  * Propósito: Obtener el nombre del usuario de forma reactiva desde el store.
+ * A quién alimenta: Template de App.vue (saludo del usuario).
+ * Qué retorna: String con el nombre o 'Usuario' por defecto.
  */
 const nombreUsuario = computed(() => {
   return authStore.usuario?.nombre || 'Usuario';
@@ -142,6 +151,8 @@ const nombreUsuario = computed(() => {
 
 /**
  * Propósito: Validar permisos de acceso a menús administrativos.
+ * A quién alimenta: Template de App.vue (directivas v-if de los menús dropdown).
+ * Qué retorna: Booleano true si es admin (1) o docente (2).
  */
 const esDocenteOAdmin = computed(() => {
   const rol = Number(authStore.usuario?.rol_id);
@@ -150,6 +161,8 @@ const esDocenteOAdmin = computed(() => {
 
 /**
  * Propósito: Ejecutar el cierre de sesión y redirección.
+ * A quién alimenta: Evento @click del botón "Cerrar Sesión".
+ * Qué retorna: Void (redirecciona ruta).
  */
 const handleLogout = () => {
   authStore.logout();
@@ -158,6 +171,8 @@ const handleLogout = () => {
 
 /**
  * Propósito: Obtener catálogos de escuelas y roles para los modales.
+ * A quién alimenta: Hook onMounted y función abrirPerfil.
+ * Qué retorna: Void (asigna valores reactivos a ref escuelas y roles).
  */
 const cargarMaestras = async () => {
   try {
@@ -174,6 +189,8 @@ const cargarMaestras = async () => {
 
 /**
  * Propósito: Preparar y mostrar el modal de edición para el usuario logueado.
+ * A quién alimenta: Evento @click de "Mi Perfil".
+ * Qué retorna: Void (activa flag reactivo modalPerfilActivo).
  */
 const abrirPerfil = async () => {
   try {
@@ -190,6 +207,8 @@ const abrirPerfil = async () => {
 
 /**
  * Propósito: Refrescar la información del usuario tras una edición exitosa.
+ * A quién alimenta: Evento @usuario-guardado emitido por UsuarioModal.vue.
+ * Qué retorna: Void (actualiza el store de autenticación).
  */
 const refrescarDatos = async () => {
   modalPerfilActivo.value = false;

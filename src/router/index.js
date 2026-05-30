@@ -56,6 +56,23 @@ const router = createRouter({
       component: () => import('../views/EscuelasLista.vue'), 
       meta: { requiresAuth: true, roles: [1, 2] } // Solo Admin y Docente
     },
+    
+    // ============================================================================
+    // --- GESTIÓN CURRICULAR (NUEVO v2.8.0) --------------------------------------
+    // ============================================================================
+    /**
+     * @ruta /gestion-curricular
+     * @propósito Registrar y proteger la vista de administración de especialidades y materias.
+     * @alimenta Menú de navegación principal en App.vue. Carga MateriasConfigView.vue.
+     * @retorna Renderizado del componente visual o redirección si no cumple con roles [1, 2].
+     */
+    {
+      path: '/gestion-curricular',
+      name: 'gestion-curricular',
+      component: () => import('../views/MateriasConfigView.vue'),
+      meta: { requiresAuth: true, roles: [1, 2] } // Solo Admin y Docente
+    },
+
     // --- GESTIÓN DE PROYECTO Y SUGERENCIAS ---
     {
       path: '/sugerencias',
