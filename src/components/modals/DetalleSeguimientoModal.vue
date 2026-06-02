@@ -321,10 +321,7 @@ export default {
 .history-scroll-container::-webkit-scrollbar-track { background: #f1f1f1; }
 .history-scroll-container::-webkit-scrollbar-thumb { background: #209cee; border-radius: 10px; }
 
-/* * =========================================================
- * AJUSTE DE ANCHO DEL MODAL (v2.7.0)
- * =========================================================
- */
+
 .glass-modal-v3 { 
   border-radius: 12px; 
   overflow: hidden; 

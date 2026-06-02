@@ -144,6 +144,23 @@
                 </div>
 
                 <div v-if="tabActiva === 'entregables'" class="animate__animated animate__fadeIn">
+                  <div class="box is-dark-box p-4 mb-6">
+                    <label class="label has-text-info uppercase-label"><i class="fab fa-google-drive mr-2"></i> Carpeta Raíz del Proyecto (Google Drive)</label>
+                    <div class="field has-addons mt-3">
+                      <div class="control is-expanded has-icons-left">
+                        <input class="input is-dark" type="text" v-model="form.linkDrive" placeholder="Pegue aquí el link a la carpeta compartida de Drive..." :disabled="!esDocente">
+                        <span class="icon is-left has-text-info"><i class="fas fa-folder-open"></i></span>
+                      </div>
+                      <div class="control">
+                        <button class="button is-info" :disabled="!form.linkDrive" @click="abrirEnlace(form.linkDrive)" title="Abrir carpeta">
+                          <i class="fas fa-external-link-alt"></i>
+                        </button>
+                      </div>
+                    </div>
+                    <p class="help has-text-grey-lighter is-size-7 mt-2" v-if="esDocente">Este enlace será visible para todos los integrantes como acceso rápido a los documentos del proyecto.</p>
+                    <p class="help has-text-grey-lighter is-size-7 mt-2" v-else>Acceso de solo lectura administrado por el docente.</p>
+                  </div>
+
                   <div class="field has-addons mb-6"><div class="control is-expanded"><input class="input is-medium custom-input-entregable" type="text" v-model="nuevoEntregableNombre" placeholder="Nuevo documento..." @keyup.enter="agregarEntregableRAM"></div><div class="control"><button class="button is-info is-medium" @click="agregarEntregableRAM"><i class="fas fa-plus"></i></button></div></div>
                   <div class="table-container">
                     <table class="table is-fullwidth glass-table delivery-table-v2">
@@ -213,7 +230,8 @@ export default {
       mostrarModalSeguimiento: false, mostrarDetalle: false, alumnoSeleccionado: null, statsSeguimiento: [], showModalError: false,
       modalErrorMsg: '', accordionAbierto: false, cargandoHistorial: false, cargandoEnvioNota: false, listaHitos: [], notasHistorial: [],
       notaForm: { hito_id: null, nota: null, descripcion: '' },
-      form: { id: null, nombre: '', descripcion: '', estado_id: null, fecha_cierre_1: '', fecha_cierre_2: '', objetivo: '', alcanceFinal: '', viable: false, documentoViabilidadLink: '', entregables: [] },
+      // NUEVO v2.9.0: Agregado linkDrive al objeto form inicial
+      form: { id: null, nombre: '', descripcion: '', estado_id: null, fecha_cierre_1: '', fecha_cierre_2: '', objetivo: '', alcanceFinal: '', viable: false, documentoViabilidadLink: '', linkDrive: '', entregables: [] },
       camposAlcance: [ { label: 'Objetivo General', key: 'objetivo' }, { label: 'Alcance del Proyecto', key: 'alcanceFinal' } ],
       mostrarModalConfirmacion: false, indiceEliminar: null
     }
@@ -231,15 +249,14 @@ export default {
         const resProj = await projectService.getById(this.$route.params.id);
         if (resProj.success) {
           const p = resProj.data; this.proyectoOriginal = p;
-          Object.assign(this.form, { id: p.id, nombre: p.nombre, descripcion: p.descripcion, fecha_cierre_1: p.fecha_cierre_1, fecha_cierre_2: p.fecha_cierre_2, objetivo: p.objetivo, alcanceFinal: p.alcanceFinal, objetivoBloqueado: p.objetivoBloqueado || false, alcanceFinalBloqueado: p.alcanceFinalBloqueado || false, viable: p.viable || false, documentoViabilidadLink: p.documentoViabilidadLink || '', entregables: p.entregables ? JSON.parse(JSON.stringify(p.entregables)) : [] });
+          // NUEVO v2.9.0: Inyección de linkDrive en el Object.assign para poblar el formulario desde el backend
+          Object.assign(this.form, { id: p.id, nombre: p.nombre, descripcion: p.descripcion, fecha_cierre_1: p.fecha_cierre_1, fecha_cierre_2: p.fecha_cierre_2, objetivo: p.objetivo, alcanceFinal: p.alcanceFinal, objetivoBloqueado: p.objetivoBloqueado || false, alcanceFinalBloqueado: p.alcanceFinalBloqueado || false, viable: p.viable || false, documentoViabilidadLink: p.documentoViabilidadLink || '', linkDrive: p.linkDrive || '', entregables: p.entregables ? JSON.parse(JSON.stringify(p.entregables)) : [] });
           this.miembrosAsignados = p.integrantes || p.Usuarios || []; this.form.estado_id = null; this.$nextTick(() => { this.form.estado_id = p.estado_id ? Number(p.estado_id) : (p.EstadoProyecto?.id ? Number(p.EstadoProyecto.id) : null); });
           this.recuperarHistorialNotas(); this.cargarStats(); if (this.esDocente) this.cargarHitosSelector();
         }
       } catch (err) { console.error(err); } finally { this.cargando = false; }
     },
-    /** * Propósito: Prepara el índice para eliminar entregable. */
     prepararEliminacion(index) { this.indiceEliminar = index; this.mostrarModalConfirmacion = true; },
-    /** * Propósito: Ejecuta la eliminación tras confirmar. */
     confirmarEliminar() { if (this.indiceEliminar !== null) { this.form.entregables.splice(this.indiceEliminar, 1); this.mostrarModalConfirmacion = false; this.indiceEliminar = null; } },
     async cargarHitosSelector() { try { this.listaHitos = (await calificacionServices.obtenerHitosMaestros()).data || await calificacionServices.obtenerHitosMaestros(); } catch (e) { console.error(e); } },
     async recuperarHistorialNotas() { this.cargandoHistorial = true; try { this.notasHistorial = await calificacionServices.obtenerCalificaciones(this.$route.params.id); } catch (e) { console.error(e); } finally { this.cargandoHistorial = false; } },
