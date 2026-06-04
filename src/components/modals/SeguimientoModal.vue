@@ -26,12 +26,25 @@
         </div>
 
         <div class="field my-5 border-info-v2 p-4 box is-shadowless" style="background-color: #f8f9fa;">
-          <label class="label has-text-grey">Desempeño / Calificación</label>
-          <div class="control">
-            <p class="has-text-grey-light is-size-6 is-italic">
-              [Espacio reservado para componente de calificación numérica del 1 al 10]
-            </p>
+          <label class="label has-text-grey">Desempeño / Calificación Numérica</label>
+          <div class="control has-icons-left">
+            <input 
+              class="input is-medium is-info has-text-weight-bold" 
+              type="number" 
+              step="0.01" 
+              min="1" 
+              max="10" 
+              v-model.number="form.desempeno" 
+              placeholder="Ej: 7.50 o 8"
+            >
+            <span class="icon is-left has-text-info">
+              <i class="fas fa-star-half-alt"></i>
+            </span>
           </div>
+          <p class="help is-info mt-2"><i class="fas fa-info-circle"></i> Ingrese un valor numérico entre 1.00 y 10.00</p>
+          <p v-if="form.desempeno !== null && (form.desempeno < 1 || form.desempeno > 10)" class="help is-danger has-text-weight-bold mt-1">
+            <i class="fas fa-exclamation-triangle"></i> La nota debe estar comprendida estrictamente entre 1 y 10.
+          </p>
         </div>
 
         <div class="field">
@@ -47,7 +60,7 @@
           class="button is-info" 
           :class="{'is-loading': enviando}" 
           @click="guardar" 
-          :disabled="!form.materia_id || enviando"
+          :disabled="!form.materia_id || form.desempeno === null || form.desempeno < 1 || form.desempeno > 10 || enviando"
         >
           Guardar Seguimiento
         </button>
@@ -61,7 +74,7 @@ import seguimientoService from '../../services/seguimiento.service';
 
 /**
  * @componente SeguimientoModal.vue
- * @propósito Formulario modal para registrar un nuevo informe actitudinal/pedagógico individual asignado a una materia específica.
+ * @propósito Formulario modal para registrar un nuevo informe actitudinal/pedagógico cuantitativo individual asignado a una materia específica.
  * @interactúa Alimenta a: ProyectoConfigView.vue (Monitor de desempeño por integrantes)
  * @emite 'success' al impactar la API con éxito, 'close' para destruir la instancia visual.
  */
@@ -83,6 +96,7 @@ export default {
       materias: [],
       form: { 
         materia_id: null, 
+        desempeno: null, 
         observacion: '' 
       }
     }
@@ -94,7 +108,8 @@ export default {
     /**
      * @función cargarMateriasCurriculares
      * @propósito Recuperar las materias asociadas a la especialidad técnica del alumno en pantalla, parseando correctamente el empaquetado de Axios.
-     * @invocaA seguimientoService.obtenerMateriasPorEspecialidad
+     * @quien_la_llama Hook mounted() al inicializar el componente.
+     * @retorna Void. Asigna datos al array reactivo `materias`.
      */
     async cargarMateriasCurriculares() {
       this.cargandoMaterias = true;
@@ -102,7 +117,6 @@ export default {
         const especialidadId = this.alumno.especialidad_id;
         if (especialidadId) {
           const response = await seguimientoService.obtenerMateriasPorEspecialidad(especialidadId);
-          // CORRECCIÓN: Axios encapsula la respuesta en '.data'
           if (response.data && response.data.success) {
             this.materias = response.data.data;
           }
@@ -116,11 +130,12 @@ export default {
 
     /**
      * @función guardar
-     * @propósito Validar y despachar el payload del nuevo seguimiento hacia el backend.
-     * @invocaA seguimientoService.crear
+     * @propósito Validar y despachar el payload del nuevo seguimiento numérico hacia el backend.
+     * @quien_la_llama Evento click del botón "Guardar Seguimiento".
+     * @retorna Void. Emite eventos de cierre y éxito en caso de respuesta 201.
      */
     async guardar() {
-      if (!this.form.materia_id) return;
+      if (!this.form.materia_id || this.form.desempeno === null || this.form.desempeno < 1 || this.form.desempeno > 10) return;
       
       this.enviando = true;
       try {
@@ -128,6 +143,7 @@ export default {
           proyecto_id: Number(this.proyectoId),
           alumno_id: Number(this.alumno.id),
           materia_id: Number(this.form.materia_id),
+          desempeno: Number(this.form.desempeno),
           observacion: this.form.observacion
         });
         this.$emit('success');

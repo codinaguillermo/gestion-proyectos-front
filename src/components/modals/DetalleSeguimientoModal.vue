@@ -30,7 +30,9 @@
             <div class="column is-4 has-text-right">
               <div class="tags has-addons is-justify-content-flex-end score-badge">
                 <span class="tag is-dark is-large">PROMEDIO</span>
-                <span class="tag is-light is-large has-text-grey-light score-value" style="font-size: 1.5rem !important;">(Próximamente)</span>
+                <span class="tag is-large has-text-weight-bold score-value" :class="obtenerColorNota(promedioCalculado)">
+                  {{ promedioCalculado }} / 10
+                </span>
               </div>
               <p class="is-size-7 mt-3 has-text-grey date-stamp">Fecha emisión: {{ fechaHoy }}</p>
             </div>
@@ -72,8 +74,10 @@
                 <tr v-for="seg in historialFiltrado" :key="seg.id" class="table-data-row">
                   <td class="is-size-6 has-text-weight-semibold data-fecha">{{ formatearFecha(seg.created_at) }}</td>
                   <td class="is-size-6 has-text-weight-bold data-materia has-text-link">{{ seg.materia?.nombre || 'LENGUAJE DE PROGRAMACION III' }}</td>
-                  <td class="has-text-centered has-text-grey-light is-italic">
-                    N/A
+                  <td class="has-text-centered">
+                    <span class="tag is-medium has-text-weight-bold" :class="obtenerColorNota(seg.desempeno)">
+                      {{ formatearNota(seg.desempeno) }}
+                    </span>
                   </td>
                   <td class="is-size-6 data-obs"><em>{{ seg.observacion || '(Sin anotaciones)' }}</em></td>
                   <td class="is-size-6 data-doc">{{ seg.docente?.apellido || 'N/C' }}</td>
@@ -104,7 +108,7 @@ import seguimientoService from '../../services/seguimiento.service';
 
 /**
  * @componente DetalleSeguimientoModal.vue
- * @propósito Mostrar el historial cualitativo indexado por materia de un alumno (Preparado para migración a calificaciones numéricas).
+ * @propósito Mostrar el historial cuantitativo indexado por materia de un alumno, calculando sus promedios en escala 1-10.
  * @alimenta Monitor de Desempeño en ProyectoConfigView.vue. Permite emitir e imprimir reportes PDF.
  */
 export default {
@@ -147,18 +151,32 @@ export default {
     /**
      * @propiedad nombreEspecialidad
      * @propósito Resolver de manera blindada el nombre de la especialidad técnica del alumno evaluado.
+     * @retorna {String} Nombre de la especialidad o valor por defecto.
      */
     nombreEspecialidad() {
       if (this.historial.length > 0 && this.historial[0].alumno?.especialidad_detalle) {
         return this.historial[0].alumno.especialidad_detalle.nombre;
       }
       return this.alumno.especialidad || 'TEP'; 
+    },
+
+    /**
+     * @propiedad promedioCalculado
+     * @propósito Calcular el promedio real cuantitativo (escala 1-10) recalculándose automáticamente según el filtro de materias.
+     * @retorna {String} Promedio numérico formateado a dos decimales.
+     */
+    promedioCalculado() {
+      if (!this.historialFiltrado.length) return "0.00";
+      const suma = this.historialFiltrado.reduce((acc, curr) => acc + Number(curr.desempeno), 0);
+      return (suma / this.historialFiltrado.length).toFixed(2);
     }
   },
   methods: {
     /**
      * @función cargarHistorial
      * @propósito Consumir el servicio de backend y mapear el contexto institucional blindado.
+     * @quien_la_llama Hook mounted() al inicializar el componente.
+     * @retorna Void. Asigna registros al array reactivo `historial`.
      */
     async cargarHistorial() {
       this.cargando = true;
@@ -186,6 +204,8 @@ export default {
     /**
      * @función exportarPDF
      * @propósito Renderizar el estado actual en pantalla (con o sin filtros aplicados) en formato físico PDF.
+     * @quien_la_llama Evento click del botón "PDF" en la cabecera.
+     * @retorna Void. Descarga el archivo generado.
      */
     exportarPDF() {
       const element = document.getElementById('informe-pedagogico');
@@ -199,7 +219,39 @@ export default {
       html2pdf().from(element).set(opt).save();
     },
     
-    formatearFecha(f) { return new Date(f).toLocaleDateString('es-AR'); }
+    /**
+     * @función formatearFecha
+     * @propósito Convertir la marca de tiempo a formato local argentino.
+     * @quien_la_llama Renderizado de la tabla en el template.
+     * @retorna {String} Fecha en formato DD/MM/YYYY.
+     */
+    formatearFecha(f) { 
+      return new Date(f).toLocaleDateString('es-AR'); 
+    },
+
+    /**
+     * @función formatearNota
+     * @propósito Formatear la calificación cuantitativa para garantizar visualmente dos decimales.
+     * @quien_la_llama Renderizado de la tabla en el template.
+     * @retorna {String} Número con dos decimales fijos.
+     */
+    formatearNota(n) {
+      return Number(n).toFixed(2);
+    },
+
+    /**
+     * @función obtenerColorNota
+     * @propósito Asignar un color semántico de Bulma basado en el valor de la nota (consistente con el monitor general).
+     * @quien_la_llama Renderizado de los badges de nota individual y promedio en el template.
+     * @retorna {String} Clase CSS de Bulma (is-danger, is-warning, is-success, o is-info).
+     */
+    obtenerColorNota(n) { 
+      const num = Number(n);
+      if (num === 0) return 'is-info'; // Caso sin calificaciones
+      if (num < 4) return 'is-danger'; 
+      if (num < 6) return 'is-warning'; 
+      return 'is-success'; 
+    }
   },
   mounted() { 
     this.cargarHistorial(); 
