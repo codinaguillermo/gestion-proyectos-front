@@ -25,14 +25,12 @@
           </p>
         </div>
 
-        <div class="field">
-          <label class="label">Desempeño / Calificación</label>
+        <div class="field my-5 border-info-v2 p-4 box is-shadowless" style="background-color: #f8f9fa;">
+          <label class="label has-text-grey">Desempeño / Calificación</label>
           <div class="control">
-            <div class="buttons has-addons is-centered">
-              <button class="button is-danger" :class="{'is-outlined': form.desempeno !== 1}" @click="form.desempeno = 1">MALO</button>
-              <button class="button is-warning" :class="{'is-outlined': form.desempeno !== 2}" @click="form.desempeno = 2">REGULAR</button>
-              <button class="button is-success" :class="{'is-outlined': form.desempeno !== 3}" @click="form.desempeno = 3">BUENO</button>
-            </div>
+            <p class="has-text-grey-light is-size-6 is-italic">
+              [Espacio reservado para componente de calificación numérica del 1 al 10]
+            </p>
           </div>
         </div>
 
@@ -49,7 +47,7 @@
           class="button is-info" 
           :class="{'is-loading': enviando}" 
           @click="guardar" 
-          :disabled="!form.desempeno || !form.materia_id || enviando"
+          :disabled="!form.materia_id || enviando"
         >
           Guardar Seguimiento
         </button>
@@ -85,7 +83,6 @@ export default {
       materias: [],
       form: { 
         materia_id: null, 
-        desempeno: null, 
         observacion: '' 
       }
     }
@@ -123,7 +120,7 @@ export default {
      * @invocaA seguimientoService.crear
      */
     async guardar() {
-      if (!this.form.desempeno || !this.form.materia_id) return;
+      if (!this.form.materia_id) return;
       
       this.enviando = true;
       try {
@@ -131,7 +128,6 @@ export default {
           proyecto_id: Number(this.proyectoId),
           alumno_id: Number(this.alumno.id),
           materia_id: Number(this.form.materia_id),
-          desempeno: this.form.desempeno,
           observacion: this.form.observacion
         });
         this.$emit('success');
@@ -145,3 +141,7 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.border-info-v2 { border-left: 4px solid #209cee; }
+</style>

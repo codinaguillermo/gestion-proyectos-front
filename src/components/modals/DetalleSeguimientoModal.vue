@@ -30,7 +30,7 @@
             <div class="column is-4 has-text-right">
               <div class="tags has-addons is-justify-content-flex-end score-badge">
                 <span class="tag is-dark is-large">PROMEDIO</span>
-                <span class="tag is-info is-large has-text-weight-bold score-value">{{ promedioCalculado }} / 3</span>
+                <span class="tag is-light is-large has-text-grey-light score-value" style="font-size: 1.5rem !important;">(Próximamente)</span>
               </div>
               <p class="is-size-7 mt-3 has-text-grey date-stamp">Fecha emisión: {{ fechaHoy }}</p>
             </div>
@@ -44,7 +44,7 @@
             </div>
             <div class="control is-expanded">
               <div class="select is-info is-fullwidth">
-                <select v-model="materiaSeleccionadaId" @change="actualizarFiltroGrafico">
+                <select v-model="materiaSeleccionadaId">
                   <option :value="null">Ver todas las materias...</option>
                   <option v-for="mat in materiasDisponibles" :key="mat.id" :value="mat.id">
                     {{ mat.nombre }}
@@ -55,34 +55,25 @@
           </div>
         </div>
 
-        <div v-if="historialFiltrado.length > 0" class="box p-5 mb-5 has-background-white-ter chart-section-vertical">
-          <h3 class="subtitle is-6 has-text-centered mb-4 uppercase-label chart-title">Distribución de Desempeño (%)</h3>
-          <div class="canvas-wrapper-vertical">
-            <canvas id="chartTorta"></canvas>
-          </div>
-        </div>
-
         <div v-if="historialFiltrado.length > 0" class="table-section-vertical">
           <h3 class="subtitle is-6 uppercase-label mb-3"><i class="fas fa-list-ul mr-2"></i>Historial Detallado de Evaluaciones</h3>
           <div class="table-container history-scroll-container">
             <table class="table is-fullwidth is-striped is-hoverable is-bordered detailed-table">
               <thead>
                 <tr class="table-header-row">
-                  <th class="th-fecha">FECHA</th>
+                  <th class="th-fecha" style="width: 120px;">FECHA</th>
                   <th class="th-mat">MATERIA / ASIGNATURA</th>
-                  <th class="th-cal">CAL.</th>
+                  <th class="th-cal has-text-centered" style="width: 200px;">CALIFICACIÓN NUMÉRICA</th>
                   <th class="th-obs">OBSERVACIÓN / ANOTACIONES PEDAGÓGICAS</th>
-                  <th class="th-doc">DOCENTE</th>
+                  <th class="th-doc" style="width: 200px;">DOCENTE</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="seg in historialFiltrado" :key="seg.id" class="table-data-row">
                   <td class="is-size-6 has-text-weight-semibold data-fecha">{{ formatearFecha(seg.created_at) }}</td>
                   <td class="is-size-6 has-text-weight-bold data-materia has-text-link">{{ seg.materia?.nombre || 'LENGUAJE DE PROGRAMACION III' }}</td>
-                  <td class="has-text-centered">
-                    <span :class="['tag score-tag', colorTag(seg.desempeno)]">
-                      {{ textoCalificacion(seg.desempeno) }}
-                    </span>
+                  <td class="has-text-centered has-text-grey-light is-italic">
+                    N/A
                   </td>
                   <td class="is-size-6 data-obs"><em>{{ seg.observacion || '(Sin anotaciones)' }}</em></td>
                   <td class="is-size-6 data-doc">{{ seg.docente?.apellido || 'N/C' }}</td>
@@ -108,13 +99,12 @@
 </template>
 
 <script>
-import Chart from 'chart.js/auto';
 import html2pdf from 'html2pdf.js';
 import seguimientoService from '../../services/seguimiento.service';
 
 /**
  * @componente DetalleSeguimientoModal.vue
- * @propósito Mostrar el estado, promedio general, gráficos estadísticos e historial cualitativo indexado por materia de un alumno.
+ * @propósito Mostrar el historial cualitativo indexado por materia de un alumno (Preparado para migración a calificaciones numéricas).
  * @alimenta Monitor de Desempeño en ProyectoConfigView.vue. Permite emitir e imprimir reportes PDF.
  */
 export default {
@@ -124,7 +114,6 @@ export default {
       historial: [],
       cargando: true,
       contexto: { escuela: '', proyecto: '' },
-      chart: null,
       materiaSeleccionadaId: null,
       fechaHoy: new Date().toLocaleDateString('es-AR')
     }
@@ -156,16 +145,6 @@ export default {
     },
 
     /**
-     * @propiedad promedioCalculado
-     * @propósito Calcular el promedio real (escala 1-3) recalculándose automáticamente según el filtro de materias.
-     */
-    promedioCalculado() {
-      if (!this.historialFiltrado.length) return 0;
-      const suma = this.historialFiltrado.reduce((acc, curr) => acc + Number(curr.desempeno), 0);
-      return (suma / this.historialFiltrado.length).toFixed(2);
-    },
-
-    /**
      * @propiedad nombreEspecialidad
      * @propósito Resolver de manera blindada el nombre de la especialidad técnica del alumno evaluado.
      */
@@ -194,8 +173,6 @@ export default {
             const esc = registro.proyecto.Escuela || registro.proyecto.escuela;
             this.contexto.escuela = esc?.nombre_largo || 'Institución No Definida';
           }
-
-          this.$nextTick(() => this.renderGrafico());
         } else {
           this.historial = [];
         }
@@ -204,58 +181,6 @@ export default {
       } finally {
         this.cargando = false;
       }
-    },
-
-    /**
-     * @función renderGrafico
-     * @propósito Dibujar y poblar la serie de datos distributivos del gráfico de dona basado puramente en la lista filtrada.
-     */
-    renderGrafico() {
-      const ctx = document.getElementById('chartTorta');
-      if (!ctx) return;
-      
-      const counts = { bueno: 0, regular: 0, malo: 0 };
-      this.historialFiltrado.forEach(s => {
-        if (Number(s.desempeno) === 3) counts.bueno++;
-        else if (Number(s.desempeno) === 2) counts.regular++;
-        else counts.malo++;
-      });
-
-      if (this.chart) this.chart.destroy();
-      
-      this.chart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: ['Bueno', 'Regular', 'Malo'],
-          datasets: [{
-            data: [counts.bueno, counts.regular, counts.malo],
-            backgroundColor: ['#48c78e', '#ffe08a', '#f14668'],
-            borderWidth: 2,
-            borderColor: '#ffffff'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { 
-            legend: { 
-              position: 'right',
-              labels: { 
-                color: '#4a4a4a', 
-                font: { size: 14, family: "'Montserrat', sans-serif", weight: 'bold' } 
-              }
-            } 
-          }
-        }
-      });
-    },
-
-    /**
-     * @función actualizarFiltroGrafico
-     * @propósito Callback intermitente disparado por el combo select para forzar el redibujado ordenado del gráfico.
-     */
-    actualizarFiltroGrafico() {
-      this.$nextTick(() => this.renderGrafico());
     },
 
     /**
@@ -273,9 +198,8 @@ export default {
       };
       html2pdf().from(element).set(opt).save();
     },
-    formatearFecha(f) { return new Date(f).toLocaleDateString('es-AR'); },
-    colorTag(d) { return d === 3 ? 'is-success' : d === 2 ? 'is-warning' : 'is-danger'; },
-    textoCalificacion(d) { return d === 3 ? 'BUENO' : d === 2 ? 'REGULAR' : 'MALO'; }
+    
+    formatearFecha(f) { return new Date(f).toLocaleDateString('es-AR'); }
   },
   mounted() { 
     this.cargarHistorial(); 
@@ -291,9 +215,6 @@ export default {
 .institution-name { font-size: 1.6rem !important; font-weight: 700; color: #209cee !important; }
 .proj-line, .alum-line { font-size: 1.15rem !important; }
 .score-value { font-size: 2.2rem !important; }
-
-/* Contenedor del Gráfico */
-.canvas-wrapper-vertical { position: relative; height: 200px; max-width: 500px; margin: 0 auto; }
 
 /* Estructura del Filtro Curricular */
 .border-materia-filter { border-left: 6px solid #209cee; background-color: #f5f5f5; }
