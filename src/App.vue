@@ -65,6 +65,11 @@
                 Especialidades y Materias
               </router-link>
 
+              <a v-if="esDocenteOAdmin" class="navbar-item" @click="abrirExportacion">
+                <span class="icon is-small mr-2 has-text-success"><i class="fas fa-file-excel"></i></span>
+                Exportar Planilla Excel
+              </a>
+
               <router-link v-if="esDocenteOAdmin" to="/sugerencias" class="navbar-item">
                 <span class="icon is-small mr-2"><i class="fas fa-lightbulb has-text-warning"></i></span>
                 Sugerencias y Errores
@@ -112,6 +117,11 @@
     @close="modalPerfilActivo = false"
     @usuario-guardado="refrescarDatos"
   />
+
+  <ExportarNotasModal 
+    v-if="modalExportarActivo"
+    @close="modalExportarActivo = false"
+  />
 </template>
 
 <script setup>
@@ -120,12 +130,14 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 import api from './services/api';
 import UsuarioModal from './components/modals/usuarioModal.vue';
+import ExportarNotasModal from './components/modals/ExportarNotasModal.vue'; // Asegurate de que la ruta sea correcta
 
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 
 const modalPerfilActivo = ref(false);
+const modalExportarActivo = ref(false); // Flag para el nuevo modal
 const usuarioParaEditar = ref(null); 
 const escuelas = ref([]);
 const roles = ref([]);
@@ -203,6 +215,15 @@ const abrirPerfil = async () => {
     usuarioParaEditar.value = authStore.usuario;
     modalPerfilActivo.value = true;
   }
+};
+
+/**
+ * Propósito: Abrir el modal de exportación de planillas de notas.
+ * A quién alimenta: Evento @click de "Exportar Planilla Excel".
+ * Qué retorna: Void (activa flag reactivo modalExportarActivo).
+ */
+const abrirExportacion = () => {
+  modalExportarActivo.value = true;
 };
 
 /**
