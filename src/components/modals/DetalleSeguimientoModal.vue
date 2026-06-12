@@ -65,10 +65,10 @@
                 <tr class="table-header-row">
                   <th class="th-fecha" style="width: 120px;">FECHA</th>
                   <th class="th-mat">MATERIA / ASIGNATURA</th>
-                  <th class="th-cal has-text-centered" style="width: 180px;">CALIFICACIÓN</th>
-                  <th class="th-obs">OBSERVACIÓN PEDAGÓGICA</th>
-                  <th class="th-doc" style="width: 150px;">DOCENTE</th>
-                  <th class="has-text-centered" style="width: 100px;">ACCIONES</th>
+                  <th class="th-cal has-text-centered" style="width: 200px;">CALIFICACIÓN NUMÉRICA</th>
+                  <th class="th-obs">OBSERVACIÓN / ANOTACIONES PEDAGÓGICAS</th>
+                  <th class="th-doc" style="width: 200px;">DOCENTE</th>
+                  <th v-if="esDocente" class="has-text-centered" style="width: 100px;">ACCIONES</th>
                 </tr>
               </thead>
               <tbody>
@@ -82,7 +82,7 @@
                   </td>
                   <td class="is-size-6 data-obs"><em>{{ seg.observacion || '(Sin anotaciones)' }}</em></td>
                   <td class="is-size-6 data-doc">{{ seg.docente?.apellido || 'N/C' }}</td>
-                  <td class="has-text-centered">
+                  <td v-if="esDocente" class="has-text-centered">
                     <div class="buttons is-centered mb-0">
                       <button class="button is-small is-ghost has-text-info p-1" @click="prepararEdicion(seg)" title="Editar nota">
                         <i class="fas fa-edit"></i>
@@ -159,17 +159,17 @@
         </footer>
       </div>
     </div>
-
   </div>
 </template>
 
 <script>
 import html2pdf from 'html2pdf.js';
 import seguimientoService from '../../services/seguimiento.service';
+import { useAuthStore } from '../../stores/auth';
 
 /**
  * @componente DetalleSeguimientoModal.vue
- * @propósito Mostrar el historial cuantitativo indexado por materia de un alumno, calculando sus promedios en escala 1-10, y permitiendo edición y borrado (v2.9.1).
+ * @propósito Mostrar el historial cuantitativo indexado por materia de un alumno, calculando sus promedios en escala 1-10.
  * @alimenta Monitor de Desempeño en ProyectoConfigView.vue. Permite emitir e imprimir reportes PDF.
  */
 export default {
@@ -181,21 +181,19 @@ export default {
       contexto: { escuela: '', proyecto: '' },
       materiaSeleccionadaId: null,
       fechaHoy: new Date().toLocaleDateString('es-AR'),
-      
-      // Control de Modales de Edición/Eliminación
       mostrarModalEdicion: false,
       mostrarModalEliminar: false,
       procesandoOperacion: false,
       segSeleccionado: null,
-      formEdicion: {
-        id: null,
-        fecha_evaluacion: '',
-        desempeno: null,
-        observacion: ''
-      }
+      formEdicion: { id: null, fecha_evaluacion: '', desempeno: null, observacion: '' }
     }
   },
   computed: {
+    esDocente() {
+      const authStore = useAuthStore();
+      const rolId = Number(authStore.usuario?.rol_id || authStore.usuario?.rolId);
+      return rolId === 1 || rolId === 2;
+    },
     materiasDisponibles() {
       const mapeo = {};
       this.historial.forEach(seg => {
@@ -243,74 +241,44 @@ export default {
         this.cargando = false;
       }
     },
-
-    /**
-     * @función prepararEdicion
-     * @propósito Poblar el formulario reactivo con los datos del registro a corregir y desplegar el modal.
-     * @quien_la_llama Evento click del botón "Editar" en la tabla.
-     * @retorna Void.
-     */
     prepararEdicion(seg) {
       this.segSeleccionado = seg;
       this.formEdicion = {
         id: seg.id,
-        // Extrae solo la parte "YYYY-MM-DD" si es un DATETIME completo o usa la fecha manual.
         fecha_evaluacion: seg.fecha_evaluacion ? seg.fecha_evaluacion : (seg.created_at ? seg.created_at.split('T')[0] : ''),
         desempeno: seg.desempeno,
         observacion: seg.observacion || ''
       };
       this.mostrarModalEdicion = true;
     },
-
-    /**
-     * @función guardarEdicion
-     * @propósito Despachar la petición de actualización al backend y recargar el historial si tiene éxito.
-     * @quien_la_llama Evento click del botón "Guardar Cambios" del modal de edición.
-     * @retorna Void.
-     */
     async guardarEdicion() {
       this.procesandoOperacion = true;
       try {
         await seguimientoService.actualizar(this.formEdicion.id, this.formEdicion);
         this.mostrarModalEdicion = false;
-        await this.cargarHistorial(); // Refresca la tabla
+        await this.cargarHistorial();
       } catch (err) {
         console.error("Error al actualizar seguimiento:", err);
       } finally {
         this.procesandoOperacion = false;
       }
     },
-
-    /**
-     * @función prepararEliminacion
-     * @propósito Identificar el registro a eliminar y solicitar confirmación humana mediante un modal.
-     * @quien_la_llama Evento click del botón "Eliminar" en la tabla.
-     * @retorna Void.
-     */
     prepararEliminacion(seg) {
       this.segSeleccionado = seg;
       this.mostrarModalEliminar = true;
     },
-
-    /**
-     * @función confirmarEliminacion
-     * @propósito Ejecutar el borrado definitivo en el servidor y limpiar el historial local.
-     * @quien_la_llama Evento click del botón "Sí, Eliminar" del modal de confirmación.
-     * @retorna Void.
-     */
     async confirmarEliminacion() {
       this.procesandoOperacion = true;
       try {
         await seguimientoService.eliminar(this.segSeleccionado.id);
         this.mostrarModalEliminar = false;
-        await this.cargarHistorial(); // Refresca la tabla
+        await this.cargarHistorial();
       } catch (err) {
         console.error("Error al eliminar seguimiento:", err);
       } finally {
         this.procesandoOperacion = false;
       }
     },
-
     exportarPDF() {
       const element = document.getElementById('informe-pedagogico');
       const opt = {
@@ -329,10 +297,12 @@ export default {
       }
       return new Date(f).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }); 
     },
-    formatearNota(n) { return Number(n).toFixed(2); },
+    formatearNota(n) {
+      return Number(n).toFixed(2);
+    },
     obtenerColorNota(n) { 
       const num = Number(n);
-      if (num === 0) return 'is-info'; 
+      if (num === 0) return 'is-info';
       if (num < 4) return 'is-danger'; 
       if (num < 6) return 'is-warning'; 
       return 'is-success'; 
@@ -352,6 +322,7 @@ export default {
 .institution-name { font-size: 1.6rem !important; font-weight: 700; color: #209cee !important; }
 .proj-line, .alum-line { font-size: 1.15rem !important; }
 .score-value { font-size: 2.2rem !important; }
+
 .border-materia-filter { border-left: 6px solid #209cee; background-color: #f5f5f5; }
 
 .history-scroll-container {
@@ -374,6 +345,7 @@ export default {
 .history-scroll-container::-webkit-scrollbar { width: 8px; }
 .history-scroll-container::-webkit-scrollbar-track { background: #f1f1f1; }
 .history-scroll-container::-webkit-scrollbar-thumb { background: #209cee; border-radius: 10px; }
+
 
 .glass-modal-v3 { 
   border-radius: 12px; 
