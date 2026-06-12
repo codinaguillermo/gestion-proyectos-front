@@ -115,11 +115,21 @@
                     <h3 class="title is-5 has-text-info uppercase-label mb-4"><i class="fas fa-pen-nib mr-2"></i> Registrar Evaluación del Proceso</h3>
                     <form @submit.prevent="crearCalificacionDiaria">
                       <div class="columns">
-                        <div class="column is-7"><div class="field"><label class="label has-text-grey-light is-small uppercase-label">Concepto / Hito Evaluado</label><div class="control has-icons-left"><div class="select is-fullwidth is-dark"><select v-model.number="notaForm.hito_id" required><option :value="null" disabled>Seleccione qué se califica...</option><option v-for="hito in listaHitos" :key="hito.id" :value="hito.id">{{ hito.nombre }}</option></select></div><span class="icon is-left has-text-info"><i class="fas fa-tasks"></i></span></div></div></div>
-                        <div class="column is-5"><div class="field"><label class="label has-text-grey-light is-small uppercase-label">Nota Numérica (0 al 10)</label><div class="control has-icons-left"><input class="input is-dark" type="number" step="0.1" min="0" max="10" v-model.number="notaForm.nota" placeholder="Ej: 7.50" required><span class="icon is-left has-text-info"><i class="fas fa-star-half-alt"></i></span></div></div></div>
+                        
+                        <div class="column is-3">
+                          <div class="field">
+                            <label class="label has-text-grey-light is-small uppercase-label">Fecha Evaluada</label>
+                            <div class="control">
+                              <input class="input is-dark" type="date" v-model="notaForm.fecha_evaluacion" required>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="column is-5"><div class="field"><label class="label has-text-grey-light is-small uppercase-label">Concepto / Hito Evaluado</label><div class="control has-icons-left"><div class="select is-fullwidth is-dark"><select v-model.number="notaForm.hito_id" required><option :value="null" disabled>Seleccione qué se califica...</option><option v-for="hito in listaHitos" :key="hito.id" :value="hito.id">{{ hito.nombre }}</option></select></div><span class="icon is-left has-text-info"><i class="fas fa-tasks"></i></span></div></div></div>
+                        <div class="column is-4"><div class="field"><label class="label has-text-grey-light is-small uppercase-label">Nota Numérica (0 al 10)</label><div class="control has-icons-left"><input class="input is-dark" type="number" step="0.1" min="0" max="10" v-model.number="notaForm.nota" placeholder="Ej: 7.50" required><span class="icon is-left has-text-info"><i class="fas fa-star-half-alt"></i></span></div></div></div>
                       </div>
                       <div class="field mb-4"><label class="label has-text-grey-light is-small uppercase-label">Descripción o Feedback del Día</label><div class="control"><textarea class="textarea is-dark" rows="2" v-model="notaForm.descripcion" placeholder="Escriba los motivos o justificación de la nota..."></textarea></div></div>
-                      <div class="has-text-right"><button class="button is-info has-text-weight-bold uppercase-label" :class="{'is-loading': cargandoEnvioNota}" type="submit">Asentar Nota</button></div>
+                      <div class="has-text-right"><button class="button is-info has-text-weight-bold uppercase-label" :class="{'is-loading': cargandoEnvioNota}" type="submit" :disabled="!notaForm.fecha_evaluacion">Asentar Nota</button></div>
                     </form>
                   </div>
 
@@ -135,8 +145,37 @@
                       <div v-else-if="notasHistorial.length === 0" class="notification is-dark is-size-7 has-text-centered my-0">No se registran evaluaciones numéricas asignadas a este proyecto todavía.</div>
                       <div class="table-container" v-else>
                         <table class="table is-fullwidth glass-table delivery-table-v2 mb-0">
-                          <thead><tr><th class="has-text-info is-size-7 uppercase-label">Día / Hora</th><th class="has-text-info is-size-7 uppercase-label">Concepto</th><th class="has-text-info is-size-7 uppercase-label has-text-centered">Nota</th><th class="has-text-info is-size-7 uppercase-label">Evaluador</th><th class="has-text-info is-size-7 uppercase-label">Motivo / Detalle</th></tr></thead>
-                          <tbody><tr v-for="nota in notasHistorial" :key="nota.id"><td class="is-size-7 custom-date-font">{{ convertirFechaLocal(nota.fecha) }}</td><td class="has-text-weight-bold is-size-7">{{ nota.hito_detail || nota.hito_node || nota.hito_detalle?.nombre }}</td><td class="has-text-centered"><span class="tag has-text-weight-bold" :class="obtenerColorNota(nota.nota)">{{ nota.nota }}</span></td><td class="is-size-7 has-text-grey-lighter">{{ nota.docente_calificador?.apellido }}, {{ nota.docente_calificador?.nombre }}</td><td class="is-size-7 desc-cell-format" :title="nota.descripcion">{{ nota.descripcion || '-' }}</td></tr></tbody>
+                          <thead>
+                            <tr>
+                              <th class="has-text-info is-size-7 uppercase-label th-compacta-fecha">FECHA</th>
+                              <th class="has-text-info is-size-7 uppercase-label th-compacta-concepto">CONCEPTO</th>
+                              <th class="has-text-info is-size-7 uppercase-label has-text-centered">NOTA</th>
+                              <th class="has-text-info is-size-7 uppercase-label">EVALUADOR</th>
+                              <th class="has-text-info is-size-7 uppercase-label">MOTIVO / DETALLE</th>
+                              <th class="has-text-info is-size-7 uppercase-label has-text-centered">ACCIONES</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="nota in notasHistorial" :key="nota.id">
+                              <td class="is-size-7 custom-date-font td-compacta-fecha">{{ convertirFechaLocal(nota.fecha_evaluacion || nota.fecha) }}</td>
+                              <td class="has-text-weight-bold is-size-7 td-compacta-concepto">{{ hitoNormalizado(nota) }}</td>
+                              <td class="has-text-centered">
+                                <span class="tag has-text-weight-bold" :class="obtenerColorNota(nota.nota)">{{ nota.nota }}</span>
+                              </td>
+                              <td class="is-size-7 has-text-grey-lighter">{{ nota.docente_calificador?.apellido }}, {{ nota.docente_calificador?.nombre }}</td>
+                              <td class="is-size-7 desc-cell-format" :title="nota.descripcion">{{ nota.descripcion || '-' }}</td>
+                              <td class="has-text-centered">
+                                <div class="buttons is-centered mb-0" v-if="esDocente">
+                                  <button class="button is-small is-ghost has-text-info p-1" @click="prepararEdicionNotaGrupal(nota)" title="Editar nota grupal">
+                                    <i class="fas fa-edit"></i>
+                                  </button>
+                                  <button class="button is-small is-ghost has-text-danger p-1" @click="prepararEliminacionNotaGrupal(nota)" title="Eliminar nota grupal">
+                                    <i class="fas fa-trash-alt"></i>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
                         </table>
                       </div>
                     </div>
@@ -157,7 +196,7 @@
                         </button>
                       </div>
                     </div>
-                    <p class="help has-text-grey-lighter is-size-7 mt-2" v-if="esDocente">Este enlace será visible para todos los integrantes como acceso rápido a los documentos del proyecto.</p>
+                    <p class="help has-text-grey-lighter is-size-7 mt-2" v-if="esDocente"> Este enlace será visible para todos los integrantes como acceso rápido a los documentos del proyecto.</p>
                     <p class="help has-text-grey-lighter is-size-7 mt-2" v-else>Acceso de solo lectura administrado por el docente.</p>
                   </div>
 
@@ -199,9 +238,61 @@
     <div class="modal" :class="{'is-active': showModalError}">
       <div class="modal-background" @click="showModalError = false"></div>
       <div class="modal-card">
-        <header class="modal-card-head has-background-danger"><p class="modal-card-title has-text-white">Error de Validation</p><button class="delete" @click="showModalError = false"></button></header>
+        <header class="modal-card-head has-background-danger"><p class="modal-card-title has-text-white">Error de Validación</p><button class="delete" @click="showModalError = false"></button></header>
         <section class="modal-card-body"><p class="has-text-weight-semibold is-size-5">{{ modalErrorMsg }}</p></section>
         <footer class="modal-card-foot is-justify-content-flex-end"><button class="button is-danger" @click="showModalError = false">Entendido</button></footer>
+      </div>
+    </div>
+
+    <div class="modal" :class="{'is-active': mostrarModalEdicionNotaGrupal}">
+      <div class="modal-background" @click="mostrarModalEdicionNotaGrupal = false"></div>
+      <div class="modal-card">
+        <header class="modal-card-head has-background-info">
+          <p class="modal-card-title has-text-white"><i class="fas fa-edit mr-2"></i> Editar Nota Grupal</p>
+        </header>
+        <section class="modal-card-body">
+          <div class="field">
+            <label class="label">Fecha Evaluada</label>
+            <div class="control">
+              <input class="input" type="date" v-model="formEdicionGrupal.fecha_evaluacion" required>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Concepto: <span class="has-text-info has-text-weight-bold">{{ hitoNormalizado(notaSeleccionada) }}</span></label>
+          </div>
+          <div class="field">
+            <label class="label">Nota Numérica (0 a 10)</label>
+            <div class="control">
+              <input class="input has-text-weight-bold has-text-info" type="number" step="0.1" min="0" max="10" v-model.number="formEdicionGrupal.nota" required>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Descripción o Feedback</label>
+            <div class="control">
+              <textarea class="textarea" v-model="formEdicionGrupal.descripcion"></textarea>
+            </div>
+          </div>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+          <button class="button" @click="mostrarModalEdicionNotaGrupal = false">Cancelar</button>
+          <button class="button is-info" :class="{'is-loading': procesandoOperacionGrupal}" :disabled="!formEdicionGrupal.fecha_evaluacion || !formEdicionGrupal.nota || formEdicionGrupal.nota < 0 || formEdicionGrupal.nota > 10" @click="guardarEdicionNotaGrupal">Guardar Cambios</button>
+        </footer>
+      </div>
+    </div>
+
+    <div class="modal" :class="{'is-active': mostrarModalEliminarNotaGrupal}">
+      <div class="modal-background" @click="mostrarModalEliminarNotaGrupal = false"></div>
+      <div class="modal-card">
+        <header class="modal-card-head has-background-danger">
+          <p class="modal-card-title has-text-white"><i class="fas fa-exclamation-triangle mr-2"></i> Confirmar Eliminación</p>
+        </header>
+        <section class="modal-card-body">
+          ¿Estás seguro que deseás eliminar la nota de <strong>{{ notaSeleccionada?.nota }}</strong> asentada el día <strong>{{ convertirFechaLocal(notaSeleccionada?.fecha_evaluacion) }}</strong>? Esta acción no se puede deshacer.
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+          <button class="button" @click="mostrarModalEliminarNotaGrupal = false">Cancelar</button>
+          <button class="button is-danger" :class="{'is-loading': procesandoOperacionGrupal}" @click="confirmarEliminacionNotaGrupal">Sí, Eliminar</button>
+        </footer>
       </div>
     </div>
 
@@ -229,11 +320,17 @@ export default {
       nuevoEntregableNombre: '', estadosProyecto: [], prioridades: [], todasLasTareas: [], miembrosAsignados: [],
       mostrarModalSeguimiento: false, mostrarDetalle: false, alumnoSeleccionado: null, statsSeguimiento: [], showModalError: false,
       modalErrorMsg: '', accordionAbierto: false, cargandoHistorial: false, cargandoEnvioNota: false, listaHitos: [], notasHistorial: [],
-      notaForm: { hito_id: null, nota: null, descripcion: '' },
-      // NUEVO v2.9.0: Agregado linkDrive al objeto form inicial
+      notaForm: { hito_id: null, nota: null, descripcion: '', fecha_evaluacion: new Date().toISOString().split('T')[0] },
       form: { id: null, nombre: '', descripcion: '', estado_id: null, fecha_cierre_1: '', fecha_cierre_2: '', objetivo: '', alcanceFinal: '', viable: false, documentoViabilidadLink: '', linkDrive: '', entregables: [] },
       camposAlcance: [ { label: 'Objetivo General', key: 'objetivo' }, { label: 'Alcance del Proyecto', key: 'alcanceFinal' } ],
-      mostrarModalConfirmacion: false, indiceEliminar: null
+      mostrarModalConfirmacion: false, indiceEliminar: null,
+
+      // NUEVOS CONTROLES v2.9.1: Modales y lógica de edición/eliminación de notas grupales
+      mostrarModalEdicionNotaGrupal: false,
+      mostrarModalEliminarNotaGrupal: false,
+      procesandoOperacionGrupal: false,
+      notaSeleccionada: null,
+      formEdicionGrupal: { id: null, fecha_evaluacion: '', nota: null, descripcion: '' }
     }
   },
   computed: {
@@ -249,7 +346,6 @@ export default {
         const resProj = await projectService.getById(this.$route.params.id);
         if (resProj.success) {
           const p = resProj.data; this.proyectoOriginal = p;
-          // NUEVO v2.9.0: Inyección de linkDrive en el Object.assign para poblar el formulario desde el backend
           Object.assign(this.form, { id: p.id, nombre: p.nombre, descripcion: p.descripcion, fecha_cierre_1: p.fecha_cierre_1, fecha_cierre_2: p.fecha_cierre_2, objetivo: p.objetivo, alcanceFinal: p.alcanceFinal, objetivoBloqueado: p.objetivoBloqueado || false, alcanceFinalBloqueado: p.alcanceFinalBloqueado || false, viable: p.viable || false, documentoViabilidadLink: p.documentoViabilidadLink || '', linkDrive: p.linkDrive || '', entregables: p.entregables ? JSON.parse(JSON.stringify(p.entregables)) : [] });
           this.miembrosAsignados = p.integrantes || p.Usuarios || []; this.form.estado_id = null; this.$nextTick(() => { this.form.estado_id = p.estado_id ? Number(p.estado_id) : (p.EstadoProyecto?.id ? Number(p.EstadoProyecto.id) : null); });
           this.recuperarHistorialNotas(); this.cargarStats(); if (this.esDocente) this.cargarHitosSelector();
@@ -260,14 +356,98 @@ export default {
     confirmarEliminar() { if (this.indiceEliminar !== null) { this.form.entregables.splice(this.indiceEliminar, 1); this.mostrarModalConfirmacion = false; this.indiceEliminar = null; } },
     async cargarHitosSelector() { try { this.listaHitos = (await calificacionServices.obtenerHitosMaestros()).data || await calificacionServices.obtenerHitosMaestros(); } catch (e) { console.error(e); } },
     async recuperarHistorialNotas() { this.cargandoHistorial = true; try { this.notasHistorial = await calificacionServices.obtenerCalificaciones(this.$route.params.id); } catch (e) { console.error(e); } finally { this.cargandoHistorial = false; } },
+    
+    // NUEVOS MÉTODOS v2.9.1: Edición y Eliminación de Notas Grupales
+
+    /**
+     * @función prepararEdicionNotaGrupal
+     * @propósito Poblar el formulario con los datos de la nota del proyecto seleccionada y abrir el modal de edición.
+     */
+    prepararEdicionNotaGrupal(nota) {
+      this.notaSeleccionada = nota;
+      this.formEdicionGrupal = {
+        id: nota.id,
+        // Fallback blindado para fechas manuales vs automáticas
+        fecha_evaluacion: nota.fecha_evaluacion ? nota.fecha_evaluacion : (nota.fecha ? nota.fecha.split('T')[0] : ''),
+        nota: nota.nota,
+        descripcion: nota.descripcion || ''
+      };
+      this.mostrarModalEdicionNotaGrupal = true;
+    },
+
+    /**
+     * @función guardarEdicionNotaGrupal
+     * @propósito Despachar la actualización al servicio de calificaciones y recargar el historial si tiene éxito.
+     */
+    async guardarEdicionNotaGrupal() {
+      this.procesandoOperacionGrupal = true;
+      try {
+        await calificacionServices.actualizarCalificacion(this.form.id, this.formEdicionGrupal.id, this.formEdicionGrupal);
+        this.mostrarModalEdicionNotaGrupal = false;
+        await this.recuperarHistorialNotas(); // Recarga la tabla
+      } catch (err) {
+        console.error("Error al actualizar nota grupal:", err);
+        this.modalErrorMsg = err.response?.data?.mensaje || "Error al actualizar.";
+        this.showModalError = true;
+      } finally {
+        this.procesandoOperacionGrupal = false;
+      }
+    },
+
+    /**
+     * @función prepararEliminacionNotaGrupal
+     * @propósito Identificar la nota y abrir el modal de confirmación de borrado.
+     */
+    prepararEliminacionNotaGrupal(nota) {
+      this.notaSeleccionada = nota;
+      this.mostrarModalEliminarNotaGrupal = true;
+    },
+
+    /**
+     * @función confirmarEliminacionNotaGrupal
+     * @propósito Ejecutar la eliminación física en el servidor a través del servicio y recargar la tabla local.
+     */
+    async confirmarEliminacionNotaGrupal() {
+      this.procesandoOperacionGrupal = true;
+      try {
+        await calificacionServices.eliminarCalificacion(this.form.id, this.notaSeleccionada.id);
+        this.mostrarModalEliminarNotaGrupal = false;
+        await this.recuperarHistorialNotas(); // Recarga la tabla
+      } catch (err) {
+        console.error("Error al eliminar nota grupal:", err);
+        this.modalErrorMsg = err.response?.data?.mensaje || "Error al eliminar.";
+        this.showModalError = true;
+      } finally {
+        this.procesandoOperacionGrupal = false;
+      }
+    },
+
+    // Métodos operativos existentes recalibrados
+
     async crearCalificacionDiaria() {
-      if (!this.notaForm.hito_id || this.notaForm.nota === null) return;
+      if (!this.notaForm.hito_id || this.notaForm.nota === null || !this.notaForm.fecha_evaluacion) return;
       this.cargandoEnvioNota = true;
-      try { const res = await calificacionServices.registrarCalificacion(this.form.id, this.notaForm); if (res.calificacion) this.notasHistorial.unshift(res.calificacion); this.notaForm = { hito_id: null, nota: null, descripcion: '' }; } 
+      try { 
+        const res = await calificacionServices.registrarCalificacion(this.form.id, this.notaForm); 
+        if (res.calificacion) this.notasHistorial.unshift(res.calificacion); 
+        this.notaForm = { hito_id: null, nota: null, descripcion: '', fecha_evaluacion: new Date().toISOString().split('T')[0] }; 
+      } 
       catch (e) { console.error(e); this.modalErrorMsg = e.response?.data?.mensaje || "Error al procesar."; this.showModalError = true; } finally { this.cargandoEnvioNota = false; }
     },
     obtenerColorNota(n) { return Number(n) < 4 ? 'is-danger' : (Number(n) < 6 ? 'is-warning' : 'is-success'); },
-    convertirFechaLocal(f) { return f ? new Date(f).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'; },
+    convertirFechaLocal(f) { 
+        if (!f) return '-';
+        if (typeof f === 'string' && f.length === 10) {
+          return new Date(f + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }); 
+        }
+        return new Date(f).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); 
+    },
+    // Helper operativo blindado
+    hitoNormalizado(nota) {
+      if (!nota) return '-';
+      return nota.hito_detail || nota.hito_node || nota.hito_detalle?.nombre || '-';
+    },
+
     async cargarStats() { try { const res = await seguimientoService.getStats(this.form.id); if (res.data.success) this.statsSeguimiento = res.data.data; } catch (e) { console.error(e); } },
     verDetalleAlumno(stat) { const a = this.miembrosAsignados.find(m => `${m.nombre} ${m.apellido}` === stat.alumno); if (a) { this.alumnoSeleccionado = a; this.mostrarDetalle = true; } },
     obtenerColorBarra(p) { return p <= 1.5 ? 'is-danger' : (p <= 2.2 ? 'is-warning' : 'is-success'); },
@@ -318,4 +498,8 @@ export default {
 .container-table-accordion { background: rgba(0, 0, 0, 0.3); border-top: 1px solid rgba(255,255,255,0.05); max-height: 350px; overflow-y: auto; }
 .custom-date-font { font-family: monospace; color: #a4b0be !important; }
 .desc-cell-format { max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #cbd5e1 !important; }
+
+/* v2.9.1: Ajustes de compactado solicitados para la tabla */
+.th-compacta-fecha, .td-compacta-fecha { width: 100px !important; text-align: center; }
+.th-compacta-concepto, .td-compacta-concepto { max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>

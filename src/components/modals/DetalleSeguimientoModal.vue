@@ -65,14 +65,15 @@
                 <tr class="table-header-row">
                   <th class="th-fecha" style="width: 120px;">FECHA</th>
                   <th class="th-mat">MATERIA / ASIGNATURA</th>
-                  <th class="th-cal has-text-centered" style="width: 200px;">CALIFICACIÓN NUMÉRICA</th>
-                  <th class="th-obs">OBSERVACIÓN / ANOTACIONES PEDAGÓGICAS</th>
-                  <th class="th-doc" style="width: 200px;">DOCENTE</th>
+                  <th class="th-cal has-text-centered" style="width: 180px;">CALIFICACIÓN</th>
+                  <th class="th-obs">OBSERVACIÓN PEDAGÓGICA</th>
+                  <th class="th-doc" style="width: 150px;">DOCENTE</th>
+                  <th class="has-text-centered" style="width: 100px;">ACCIONES</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="seg in historialFiltrado" :key="seg.id" class="table-data-row">
-                  <td class="is-size-6 has-text-weight-semibold data-fecha">{{ formatearFecha(seg.created_at) }}</td>
+                  <td class="is-size-6 has-text-weight-semibold data-fecha">{{ formatearFecha(seg.fecha_evaluacion || seg.created_at) }}</td>
                   <td class="is-size-6 has-text-weight-bold data-materia has-text-link">{{ seg.materia?.nombre || 'LENGUAJE DE PROGRAMACION III' }}</td>
                   <td class="has-text-centered">
                     <span class="tag is-medium has-text-weight-bold" :class="obtenerColorNota(seg.desempeno)">
@@ -81,6 +82,16 @@
                   </td>
                   <td class="is-size-6 data-obs"><em>{{ seg.observacion || '(Sin anotaciones)' }}</em></td>
                   <td class="is-size-6 data-doc">{{ seg.docente?.apellido || 'N/C' }}</td>
+                  <td class="has-text-centered">
+                    <div class="buttons is-centered mb-0">
+                      <button class="button is-small is-ghost has-text-info p-1" @click="prepararEdicion(seg)" title="Editar nota">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                      <button class="button is-small is-ghost has-text-danger p-1" @click="prepararEliminacion(seg)" title="Eliminar nota">
+                        <i class="fas fa-trash-alt"></i>
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -99,6 +110,56 @@
 
       </section>
     </div>
+
+    <div class="modal" :class="{'is-active': mostrarModalEdicion}">
+      <div class="modal-background" @click="mostrarModalEdicion = false"></div>
+      <div class="modal-card">
+        <header class="modal-card-head has-background-info">
+          <p class="modal-card-title has-text-white"><i class="fas fa-edit mr-2"></i> Editar Calificación</p>
+        </header>
+        <section class="modal-card-body">
+          <div class="field">
+            <label class="label">Fecha Evaluada</label>
+            <div class="control">
+              <input class="input" type="date" v-model="formEdicion.fecha_evaluacion" required>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Calificación Numérica (1 a 10)</label>
+            <div class="control">
+              <input class="input has-text-weight-bold has-text-info" type="number" step="0.01" min="1" max="10" v-model.number="formEdicion.desempeno" required>
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Observación</label>
+            <div class="control">
+              <textarea class="textarea" v-model="formEdicion.observacion"></textarea>
+            </div>
+          </div>
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+          <button class="button" @click="mostrarModalEdicion = false">Cancelar</button>
+          <button class="button is-info" :class="{'is-loading': procesandoOperacion}" :disabled="!formEdicion.fecha_evaluacion || !formEdicion.desempeno || formEdicion.desempeno < 1 || formEdicion.desempeno > 10" @click="guardarEdicion">Guardar Cambios</button>
+        </footer>
+      </div>
+    </div>
+
+    <div class="modal" :class="{'is-active': mostrarModalEliminar}">
+      <div class="modal-background" @click="mostrarModalEliminar = false"></div>
+      <div class="modal-card">
+        <header class="modal-card-head has-background-danger">
+          <p class="modal-card-title has-text-white"><i class="fas fa-exclamation-triangle mr-2"></i> Confirmar Eliminación</p>
+        </header>
+        <section class="modal-card-body">
+          ¿Estás seguro que deseás eliminar la calificación de <strong>{{ segSeleccionado?.desempeno }}</strong> en la materia <strong>{{ segSeleccionado?.materia?.nombre }}</strong>? Esta acción no se puede deshacer.
+        </section>
+        <footer class="modal-card-foot is-justify-content-flex-end">
+          <button class="button" @click="mostrarModalEliminar = false">Cancelar</button>
+          <button class="button is-danger" :class="{'is-loading': procesandoOperacion}" @click="confirmarEliminacion">Sí, Eliminar</button>
+        </footer>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -108,7 +169,7 @@ import seguimientoService from '../../services/seguimiento.service';
 
 /**
  * @componente DetalleSeguimientoModal.vue
- * @propósito Mostrar el historial cuantitativo indexado por materia de un alumno, calculando sus promedios en escala 1-10.
+ * @propósito Mostrar el historial cuantitativo indexado por materia de un alumno, calculando sus promedios en escala 1-10, y permitiendo edición y borrado (v2.9.1).
  * @alimenta Monitor de Desempeño en ProyectoConfigView.vue. Permite emitir e imprimir reportes PDF.
  */
 export default {
@@ -119,15 +180,22 @@ export default {
       cargando: true,
       contexto: { escuela: '', proyecto: '' },
       materiaSeleccionadaId: null,
-      fechaHoy: new Date().toLocaleDateString('es-AR')
+      fechaHoy: new Date().toLocaleDateString('es-AR'),
+      
+      // Control de Modales de Edición/Eliminación
+      mostrarModalEdicion: false,
+      mostrarModalEliminar: false,
+      procesandoOperacion: false,
+      segSeleccionado: null,
+      formEdicion: {
+        id: null,
+        fecha_evaluacion: '',
+        desempeno: null,
+        observacion: ''
+      }
     }
   },
   computed: {
-    /**
-     * @propiedad materiasDisponibles
-     * @propósito Extraer el listado único de materias que poseen registros reales asignados en el historial cargado.
-     * @retorna {Array} Arreglo purificado de objetos { id, nombre } sin duplicados.
-     */
     materiasDisponibles() {
       const mapeo = {};
       this.historial.forEach(seg => {
@@ -137,34 +205,16 @@ export default {
       });
       return Object.values(mapeo).sort((a, b) => a.nombre.localeCompare(b.nombre));
     },
-
-    /**
-     * @propiedad historialFiltrado
-     * @propósito Segmentar el historial de calificaciones en base a la materia seleccionada en el combo del frontend.
-     * @retorna {Array} Subconjunto filtrado de registros.
-     */
     historialFiltrado() {
       if (!this.materiaSeleccionadaId) return this.historial;
       return this.historial.filter(seg => seg.materia_id === Number(this.materiaSeleccionadaId));
     },
-
-    /**
-     * @propiedad nombreEspecialidad
-     * @propósito Resolver de manera blindada el nombre de la especialidad técnica del alumno evaluado.
-     * @retorna {String} Nombre de la especialidad o valor por defecto.
-     */
     nombreEspecialidad() {
       if (this.historial.length > 0 && this.historial[0].alumno?.especialidad_detalle) {
         return this.historial[0].alumno.especialidad_detalle.nombre;
       }
       return this.alumno.especialidad || 'TEP'; 
     },
-
-    /**
-     * @propiedad promedioCalculado
-     * @propósito Calcular el promedio real cuantitativo (escala 1-10) recalculándose automáticamente según el filtro de materias.
-     * @retorna {String} Promedio numérico formateado a dos decimales.
-     */
     promedioCalculado() {
       if (!this.historialFiltrado.length) return "0.00";
       const suma = this.historialFiltrado.reduce((acc, curr) => acc + Number(curr.desempeno), 0);
@@ -172,12 +222,6 @@ export default {
     }
   },
   methods: {
-    /**
-     * @función cargarHistorial
-     * @propósito Consumir el servicio de backend y mapear el contexto institucional blindado.
-     * @quien_la_llama Hook mounted() al inicializar el componente.
-     * @retorna Void. Asigna registros al array reactivo `historial`.
-     */
     async cargarHistorial() {
       this.cargando = true;
       try {
@@ -185,7 +229,6 @@ export default {
         if (res.data.success && res.data.data.length > 0) {
           this.historial = res.data.data;
           const registro = this.historial[0];
-
           if (registro.proyecto) {
             this.contexto.proyecto = registro.proyecto.nombre || 'Proyecto sin nombre';
             const esc = registro.proyecto.Escuela || registro.proyecto.escuela;
@@ -202,11 +245,72 @@ export default {
     },
 
     /**
-     * @función exportarPDF
-     * @propósito Renderizar el estado actual en pantalla (con o sin filtros aplicados) en formato físico PDF.
-     * @quien_la_llama Evento click del botón "PDF" en la cabecera.
-     * @retorna Void. Descarga el archivo generado.
+     * @función prepararEdicion
+     * @propósito Poblar el formulario reactivo con los datos del registro a corregir y desplegar el modal.
+     * @quien_la_llama Evento click del botón "Editar" en la tabla.
+     * @retorna Void.
      */
+    prepararEdicion(seg) {
+      this.segSeleccionado = seg;
+      this.formEdicion = {
+        id: seg.id,
+        // Extrae solo la parte "YYYY-MM-DD" si es un DATETIME completo o usa la fecha manual.
+        fecha_evaluacion: seg.fecha_evaluacion ? seg.fecha_evaluacion : (seg.created_at ? seg.created_at.split('T')[0] : ''),
+        desempeno: seg.desempeno,
+        observacion: seg.observacion || ''
+      };
+      this.mostrarModalEdicion = true;
+    },
+
+    /**
+     * @función guardarEdicion
+     * @propósito Despachar la petición de actualización al backend y recargar el historial si tiene éxito.
+     * @quien_la_llama Evento click del botón "Guardar Cambios" del modal de edición.
+     * @retorna Void.
+     */
+    async guardarEdicion() {
+      this.procesandoOperacion = true;
+      try {
+        await seguimientoService.actualizar(this.formEdicion.id, this.formEdicion);
+        this.mostrarModalEdicion = false;
+        await this.cargarHistorial(); // Refresca la tabla
+      } catch (err) {
+        console.error("Error al actualizar seguimiento:", err);
+      } finally {
+        this.procesandoOperacion = false;
+      }
+    },
+
+    /**
+     * @función prepararEliminacion
+     * @propósito Identificar el registro a eliminar y solicitar confirmación humana mediante un modal.
+     * @quien_la_llama Evento click del botón "Eliminar" en la tabla.
+     * @retorna Void.
+     */
+    prepararEliminacion(seg) {
+      this.segSeleccionado = seg;
+      this.mostrarModalEliminar = true;
+    },
+
+    /**
+     * @función confirmarEliminacion
+     * @propósito Ejecutar el borrado definitivo en el servidor y limpiar el historial local.
+     * @quien_la_llama Evento click del botón "Sí, Eliminar" del modal de confirmación.
+     * @retorna Void.
+     */
+    async confirmarEliminacion() {
+      this.procesandoOperacion = true;
+      try {
+        await seguimientoService.eliminar(this.segSeleccionado.id);
+        this.mostrarModalEliminar = false;
+        await this.cargarHistorial(); // Refresca la tabla
+      } catch (err) {
+        console.error("Error al eliminar seguimiento:", err);
+      } finally {
+        this.procesandoOperacion = false;
+      }
+    },
+
     exportarPDF() {
       const element = document.getElementById('informe-pedagogico');
       const opt = {
@@ -218,36 +322,17 @@ export default {
       };
       html2pdf().from(element).set(opt).save();
     },
-    
-    /**
-     * @función formatearFecha
-     * @propósito Convertir la marca de tiempo a formato local argentino.
-     * @quien_la_llama Renderizado de la tabla en el template.
-     * @retorna {String} Fecha en formato DD/MM/YYYY.
-     */
     formatearFecha(f) { 
-      return new Date(f).toLocaleDateString('es-AR'); 
+      if (!f) return '-';
+      if (typeof f === 'string' && f.length === 10) {
+        return new Date(f + 'T12:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      }
+      return new Date(f).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' }); 
     },
-
-    /**
-     * @función formatearNota
-     * @propósito Formatear la calificación cuantitativa para garantizar visualmente dos decimales.
-     * @quien_la_llama Renderizado de la tabla en el template.
-     * @retorna {String} Número con dos decimales fijos.
-     */
-    formatearNota(n) {
-      return Number(n).toFixed(2);
-    },
-
-    /**
-     * @función obtenerColorNota
-     * @propósito Asignar un color semántico de Bulma basado en el valor de la nota (consistente con el monitor general).
-     * @quien_la_llama Renderizado de los badges de nota individual y promedio en el template.
-     * @retorna {String} Clase CSS de Bulma (is-danger, is-warning, is-success, o is-info).
-     */
+    formatearNota(n) { return Number(n).toFixed(2); },
     obtenerColorNota(n) { 
       const num = Number(n);
-      if (num === 0) return 'is-info'; // Caso sin calificaciones
+      if (num === 0) return 'is-info'; 
       if (num < 4) return 'is-danger'; 
       if (num < 6) return 'is-warning'; 
       return 'is-success'; 
@@ -267,11 +352,8 @@ export default {
 .institution-name { font-size: 1.6rem !important; font-weight: 700; color: #209cee !important; }
 .proj-line, .alum-line { font-size: 1.15rem !important; }
 .score-value { font-size: 2.2rem !important; }
-
-/* Estructura del Filtro Curricular */
 .border-materia-filter { border-left: 6px solid #209cee; background-color: #f5f5f5; }
 
-/* Tabla Fija con Scroll */
 .history-scroll-container {
   max-height: 350px; 
   overflow-y: auto;
@@ -289,11 +371,9 @@ export default {
 }
 .detailed-table td { font-size: 1rem !important; vertical-align: middle; }
 
-/* Personalización de la Scrollbar */
 .history-scroll-container::-webkit-scrollbar { width: 8px; }
 .history-scroll-container::-webkit-scrollbar-track { background: #f1f1f1; }
 .history-scroll-container::-webkit-scrollbar-thumb { background: #209cee; border-radius: 10px; }
-
 
 .glass-modal-v3 { 
   border-radius: 12px; 

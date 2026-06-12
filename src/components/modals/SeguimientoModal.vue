@@ -9,6 +9,18 @@
       <section class="modal-card-body">
         
         <div class="field">
+          <label class="label">Fecha de Evaluación</label>
+          <div class="control">
+            <input 
+              class="input is-info" 
+              type="date" 
+              v-model="form.fecha_evaluacion" 
+              required
+            >
+          </div>
+        </div>
+
+        <div class="field">
           <label class="label">Materia / Asignatura</label>
           <div class="control is-expanded">
             <div class="select is-fullwidth" :class="{ 'is-loading': cargandoMaterias }">
@@ -60,7 +72,7 @@
           class="button is-info" 
           :class="{'is-loading': enviando}" 
           @click="guardar" 
-          :disabled="!form.materia_id || form.desempeno === null || form.desempeno < 1 || form.desempeno > 10 || enviando"
+          :disabled="!form.materia_id || !form.fecha_evaluacion || form.desempeno === null || form.desempeno < 1 || form.desempeno > 10 || enviando"
         >
           Guardar Seguimiento
         </button>
@@ -74,7 +86,7 @@ import seguimientoService from '../../services/seguimiento.service';
 
 /**
  * @componente SeguimientoModal.vue
- * @propósito Formulario modal para registrar un nuevo informe actitudinal/pedagógico cuantitativo individual asignado a una materia específica.
+ * @propósito Formulario modal para registrar un nuevo informe actitudinal/pedagógico cuantitativo individual asignado a una materia específica y con fecha seleccionable.
  * @interactúa Alimenta a: ProyectoConfigView.vue (Monitor de desempeño por integrantes)
  * @emite 'success' al impactar la API con éxito, 'close' para destruir la instancia visual.
  */
@@ -95,6 +107,7 @@ export default {
       cargandoMaterias: false,
       materias: [],
       form: { 
+        fecha_evaluacion: new Date().toISOString().split('T')[0], // Se inicializa con la fecha actual (YYYY-MM-DD)
         materia_id: null, 
         desempeno: null, 
         observacion: '' 
@@ -130,12 +143,12 @@ export default {
 
     /**
      * @función guardar
-     * @propósito Validar y despachar el payload del nuevo seguimiento numérico hacia el backend.
+     * @propósito Validar y despachar el payload del nuevo seguimiento numérico hacia el backend, incluyendo la fecha manual de evaluación.
      * @quien_la_llama Evento click del botón "Guardar Seguimiento".
      * @retorna Void. Emite eventos de cierre y éxito en caso de respuesta 201.
      */
     async guardar() {
-      if (!this.form.materia_id || this.form.desempeno === null || this.form.desempeno < 1 || this.form.desempeno > 10) return;
+      if (!this.form.materia_id || !this.form.fecha_evaluacion || this.form.desempeno === null || this.form.desempeno < 1 || this.form.desempeno > 10) return;
       
       this.enviando = true;
       try {
@@ -144,7 +157,8 @@ export default {
           alumno_id: Number(this.alumno.id),
           materia_id: Number(this.form.materia_id),
           desempeno: Number(this.form.desempeno),
-          observacion: this.form.observacion
+          observacion: this.form.observacion,
+          fecha_evaluacion: this.form.fecha_evaluacion // Se anexa la nueva fecha al payload
         });
         this.$emit('success');
         this.$emit('close');

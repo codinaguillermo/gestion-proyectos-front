@@ -10,11 +10,34 @@ export default {
      * @función crear
      * @propósito Registrar una nueva observación pedagógica individual asociada a una materia.
      * @alimenta SeguimientoModal.vue
-     * @parámetros {Object} datos - Objeto conteniendo { proyecto_id, alumno_id, materia_id, desempeno, observacion }
+     * @parámetros {Object} datos - Objeto conteniendo { proyecto_id, alumno_id, materia_id, desempeno, observacion, fecha_evaluacion }
      * @retorna {Promise} Promesa de Axios con la respuesta de la API ({ success: true, data: ObjetoCreado })
      */
     crear(datos) {
         return api.post('/seguimientos', datos);
+    },
+
+    /**
+     * @función actualizar
+     * @propósito Modificar los datos de un seguimiento existente (nota, fecha u observación).
+     * @alimenta DetalleSeguimientoModal.vue (Formulario de edición)
+     * @parámetros {Number} id - ID del seguimiento en la base de datos.
+     * @parámetros {Object} datos - Payload con la nueva información a asentar.
+     * @retorna {Promise} Promesa de Axios con la respuesta de la API.
+     */
+    actualizar(id, datos) {
+        return api.put(`/seguimientos/${id}`, datos);
+    },
+
+    /**
+     * @función eliminar
+     * @propósito Borrar físicamente o lógicamente un registro de seguimiento de la base de datos.
+     * @alimenta DetalleSeguimientoModal.vue (Confirmación de borrado)
+     * @parámetros {Number} id - ID del seguimiento a eliminar.
+     * @retorna {Promise} Promesa de Axios con la confirmación de la operación.
+     */
+    eliminar(id) {
+        return api.delete(`/seguimientos/${id}`);
     },
 
     /**
@@ -48,6 +71,6 @@ export default {
      * @retorna {Promise} Promesa con la respuesta de la API ({ success: true, data: [Materias] })
      */
     obtenerMateriasPorEspecialidad(especialidadId) {
-        return api.get(`/common/materias/especialidad/${especialidadId}`); // Prefijo '/common' incorporado
+        return api.get(`/common/materias/especialidad/${especialidadId}`);
     }
 };
