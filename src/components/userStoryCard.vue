@@ -21,6 +21,12 @@
         </div>
       </div>
 
+      <div class="mb-2">
+        <span class="tag is-small is-dark is-rounded">
+          {{ userStory.tipo?.nombre || 'General' }}
+        </span>
+      </div>
+
       <div class="content is-size-7 has-text-grey custom-description">
         <p class="is-marginless">{{ userStory.descripcion }}</p>
       </div>
@@ -86,14 +92,12 @@ const props = defineProps({
 
 defineEmits(['click', 'eliminar']);
 
-// --- CONSTANTES DE ESTADO ---
-const ID_DONE = 5; // Solo el ID 5 cuenta como terminado para las métricas
+const ID_DONE = 5; 
 
 const stats = computed(() => {
   const tareas = props.userStory.tareas || [];
   const total = tareas.length;
   
-  // Refactorización: Solo contamos como terminadas las que tienen ID 5 (DONE)
   const terminadas = tareas.filter(t => {
     const idEstado = Number(t.estado_id);
     const nombreEstado = String(t.estado_detalle?.nombre || '').toUpperCase().trim();
@@ -102,7 +106,6 @@ const stats = computed(() => {
 
   const porcentaje = total > 0 ? Math.round((terminadas / total) * 100) : 0;
 
-  // Manejo de clases visuales según el avance real (Auditoría Docente)
   let clase = 'is-danger'; 
   let claseTexto = 'has-text-danger';
 
@@ -110,14 +113,10 @@ const stats = computed(() => {
     clase = 'is-warning'; 
     claseTexto = 'has-text-warning-dark';
   }
-  
-  // Si llegamos a más del 75% pero falta el OK final del docente
   if (porcentaje >= 75 && porcentaje < 100) {
     clase = 'is-link'; 
     claseTexto = 'has-text-link';
   }
-
-  // SOLO verde cuando el docente puso TODO en ID 5
   if (porcentaje === 100 && total > 0) {
     clase = 'is-success'; 
     claseTexto = 'has-text-success';
@@ -145,7 +144,6 @@ const colorEstado = computed(() => {
   if (e.includes('PENDIENTE')) return 'is-info is-light';
   if (e.includes('DESARROLLO')) return 'is-link is-light';
   if (e.includes('BLOQUEADA')) return 'is-danger is-light';
-  // El estado de la US también debería ser verde solo si está TERMINADA
   if (e.includes('TERMINADA') || e.includes('DONE')) return 'is-success is-light';
   return 'is-light';
 });
@@ -164,7 +162,6 @@ const colorEstado = computed(() => {
   box-shadow: 0 8px 15px rgba(0,0,0,0.1) !important;
 }
 
-/* TÍTULO FORZADO A 2 RENGLONES FIJOS */
 .custom-title-clamp {
   display: -webkit-box !important;
   -webkit-line-clamp: 2 !important;
@@ -172,8 +169,6 @@ const colorEstado = computed(() => {
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: normal !important;
-  
-  /* Altura fija calculada */
   line-height: 1.2em !important;
   height: 2.4em !important; 
   min-height: 2.4em !important;

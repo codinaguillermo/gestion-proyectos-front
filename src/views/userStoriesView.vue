@@ -16,6 +16,16 @@
                 Product Backlog
                 <span class="is-size-4 has-text-grey-lighter" style="font-weight: 300; margin-left: 10px;">(Entregables)</span>
               </h1>
+              <div class="field mt-3">
+                <div class="control">
+                  <div class="select is-info is-small">
+                    <select v-model="filtroCategoria">
+                      <option value="0">Todas las categorías</option>
+                      <option v-for="cat in categorias" :key="cat.id" :value="cat.id">{{ cat.nombre }}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div class="level-right">
@@ -53,9 +63,9 @@
           <div v-if="cargando" class="notification glass-notification is-info is-size-5">
             <span class="icon"><i class="fas fa-spinner fa-pulse"></i></span> Refrescando datos...
           </div>
-          <div v-else-if="userStories && userStories.length > 0">
+          <div v-else-if="userStoriesFiltradas && userStoriesFiltradas.length > 0">
             <div class="columns is-multiline px-2">
-              <div v-for="us in userStories" :key="'us-' + us.id" class="column is-12-mobile is-6-tablet is-4-desktop mb-4">
+              <div v-for="us in userStoriesFiltradas" :key="'us-' + us.id" class="column is-12-mobile is-6-tablet is-4-desktop mb-4">
                 <div class="card-wrapper hover-tilt-effect">
                   <UserStoryCard 
                     :userStory="us" 
@@ -152,13 +162,19 @@ const authStore = useAuthStore();
 
 const proyectoId = ref(null);
 const userStories = ref([]);
+const categorias = ref([]);
+const filtroCategoria = ref(0);
 const cargando = ref(true);
 const tabActiva = ref('backlog'); 
 const isConfirmActive = ref(false);
 const usAEliminar = ref(null);
 const proyectoData = ref(null);
 
-// LÓGICA DE PERMISOS: Admin, Docente o Alumno miembro
+const userStoriesFiltradas = computed(() => {
+  if (filtroCategoria.value == 0) return userStories.value;
+  return userStories.value.filter(us => us.tipo_us_id == filtroCategoria.value);
+});
+
 const puedeGestionarBacklog = computed(() => {
   const user = authStore.usuario;
   if (!user || !proyectoData.value) return false;
@@ -211,6 +227,13 @@ const calcularVencimiento = (us) => {
   return null;
 };
 
+const cargarCategorias = async () => {
+  try {
+    const { data } = await api.get('/user-stories/categorias');
+    categorias.value = data;
+  } catch (error) { console.error(error); }
+};
+
 const cargarUserStories = async () => {
   if (!proyectoId.value) return;
   cargando.value = true;
@@ -238,12 +261,9 @@ const ejecutarEliminacion = async () => {
   if (!usAEliminar.value || !usAEliminar.value.id) return;
   
   try {
-    // Usamos await para asegurar que se borre antes de recargar
     await userStoryService.delete(usAEliminar.value.id);
     isConfirmActive.value = false;
     usAEliminar.value = null;
-    
-    // Recargamos la lista actualizada
     await cargarUserStories(); 
   } catch (error) { 
     console.error("Error al eliminar US:", error);
@@ -264,11 +284,11 @@ onMounted(() => {
   proyectoId.value = route.params.id;
   cargarUserStories();
   cargarDatosProyecto();
+  cargarCategorias();
 });
 </script>
 
 <style scoped>
-/* Tus estilos se mantienen intactos */
 .dashboard-bg { min-height: 100vh; background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.8)), url('../assets/fondo.jpg'); background-size: cover; background-attachment: fixed; }
 .glass-panel { background: rgba(255, 255, 255, 0.03) !important; backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; }
 .custom-tabs ul { border-bottom: 2px solid rgba(255, 255, 255, 0.2); }
