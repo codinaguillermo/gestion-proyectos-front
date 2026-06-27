@@ -58,8 +58,6 @@ const router = createRouter({
     },
     
     // ============================================================================
-    // --- GESTIÓN CURRICULAR (NUEVO v2.8.0) --------------------------------------
-    // ============================================================================
     /**
      * @ruta /gestion-curricular
      * @propósito Registrar y proteger la vista de administración de especialidades y materias.

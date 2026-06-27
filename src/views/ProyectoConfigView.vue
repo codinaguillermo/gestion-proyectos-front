@@ -13,8 +13,21 @@
           </div>
           <div class="level-right">
             <div class="buttons">
+              <!-- BOTÓN DE SALTO A GESTIÓN OPERATIVA (BACKLOG) -->
+              <router-link 
+                :to="{ name: 'backlog-proyecto', params: { id: form.id } }" 
+                class="button is-info is-outlined"
+                title="Ir a Gestión Operativa (Backlog)"
+              >
+                <span class="icon"><i class="fas fa-tasks"></i></span>
+                <span>Backlog</span>
+              </router-link>
+
               <button class="button is-light is-outlined" @click="volver">Cancelar</button>
-              <button class="button is-success is-medium has-text-weight-bold" @click="confirmarCambios" :class="{'is-loading': guardando}"><span class="icon"><i class="fas fa-save"></i></span><span>GUARDAR CAMBIOS</span></button>
+              <button class="button is-success is-medium has-text-weight-bold" @click="confirmarCambios" :class="{'is-loading': guardando}">
+                <span class="icon"><i class="fas fa-save"></i></span>
+                <span>GUARDAR CAMBIOS</span>
+              </button>
             </div>
           </div>
         </div>

@@ -29,10 +29,21 @@
             </div>
           </div>
           <div class="level-right">
-            <button v-if="puedeGestionarBacklog" class="button is-info is-medium has-text-weight-bold" @click="abrirModalNuevaUS">
-              <span class="icon"><i class="fas fa-plus"></i></span>
-              <span>NUEVA USER STORY</span>
-            </button>
+            <div class="buttons">
+              <router-link 
+                :to="{ name: 'configurar-proyecto', params: { id: proyectoId } }" 
+                class="button is-primary is-medium is-outlined has-text-white"
+                title="Ir a Gestión Estratégica (Objetivos y Equipo)"
+              >
+                <span class="icon"><i class="fas fa-bullseye"></i></span>
+                <span>Objetivos</span>
+              </router-link>
+
+              <button v-if="puedeGestionarBacklog" class="button is-info is-medium has-text-weight-bold" @click="abrirModalNuevaUS">
+                <span class="icon"><i class="fas fa-plus"></i></span>
+                <span>NUEVA USER STORY</span>
+              </button>
+            </div>
           </div>
         </div>
 

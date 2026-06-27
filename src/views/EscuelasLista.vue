@@ -1,15 +1,15 @@
 <template>
   <div class="container mt-5">
     <div class="level mb-5">
-      
       <div>
           <button class="button is-small is-light mb-3" @click="$router.back()">
             <span class="icon is-small"><i class="fas fa-arrow-left"></i></span>
             <span>Volver</span>
           </button>
-          <h1 class="title">Gestión de Escuelas</h1>                    
+          <h1 class="title">Gestión de Escuelas</h1>
         </div>
-      <div class="level-right">
+      
+      <div class="level-right" v-if="escuelas.length === 0">
         <button class="button is-primary" @click="abrirModal()">
           <span class="icon"><i class="fas fa-plus"></i></span>
           <span>Nueva Escuela</span>
@@ -18,7 +18,11 @@
     </div>
 
     <div class="box">
-      <table class="table is-fullwidth is-hoverable">
+      <p v-if="escuelas.length === 0" class="has-text-centered has-text-grey">
+        No hay ninguna escuela configurada. Por favor, registre la institución.
+      </p>
+
+      <table class="table is-fullwidth is-hoverable" v-else>
         <thead>
           <tr>
             <th>Siglas</th>
@@ -63,8 +67,12 @@ const modalActivo = ref(false);
 const seleccionada = ref(null);
 
 const cargarEscuelas = async () => {
-  const res = await api.get('/escuelas');
-  escuelas.value = res.data;
+  try {
+    const res = await api.get('/escuelas');
+    escuelas.value = res.data;
+  } catch (error) {
+    console.error("Error al cargar escuelas:", error);
+  }
 };
 
 const abrirModal = (escuela = null) => {

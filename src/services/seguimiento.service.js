@@ -72,5 +72,8 @@ export default {
      */
     obtenerMateriasPorEspecialidad(especialidadId) {
         return api.get(`/common/materias/especialidad/${especialidadId}`);
+    },
+    obtenerMateriasPorAlumno(especialidadId, curso) {
+        return api.get(`/common/materias/especialidad/${especialidadId}?curso=${curso}`);
     }
 };

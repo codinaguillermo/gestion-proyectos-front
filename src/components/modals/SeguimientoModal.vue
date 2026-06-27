@@ -127,15 +127,15 @@ export default {
     async cargarMateriasCurriculares() {
       this.cargandoMaterias = true;
       try {
-        const especialidadId = this.alumno.especialidad_id;
-        if (especialidadId) {
-          const response = await seguimientoService.obtenerMateriasPorEspecialidad(especialidadId);
-          if (response.data && response.data.success) {
-            this.materias = response.data.data;
-          }
+        const { especialidad_id, curso } = this.alumno;
+        // Pasamos ambos para que el backend filtre por especialidad Y año
+        const response = await seguimientoService.obtenerMateriasPorAlumno(especialidad_id, curso);
+        
+        if (response.data && response.data.success) {
+          this.materias = response.data.data;
         }
       } catch (err) {
-        console.error("Error al poblar el maestro de materias en el modal:", err);
+        console.error("Error al poblar materias:", err);
       } finally {
         this.cargandoMaterias = false;
       }
