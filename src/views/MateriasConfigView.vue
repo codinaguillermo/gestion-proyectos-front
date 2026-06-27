@@ -44,16 +44,16 @@
           <i class="fas fa-info-circle mr-2"></i> No hay materias cargadas para esta especialidad en la base de datos.
         </div>
 
-        <table v-else class="table is-fullwidth is-striped is-hoverable is-bordered">
+        <table class="table is-fullwidth is-striped is-hoverable is-bordered">
           <thead class="has-background-dark">
             <tr>
-              <th class="has-text-white has-text-centered" style="width: 80px;">ID</th>
+              <th class="has-text-white has-text-centered" style="width: 100px;">AÑO</th>
               <th class="has-text-white">NOMBRE DE LA MATERIA</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="materia in materias" :key="materia.id">
-              <td class="has-text-centered has-text-weight-bold">{{ materia.id }}</td>
+            <tr v-for="materia in materiasOrdenadas" :key="materia.id">
+              <td class="has-text-centered has-text-weight-bold">{{ materia.anio }}º</td>
               <td class="is-uppercase">{{ materia.nombre }}</td>
             </tr>
           </tbody>
@@ -74,6 +74,17 @@
             La materia se asociará directamente a la especialidad seleccionada en la vista principal.
           </div>
           <div class="field">
+            <label class="label">Año del Curso</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select v-model="nuevoAnio">
+                  <option value="" disabled>Seleccione el año...</option>
+                  <option v-for="n in 6" :key="n" :value="n">{{ n }}° AÑO</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="field">
             <label class="label">Nombre de la Materia</label>
             <div class="control has-icons-left">
               <input 
@@ -84,7 +95,7 @@
                 @keyup.enter="guardarMateria"
               >
               <span class="icon is-small is-left">
-                <i class="fas fa-font"></i>
+                <i class="fas fa-book"></i>
               </span>
             </div>
           </div>
@@ -123,8 +134,22 @@ export default {
       cargandoMaterias: false,
       modalActivo: false,
       nuevaMateriaNombre: '',
+      nuevoAnio: '',
       guardando: false
     };
+  },
+  computed: {
+    materiasOrdenadas() {
+      // Usamos slice() o spread para no mutar el array original
+      return [...this.materias].sort((a, b) => {
+        // 1. Ordenar por año
+        if (a.anio !== b.anio) {
+          return (a.anio || 0) - (b.anio || 0);
+        }
+        // 2. Si el año es igual, ordenar alfabéticamente por nombre
+        return (a.nombre || '').localeCompare(b.nombre || '');
+      });
+    }
   },
   mounted() {
     this.cargarEspecialidades();
@@ -176,6 +201,7 @@ export default {
      */
     abrirModalAlta() {
       this.nuevaMateriaNombre = '';
+      this.nuevoAnio = '';
       this.modalActivo = true;
     },
 
@@ -187,6 +213,7 @@ export default {
      */
     cerrarModalAlta() {
       this.modalActivo = false;
+      this.nuevoAnio = '';
       this.nuevaMateriaNombre = '';
     },
 
@@ -197,12 +224,13 @@ export default {
      * @retorna Void. En caso de éxito HTTP 201, invoca cierre del modal y dispara recarga de la tabla.
      */
     async guardarMateria() {
-      if (!this.nuevaMateriaNombre.trim() || !this.especialidadSeleccionada) return;
-      
+      if (!this.nuevaMateriaNombre.trim() || !this.nuevoAnio || !this.especialidadSeleccionada) return;
+
       this.guardando = true;
       try {
         const response = await api.post('/common/materias', {
           nombre: this.nuevaMateriaNombre,
+          anio: this.nuevoAnio,
           especialidad_id: this.especialidadSeleccionada
         });
 
