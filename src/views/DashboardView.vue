@@ -116,7 +116,7 @@
     <footer class="footer-dashboard">
         <div class="footer-container">
             <div class="footer-info">
-                Gestión de Proyectos Estudiantiles <span class="version-badge">v2.13.1</span>
+                Gestión de Proyectos Estudiantiles <span class="version-badge">v2.13.2</span>
             </div>
             <div class="footer-credits">
                 &copy; {{ anioActual }} | Creado por Ing. Guillermo Codina.
