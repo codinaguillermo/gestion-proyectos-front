@@ -221,25 +221,29 @@ export default {
   },
   methods: {
     async cargarHistorial() {
-      this.cargando = true;
-      try {
-        const res = await seguimientoService.getHistorial(this.proyectoId, this.alumno.id);
-        if (res.data.success && res.data.data.length > 0) {
-          this.historial = res.data.data;
-          const registro = this.historial[0];
-          if (registro.proyecto) {
-            this.contexto.proyecto = registro.proyecto.nombre || 'Proyecto sin nombre';
-            const esc = registro.proyecto.Escuela || registro.proyecto.escuela;
-            this.contexto.escuela = esc?.nombre_largo || 'Institución No Definida';
-          }
-        } else {
-          this.historial = [];
+        this.cargando = true;
+        try {
+            // CAMBIO: Enviamos 'todos' para que el backend nos devuelva todo el historial del alumno
+            const res = await seguimientoService.getHistorial('todos', this.alumno.id);
+            
+            if (res.data.success && res.data.data.length > 0) {
+                this.historial = res.data.data;
+                
+                // Mantenemos la lógica de contexto, pero tomamos los datos del primer registro encontrado
+                const registro = this.historial[0];
+                if (registro.proyecto) {
+                    this.contexto.proyecto = registro.proyecto.nombre || 'Proyecto sin nombre';
+                    const esc = registro.proyecto.Escuela || registro.proyecto.escuela;
+                    this.contexto.escuela = esc?.nombre_largo || 'Institución No Definida';
+                }
+            } else {
+                this.historial = [];
+            }
+        } catch (err) {
+            console.error("Error crítico al recuperar historial del alumno:", err);
+        } finally {
+            this.cargando = false;
         }
-      } catch (err) {
-        console.error("Error crítico al recuperar historial del alumno:", err);
-      } finally {
-        this.cargando = false;
-      }
     },
     prepararEdicion(seg) {
       this.segSeleccionado = seg;
