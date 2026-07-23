@@ -3,34 +3,34 @@
     <div class="modal-background" @click="$emit('close')"></div>
     <div class="modal-card">
       <header class="modal-card-head">
-        <p class="modal-card-title is-size-5">Detalle de la Sugerencia</p>
+        <p class="modal-card-title is-size-5 text-truncate-mobile">Detalle de la Sugerencia</p>
         <button class="delete" @click="$emit('close')"></button>
       </header>
       <section class="modal-card-body">
-        <div class="box has-background-light">
+        <div class="box has-background-light p-3-mobile">
           <p class="is-size-7 has-text-grey mb-1">
             <strong>Enviado por:</strong> {{ sugerencia?.autor?.nombre }} {{ sugerencia?.autor?.apellido }} 
-            ({{ formatearFecha(sugerencia?.createdAt) }})
+            <span class="is-inline-block">({{ formatearFecha(sugerencia?.createdAt) }})</span>
           </p>
-          <h3 class="title is-5 mb-2">{{ sugerencia?.titulo }}</h3>
-          <p class="is-family-secondary">{{ sugerencia?.descripcion }}</p>
+          <h3 class="title is-size-6-mobile is-size-5-tablet mb-2">{{ sugerencia?.titulo }}</h3>
+          <p class="is-family-secondary texto-envolvente">{{ sugerencia?.descripcion }}</p>
         </div>
 
-        <hr>
+        <hr class="my-3">
 
         <div class="field">
-          <label class="label">Respuesta del Administrador</label>
+          <label class="label is-size-7-mobile">Respuesta del Administrador</label>
           
           <div v-if="esAdmin && sugerencia?.estado === 'PENDIENTE'" class="control">
             <textarea 
               v-model="respuesta" 
-              class="textarea" 
+              class="textarea is-medium-tablet is-small-mobile custom-textarea-mobile" 
               placeholder="Escribí acá tu respuesta o solución..."
               rows="4"
             ></textarea>
           </div>
 
-          <div v-else class="notification is-info is-light">
+          <div v-else class="notification is-info is-light p-3 is-size-7-mobile texto-envolvente">
             <p v-if="sugerencia?.respuesta_admin">
               {{ sugerencia.respuesta_admin }}
             </p>
@@ -95,3 +95,63 @@ const enviarRespuesta = async () => {
 
 const formatearFecha = (f) => f ? new Date(f).toLocaleString('es-AR') : '';
 </script>
+
+<style scoped>
+/* Ajuste de texto para descripciones y reportes largos */
+.texto-envolvente {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.text-truncate-mobile {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Blindaje anti-desbordamiento y ergonomía táctil para móviles de 360px - 400px */
+@media (max-width: 768px) {
+  .modal-card {
+    margin: 0 12px !important;
+    width: calc(100vw - 24px) !important;
+    max-width: 500px !important;
+  }
+
+  .modal-card-head,
+  .modal-card-body,
+  .modal-card-foot {
+    padding: 12px 16px !important;
+  }
+
+  .modal-card-title {
+    font-size: 1rem !important;
+    max-width: calc(100% - 30px);
+  }
+
+  .custom-textarea-mobile {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Apilamiento de botones y prioridad táctil con el pulgar (acción principal verde arriba) */
+  .modal-card-foot {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    justify-content: stretch !important;
+  }
+  
+  .modal-card-foot .button {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  .modal-card-foot .button.is-success {
+    order: 1;
+  }
+  
+  .modal-card-foot .button:not(.is-success) {
+    order: 2;
+  }
+}
+</style>

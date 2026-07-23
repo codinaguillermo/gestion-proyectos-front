@@ -1,5 +1,5 @@
 <template>
-  <div class="container mt-5">
+  <div class="container mt-5 px-2-mobile">
     <div class="mb-4">
       <button class="button is-small is-light mb-3" @click="$router.back()">
         <span class="icon is-small"><i class="fas fa-arrow-left"></i></span>
@@ -7,19 +7,21 @@
       </button>
     </div>
 
-    <div class="level">
-      <div class="level-left">
-        <h1 class="title">Gestión de Usuarios</h1>
+    <!-- ENCABEZADO ADAPTATIVO (Reemplazo de .level por Columnas/Flex para evitar desbordamiento) -->
+    <div class="columns is-mobile is-multiline is-align-items-center mb-4">
+      <div class="column is-12-mobile is-7-tablet pb-2-mobile">
+        <h1 class="title is-size-4-mobile is-size-2-tablet mb-0">Gestión de Usuarios</h1>
       </div>
-      <div class="level-right">
-        <button class="button is-primary" @click="abrirModalNuevo">
+      <div class="column is-12-mobile is-5-tablet pt-1-mobile is-flex is-justify-content-flex-end-tablet">
+        <button class="button is-primary is-fullwidth-mobile" @click="abrirModalNuevo">
           <span class="icon"><i class="fas fa-user-plus"></i></span>
           <span>Nuevo Usuario</span>
         </button>
       </div>
     </div>
 
-    <div class="box">
+    <!-- CAJA DE FILTROS (Se apila automáticamente en móviles) -->
+    <div class="box p-3-mobile p-4-tablet">
       <div class="columns is-vcentered">
         <div class="column is-4">
           <div class="control has-icons-left">
@@ -63,20 +65,21 @@
       </div>
     </div>
 
+    <!-- TABLA DE USUARIOS (Blindada con is-hidden-mobile para celulares) -->
     <div class="table-container box p-0" style="position: relative; min-height: 200px;">
       <div v-if="cargando" class="is-overlay has-background-white-ter is-flex is-align-items-center is-justify-content-center" style="z-index: 10; opacity: 0.7;">
         <div class="loader" style="width: 3rem; height: 3rem; border-width: 4px;"></div>
       </div>
 
-      <table class="table is-fullwidth is-hoverable is-striped">
+      <table class="table is-fullwidth is-hoverable is-striped mb-0">
         <thead class="has-background-light">
           <tr>
             <th>Apellido, Nombre</th>
-            <th>Email</th>
+            <th class="is-hidden-mobile">Email</th>
             <th>Rol</th>
-            <th>Escuela/s</th>
-            <th class="has-text-centered">Especialidad</th> 
-            <th class="has-text-centered">Curso/Div</th>
+            <th class="is-hidden-mobile">Escuela/s</th>
+            <th class="has-text-centered is-hidden-mobile">Especialidad</th> 
+            <th class="has-text-centered is-hidden-mobile">Curso/Div</th>
             <th class="has-text-centered">Estado</th>
             <th class="has-text-right">Acciones</th>
           </tr>
@@ -89,13 +92,15 @@
           </tr>
 
           <tr v-for="u in usuarios" :key="u.id">
-            <td class="is-vcentered"><strong>{{ u.apellido ? u.apellido + ', ' : '' }}{{ u.nombre }}</strong></td>
-            <td class="is-vcentered">{{ u.email }}</td>
-            <td class="is-vcentered">
-              <span class="tag is-info is-light">{{ u.rol?.nombre }}</span>
+            <td class="is-vcentered text-truncate-mobile">
+              <strong>{{ u.apellido ? u.apellido + ', ' : '' }}{{ u.nombre }}</strong>
             </td>
+            <td class="is-vcentered is-hidden-mobile">{{ u.email }}</td>
             <td class="is-vcentered">
-              <div class="tags">
+              <span class="tag is-info is-light is-normal">{{ u.rol?.nombre }}</span>
+            </td>
+            <td class="is-vcentered is-hidden-mobile">
+              <div class="tags mb-0">
                 <span v-for="esc in u.escuelas" 
                     :key="esc.id" 
                     class="tag is-info is-light" 
@@ -104,13 +109,13 @@
                 </span>
               </div>
             </td>
-            <td class="has-text-centered is-vcentered">
+            <td class="has-text-centered is-vcentered is-hidden-mobile">
               <span v-if="Number(u.rol_id) === 3" class="tag is-white">
                 {{ getEspecialidadNombre(u) }}
               </span>
               <span v-else>-</span>
             </td>
-            <td class="has-text-centered is-vcentered">
+            <td class="has-text-centered is-vcentered is-hidden-mobile">
               {{ Number(u.rol_id) === 3 ? `${u.curso || ''} ${u.division || ''}` : '-' }}
             </td>
             <td class="has-text-centered is-vcentered">
@@ -119,7 +124,7 @@
               </span>
             </td>
             <td class="has-text-right is-vcentered">
-              <button class="button is-small is-warning is-light" @click="abrirModalEditar(u)">
+              <button class="button is-small is-warning is-light p-2" @click="abrirModalEditar(u)" title="Editar usuario">
                 <span class="icon is-small"><i class="fas fa-edit"></i></span>
               </button>
             </td>
@@ -229,5 +234,24 @@ onMounted(async () => {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* Blindaje anti-desbordamiento y ajuste de celdas para pantallas móviles de 360px - 400px */
+@media (max-width: 768px) {
+  .table td, .table th {
+    padding: 0.75rem 0.35rem !important;
+    font-size: 0.85rem !important;
+  }
+  
+  .tag {
+    font-size: 0.75rem !important;
+  }
+  
+  .text-truncate-mobile {
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 </style>

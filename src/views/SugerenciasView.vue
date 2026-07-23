@@ -1,56 +1,62 @@
 <template>
-  <div class="container mt-5 px-4">
-    <div class="level">
-      <div class="level-left">
-        <div>
-          <h1 class="title">Canal de Sugerencias y Errores</h1>
-          <h2 class="subtitle is-6 has-text-grey">
-            {{ esAdmin ? 'Panel de Gestión (Administrador)' : 'Mis Consultas y Reportes' }}
-          </h2>
-        </div>
+  <div class="container mt-5 px-2-mobile px-4-tablet">
+    <!-- ENCABEZADO ADAPTATIVO (Reemplazo de .level por Columnas/Flex para evitar desbordamiento) -->
+    <div class="columns is-mobile is-multiline is-align-items-center mb-3">
+      <div class="column is-12-mobile is-8-tablet pb-2-mobile">
+        <h1 class="title is-size-4-mobile is-size-2-tablet mb-0">Canal de Sugerencias y Errores</h1>
+        <h2 class="subtitle is-size-7-mobile is-size-6-tablet has-text-grey mt-1 mb-0">
+          {{ esAdmin ? 'Panel de Gestión (Administrador)' : 'Mis Consultas y Reportes' }}
+        </h2>
       </div>
-      <div class="level-right">
-        <button class="button is-primary" @click="abrirModalNueva">
+      <div class="column is-12-mobile is-4-tablet pt-1-mobile is-flex is-justify-content-flex-end-tablet">
+        <button class="button is-primary is-fullwidth-mobile mt-2-mobile" @click="abrirModalNueva">
           <span class="icon"><i class="fas fa-plus"></i></span>
           <span>Enviar Sugerencia</span>
         </button>
       </div>
     </div>
 
-    <hr>
+    <hr class="my-3">
 
+    <!-- TABLA DE SUGERENCIAS (Blindada con is-hidden-mobile y truncamiento en celulares) -->
     <div class="box p-0 shadow-sm" style="overflow: hidden;">
       <table class="table is-fullwidth is-hoverable is-striped mb-0">
         <thead class="has-background-light">
           <tr>
-            <th>Fecha</th>
-            <th v-if="esAdmin">Usuario</th>
+            <th class="is-hidden-mobile">Fecha</th>
+            <th v-if="esAdmin" class="is-hidden-mobile">Usuario</th>
             <th>Título</th>
-            <th>Estado</th>
-            <th>Acciones</th>
+            <th class="has-text-centered">Estado</th>
+            <th class="has-text-right">Acciones</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="sug in sugerencias" :key="sug.id">
-            <td class="has-text-weight-semibold">{{ formatearFecha(sug.createdAt) }}</td>
+            <td class="has-text-weight-semibold is-vcentered is-hidden-mobile">{{ formatearFecha(sug.createdAt) }}</td>
             
-            <td v-if="esAdmin" class="has-text-weight-bold">
+            <td v-if="esAdmin" class="has-text-weight-bold is-vcentered is-hidden-mobile">
               {{ sug.autor?.apellido }}, {{ sug.autor?.nombre }}
             </td>
-            <td>{{ sug.titulo }}</td>
-            <td>
-              <span :class="['tag', sug.estado === 'PENDIENTE' ? 'is-warning' : 'is-success']">
+            <td class="is-vcentered text-truncate-mobile" style="max-width: 180px;">
+              {{ sug.titulo }}
+              <!-- Subtítulo con fecha solo visible en móviles para no perder la traza temporal -->
+              <div class="is-hidden-tablet is-size-7 has-text-grey-light mt-1">
+                <i class="far fa-clock mr-1"></i> {{ formatearFecha(sug.createdAt) }}
+              </div>
+            </td>
+            <td class="has-text-centered is-vcentered">
+              <span :class="['tag is-small-mobile', sug.estado === 'PENDIENTE' ? 'is-warning' : 'is-success']" style="font-weight: 600;">
                 {{ sug.estado }}
               </span>
             </td>
-            <td>
-              <button class="button is-small is-info is-light" @click="verDetalle(sug)">
+            <td class="has-text-right is-vcentered">
+              <button class="button is-small is-info is-light p-2" @click="verDetalle(sug)" title="Ver detalle de la sugerencia">
                 <span class="icon is-small"><i class="fas fa-eye"></i></span>
               </button>
             </td>
           </tr>
           <tr v-if="sugerencias.length === 0">
-            <td colspan="5" class="has-text-centered py-5 has-text-grey">
+            <td :colspan="esAdmin ? 5 : 4" class="has-text-centered py-5 has-text-grey is-size-7-mobile">
               No se encontraron sugerencias.
             </td>
           </tr>
@@ -131,3 +137,33 @@ const formatearFecha = (f) => {
 
 onMounted(cargarSugerencias);
 </script>
+
+<style scoped>
+.table th, .table td {
+  vertical-align: middle;
+}
+
+/* Control de desbordamiento de texto */
+.text-truncate-mobile {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Blindaje anti-desbordamiento y ergonomía táctil para móviles de 360px - 400px */
+@media (max-width: 768px) {
+  .table td, .table th {
+    padding: 0.75rem 0.35rem !important;
+    font-size: 0.85rem !important;
+  }
+  
+  .tag {
+    font-size: 0.75rem !important;
+  }
+  
+  .text-truncate-mobile {
+    max-width: 160px;
+  }
+}
+</style>

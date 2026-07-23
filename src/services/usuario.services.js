@@ -41,6 +41,24 @@ export const usuarioService = {
    */
   resetContadorMensajes() {
     return api.put('/usuarios/reset-mensajes');
+  },
+
+  /**
+   * Propósito: Recuperar el listado completo de usuarios que solicitaron cuenta y se encuentran en estado pendiente de revisión.
+   * Quién la llama: Ciclo de vida onMounted y métodos de actualización de la vista SolicitudesPendientesView.vue.
+   * Retorna: Promesa de Axios cuya respuesta contiene el array de objetos con las solicitudes en espera.
+   */
+  obtenerPendientes() {
+    return api.get('/usuarios/pendientes');
+  },
+
+  /**
+   * Propósito: Enviar una petición PUT al servidor para habilitar el acceso de una cuenta pendiente y asignarle una contraseña inicial operativamente válida.
+   * Quién la llama: Acción del botón "Aprobar Acceso" en la interfaz de gestión de solicitudes de SolicitudesPendientesView.vue.
+   * Retorna: Promesa de Axios con el objeto JSON que confirma el éxito de la aprobación en la base de datos.
+   */
+  aprobarSolicitud(id, payload = {}) {
+    return api.put(`/usuarios/${id}/aprobar`, payload);
   }
 };
 

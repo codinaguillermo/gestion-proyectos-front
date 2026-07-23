@@ -1,24 +1,34 @@
 <template>
   <div class="dashboard-bg">
     <div class="main-content-wrapper">
-      <div class="container mt-0 pt-6 px-4 pb-6">
+      <div class="container mt-0 pt-4 px-2-mobile px-4-tablet pb-6">
         
-        <div class="level mb-5 glass-panel p-5">
-          <div class="level-left">
-            <button class="button is-ghost has-text-white p-0 mr-5" @click="$router.back()">
-              <span class="icon is-large"><i class="fas fa-arrow-left fa-lg"></i></span>
-            </button>
-            <div>
-              <h2 class="subtitle is-4 has-text-info has-text-weight-bold mb-1">
-                <i class="fas fa-project-diagram mr-2"></i> {{ proyectoData?.nombre || 'Cargando...' }}
-              </h2>
-              <h1 class="title has-text-white is-2 mb-0">
-                Product Backlog
-                <span class="is-size-4 has-text-grey-lighter" style="font-weight: 300; margin-left: 10px;">(Entregables)</span>
-              </h1>
-              <div class="field mt-3">
+        <!-- ENCABEZADO ADAPTATIVO (Reemplazo de .level por Flexbox/Columnas) -->
+        <div class="glass-panel p-4 mb-4">
+          <div class="is-flex is-align-items-center is-justify-content-space-between mb-3">
+            <div class="is-flex is-align-items-center">
+              <button class="button is-ghost has-text-white p-0 mr-3" @click="$router.back()">
+                <span class="icon is-medium"><i class="fas fa-arrow-left fa-lg"></i></span>
+              </button>
+              <div>
+                <h2 class="is-size-6-mobile is-size-5-tablet has-text-info has-text-weight-bold mb-0 is-flex is-align-items-center">
+                  <i class="fas fa-project-diagram mr-2"></i> 
+                  <span class="text-truncate-mobile">{{ proyectoData?.nombre || 'Cargando...' }}</span>
+                </h2>
+                <h1 class="title has-text-white is-size-4-mobile is-size-2-tablet mb-0">
+                  Product Backlog
+                  <span class="is-size-6-mobile is-size-4-tablet has-text-grey-lighter is-hidden-mobile" style="font-weight: 300;">(Entregables)</span>
+                </h1>
+              </div>
+            </div>
+          </div>
+
+          <!-- FILTROS Y ACCIONES (Apilamiento inteligente en móvil) -->
+          <div class="columns is-mobile is-multiline mt-2 mb-0">
+            <div class="column is-12-mobile is-5-tablet pb-1">
+              <div class="field">
                 <div class="control">
-                  <div class="select is-info is-small">
+                  <div class="select is-info is-fullwidth">
                     <select v-model="filtroCategoria">
                       <option value="0">Todas las categorías</option>
                       <option v-for="cat in categorias" :key="cat.id" :value="cat.id">{{ cat.nombre }}</option>
@@ -27,56 +37,62 @@
                 </div>
               </div>
             </div>
-          </div>
-          <div class="level-right">
-            <div class="buttons">
-              <router-link 
-                :to="{ name: 'configurar-proyecto', params: { id: proyectoId } }" 
-                class="button is-primary is-medium is-outlined has-text-white"
-                title="Ir a Gestión Estratégica (Objetivos y Equipo)"
-              >
-                <span class="icon"><i class="fas fa-bullseye"></i></span>
-                <span>Objetivos</span>
-              </router-link>
+            <div class="column is-12-mobile is-7-tablet pt-1 is-flex is-justify-content-flex-end-tablet">
+              <div class="buttons is-fullwidth-mobile mt-1-mobile">
+                <router-link 
+                  :to="{ name: 'configurar-proyecto', params: { id: proyectoId } }" 
+                  class="button is-primary is-outlined has-text-white is-flex-grow-1-mobile mb-0"
+                  title="Ir a Gestión Estratégica"
+                >
+                  <span class="icon"><i class="fas fa-bullseye"></i></span>
+                  <span>Objetivos</span>
+                </router-link>
 
-              <button v-if="puedeGestionarBacklog" class="button is-info is-medium has-text-weight-bold" @click="abrirModalNuevaUS">
-                <span class="icon"><i class="fas fa-plus"></i></span>
-                <span>NUEVA USER STORY</span>
-              </button>
+                <button 
+                  v-if="puedeGestionarBacklog" 
+                  class="button is-info has-text-weight-bold is-flex-grow-1-mobile mb-0" 
+                  @click="abrirModalNuevaUS"
+                >
+                  <span class="icon"><i class="fas fa-plus"></i></span>
+                  <span>NUEVA US</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="tabs is-boxed is-centered custom-tabs mb-6">
+        <!-- NAVEGACIÓN POR PESTAÑAS (Estilo X.com con área táctil ampliada para pulgar en celular) -->
+        <div class="tabs is-boxed is-centered custom-tabs mb-4">
           <ul>
             <li :class="{'is-active': tabActiva === 'backlog'}">
-              <a @click="tabActiva = 'backlog'">
-                <span class="icon is-medium"><i class="fas fa-th-large"></i></span>
-                <span class="is-size-5">Tablero de US</span>
+              <a @click="tabActiva = 'backlog'" class="px-3-mobile" title="Tablero de US">
+                <span class="icon is-medium-mobile"><i class="fas fa-th-large fa-lg"></i></span>
+                <span class="is-size-5-tablet is-hidden-mobile ml-2">Tablero de US</span>
               </a>
             </li>
             <li :class="{'is-active': tabActiva === 'equipo'}">
-              <a @click="tabActiva = 'equipo'">
-                <span class="icon is-medium"><i class="fas fa-users-cog"></i></span>
-                <span class="is-size-5">Carga por Miembro</span>
+              <a @click="tabActiva = 'equipo'" class="px-3-mobile" title="Carga por Miembro">
+                <span class="icon is-medium-mobile"><i class="fas fa-users-cog fa-lg"></i></span>
+                <span class="is-size-5-tablet is-hidden-mobile ml-2">Carga por Miembro</span>
               </a>
             </li>
             <li :class="{'is-active': tabActiva === 'stats'}">
-              <a @click="tabActiva = 'stats'">
-                <span class="icon is-medium"><i class="fas fa-chart-line"></i></span>
-                <span class="is-size-5">Métricas Avanzadas</span>
+              <a @click="tabActiva = 'stats'" class="px-3-mobile" title="Métricas Avanzadas">
+                <span class="icon is-medium-mobile"><i class="fas fa-chart-line fa-lg"></i></span>
+                <span class="is-size-5-tablet is-hidden-mobile ml-2">Métricas Avanzadas</span>
               </a>
             </li>
           </ul>
         </div>
 
+        <!-- CONTENIDO TABS -->
         <div v-if="tabActiva === 'backlog'" class="animate__animated animate__fadeIn">
-          <div v-if="cargando" class="notification glass-notification is-info is-size-5">
+          <div v-if="cargando" class="notification glass-notification is-info is-size-6-mobile is-size-5-tablet">
             <span class="icon"><i class="fas fa-spinner fa-pulse"></i></span> Refrescando datos...
           </div>
           <div v-else-if="userStoriesFiltradas && userStoriesFiltradas.length > 0">
-            <div class="columns is-multiline px-2">
-              <div v-for="us in userStoriesFiltradas" :key="'us-' + us.id" class="column is-12-mobile is-6-tablet is-4-desktop mb-4">
+            <div class="columns is-multiline px-0-mobile px-2-tablet">
+              <div v-for="us in userStoriesFiltradas" :key="'us-' + us.id" class="column is-12-mobile is-6-tablet is-4-desktop mb-3">
                 <div class="card-wrapper hover-tilt-effect">
                   <UserStoryCard 
                     :userStory="us" 
@@ -94,30 +110,30 @@
             </div>
           </div>
           <div v-else class="box glass-panel has-text-centered py-6">
-            <p class="is-size-4 has-text-grey-lighter">El Backlog está vacío.</p>
+            <p class="is-size-5-mobile is-size-4-tablet has-text-grey-lighter">El Backlog está vacío.</p>
           </div>
         </div>
 
         <div v-if="tabActiva === 'equipo'" class="animate__animated animate__fadeIn">
-          <div class="glass-panel p-5">
-            <h3 class="title is-4 has-text-white mb-5">
+          <div class="glass-panel p-4-mobile p-5-tablet">
+            <h3 class="title is-5-mobile is-4-tablet has-text-white mb-4">
               <i class="fas fa-user-tag mr-2 has-text-info"></i> Desglose de Responsabilidades
             </h3>
             <div class="columns is-multiline">
               <div v-for="miembro in resumenTareasPorMiembro" :key="miembro.id" class="column is-12-mobile is-6-tablet is-4-desktop">
-                <div class="box has-background-dark p-4 h-full" style="border: 1px solid rgba(255,255,255,0.1);">
-                  <div class="is-flex is-justify-content-between is-align-items-center mb-4 border-bottom-info pb-2">
-                    <span class="has-text-info has-text-weight-bold is-uppercase is-size-6">{{ miembro.nombre }}</span>
-                    <span class="tag is-rounded is-info is-light">{{ miembro.total }} tareas</span>
+                <div class="box has-background-dark p-3-mobile p-4-tablet h-full" style="border: 1px solid rgba(255,255,255,0.1);">
+                  <div class="is-flex is-justify-content-between is-align-items-center mb-3 border-bottom-info pb-2">
+                    <span class="has-text-info has-text-weight-bold is-uppercase is-size-6 text-truncate-mobile">{{ miembro.nombre }}</span>
+                    <span class="tag is-rounded is-info is-light is-normal">{{ miembro.total }} tareas</span>
                   </div>
                   
                   <div v-for="t in miembro.tareas" :key="t.id" class="mb-3 p-2 task-link-box" @click="irADetalleTarea(t.usId)">
-                    <div class="is-size-7 has-text-info-light is-uppercase has-text-weight-bold mb-1">
+                    <div class="is-size-7 has-text-info-light is-uppercase has-text-weight-bold mb-1 text-truncate-mobile">
                       <i class="fas fa-folder-open mr-1"></i> {{ t.usTitulo }}
                     </div>
                     <div class="is-flex is-justify-content-between is-align-items-start">
-                      <span class="has-text-white is-size-6">{{ t.titulo }}</span>
-                      <span :class="obtenerClaseEstado(t.estado)" class="is-size-7 has-text-weight-bold ml-2">{{ t.estado }}</span>
+                      <span class="has-text-white is-size-6 pr-2">{{ t.titulo }}</span>
+                      <span :class="obtenerClaseEstado(t.estado)" class="is-size-7 has-text-weight-bold is-flex-shrink-0">{{ t.estado }}</span>
                     </div>
                   </div>
                 </div>
@@ -127,18 +143,18 @@
         </div>
 
         <div v-if="tabActiva === 'stats'" class="animate__animated animate__fadeIn">
-          <div class="glass-panel p-5">
-            <div v-if="usSinTareas.length > 0" class="notification is-warning is-light mb-6" style="border-left: 8px solid #ffdd57;">
+          <div class="glass-panel p-3-mobile p-5-tablet">
+            <div v-if="usSinTareas.length > 0" class="notification is-warning is-light mb-4 p-3" style="border-left: 6px solid #ffdd57;">
               <div class="is-flex is-align-items-center mb-2">
                 <span class="icon is-medium has-text-warning mr-2"><i class="fas fa-exclamation-triangle"></i></span>
-                <h4 class="title is-5 mb-0 has-text-dark">User Stories sin Planificar</h4>
+                <h4 class="title is-6-mobile is-5-tablet mb-0 has-text-dark">User Stories sin Planificar</h4>
               </div>
               <div class="tags">
-                <span v-for="us in usSinTareas" :key="us.id" class="tag is-dark">{{ us.titulo }}</span>
+                <span v-for="us in usSinTareas" :key="us.id" class="tag is-dark is-medium-mobile">{{ us.titulo }}</span>
               </div>
             </div>
             <div class="columns is-centered">
-              <div class="column is-11">
+              <div class="column is-12-mobile is-11-tablet px-0-mobile">
                 <StatsProyecto v-if="proyectoId" :proyectoId="proyectoId" class="stats-glass-fix" />
               </div>
             </div>
@@ -300,23 +316,167 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.dashboard-bg { min-height: 100vh; background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.8)), url('../assets/fondo.jpg'); background-size: cover; background-attachment: fixed; }
-.glass-panel { background: rgba(255, 255, 255, 0.03) !important; backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; }
-.custom-tabs ul { border-bottom: 2px solid rgba(255, 255, 255, 0.2); }
-.custom-tabs li a { color: #ffffff !important; border: 1px solid transparent !important; }
-.custom-tabs li.is-active a { background-color: rgba(52, 152, 219, 0.3) !important; border-bottom-color: #3498db !important; }
+/* Fondo general con corrección para móviles (evita repainted lag en iOS/Android) */
+.dashboard-bg { 
+  min-height: 100vh; 
+  background: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.8)), url('../assets/fondo.jpg'); 
+  background-size: cover; 
+  background-position: center;
+  background-attachment: fixed; 
+}
 
-.hover-tilt-effect { transform: rotate(0deg); transition: transform 0.2s ease-out, box-shadow 0.2s ease-out; }
-.hover-tilt-effect:hover { transform: rotate(2deg) scale(1.02); z-index: 10; box-shadow: 0px 12px 30px rgba(0,0,0,0.45) !important; }
+@media (max-width: 768px) {
+  .dashboard-bg {
+    background-attachment: scroll; 
+  }
+}
 
-.card-wrapper { position: relative; border-radius: 12px; overflow: hidden; background-color: rgba(253, 250, 230, 0.95); }
-:deep(.user-story-card-custom) { background-color: transparent !important; box-shadow: none !important; }
-.vencimiento-badge { margin-top: -15px; background: transparent; }
-.letter-spacing-1 { letter-spacing: 1px; }
-:deep(.stats-glass-fix) { background: rgba(255, 255, 255, 0.88) !important; backdrop-filter: blur(8px); border-radius: 15px; padding: 25px; }
+.glass-panel { 
+  background: rgba(255, 255, 255, 0.03) !important; 
+  backdrop-filter: blur(12px); 
+  border: 1px solid rgba(255, 255, 255, 0.1); 
+  border-radius: 12px; 
+}
+
+/* Pestañas adaptables estilo X.com sin desbordamiento */
+.custom-tabs ul { 
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2); 
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.custom-tabs li a { 
+  color: #ffffff !important; 
+  border: 1px solid transparent !important; 
+  white-space: nowrap;
+}
+.custom-tabs li.is-active a { 
+  background-color: rgba(52, 152, 219, 0.3) !important; 
+  border-bottom-color: #3498db !important; 
+}
+
+/* ERGONOMÍA TÁCTIL EN MÓVILES: Distribución equitativa y mayor área de toque para el pulgar */
+@media (max-width: 768px) {
+  .custom-tabs ul {
+    display: flex;
+    width: 100%;
+  }
+  .custom-tabs li {
+    flex: 1 1 0%;
+    text-align: center;
+  }
+  .custom-tabs li a {
+    justify-content: center;
+    padding: 0.85rem 0 !important;
+    width: 100%;
+    display: flex;
+    align-items: center;
+  }
+  .custom-tabs li a .icon {
+    margin: 0 !important;
+  }
+}
+
+/* Efecto Tilt solo en dispositivos con cursor real */
+@media (hover: hover) and (pointer: fine) {
+  .hover-tilt-effect { 
+    transform: rotate(0deg); 
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out; 
+  }
+  .hover-tilt-effect:hover { 
+    transform: rotate(2deg) scale(1.02); 
+    z-index: 10; 
+    box-shadow: 0px 12px 30px rgba(0,0,0,0.45) !important; 
+  }
+}
+
+.card-wrapper { 
+  position: relative; 
+  border-radius: 12px; 
+  overflow: hidden; 
+  background-color: rgba(253, 250, 230, 0.95); 
+}
+:deep(.user-story-card-custom) { 
+  background-color: transparent !important; 
+  box-shadow: none !important; 
+}
+
+.vencimiento-badge { 
+  margin-top: -15px; 
+  background: transparent; 
+}
+.letter-spacing-1 { 
+  letter-spacing: 1px; 
+}
+
+:deep(.stats-glass-fix) { 
+  background: rgba(255, 255, 255, 0.88) !important; 
+  backdrop-filter: blur(8px); 
+  border-radius: 15px; 
+  padding: 25px; 
+}
+@media (max-width: 768px) {
+  :deep(.stats-glass-fix) {
+    padding: 12px;
+  }
+}
+
 .has-text-warning-dark { color: #856404 !important; }
 .border-bottom-info { border-bottom: 1px solid rgba(52, 152, 219, 0.3); }
 .h-full { height: 100%; }
-.task-link-box { background: rgba(255, 255, 255, 0.03); border-radius: 6px; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent; }
-.task-link-box:hover { background: rgba(52, 152, 219, 0.15); border-color: rgba(52, 152, 219, 0.4); transform: translateX(3px); }
+
+.task-link-box { 
+  background: rgba(255, 255, 255, 0.03); 
+  border-radius: 6px; 
+  cursor: pointer; 
+  transition: all 0.2s ease; 
+  border: 1px solid transparent; 
+}
+.task-link-box:hover { 
+  background: rgba(52, 152, 219, 0.15); 
+  border-color: rgba(52, 152, 219, 0.4); 
+  transform: translateX(3px); 
+}
+
+/* Utilidades específicas para control de desbordamiento en móviles */
+.text-truncate-mobile {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Blindaje anti-desbordamiento para modales externos (como ConfirmarModal.vue) */
+@media (max-width: 768px) {
+  .text-truncate-mobile {
+    max-width: 210px;
+  }
+  .is-flex-grow-1-mobile {
+    flex-grow: 1 !important;
+  }
+  
+  :deep(.modal-card) {
+    margin: 0 12px !important;
+    width: calc(100vw - 24px) !important;
+    max-width: 500px !important;
+  }
+  :deep(.modal-card-head),
+  :deep(.modal-card-body),
+  :deep(.modal-card-foot) {
+    padding: 12px 16px !important;
+  }
+  :deep(.modal-card-body) {
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+  }
+  :deep(.modal-card-foot) {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    justify-content: stretch !important;
+  }
+  :deep(.modal-card-foot .button) {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+}
 </style>

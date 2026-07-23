@@ -3,13 +3,39 @@
     <div class="container">
       <div class="navbar-brand">
         <router-link to="/dashboard" class="navbar-item has-text-weight-bold has-text-white">
-          GEPRES - GESTIÓN DE PROYECTOS ESTUDIANTILES
+          GEPRES
         </router-link>
+
+        <a 
+          role="button" 
+          class="navbar-burger" 
+          :class="{ 'is-active': menuAbierto }"
+          aria-label="menu" 
+          aria-expanded="false" 
+          @click="menuAbierto = !menuAbierto"
+        >
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+        </a>
       </div>
 
-      <div class="navbar-menu is-active">
+      <div class="navbar-menu" :class="{ 'is-active': menuAbierto }">
         <div class="navbar-end">
           
+          <!-- NUEVO: Ícono de Solicitudes Pendientes con burbuja de notificación -->
+          <div v-if="esDocenteOAdmin && authStore.usuario?.solicitudes_pendientes > 0" class="navbar-item">
+            <router-link to="/solicitudes-pendientes" class="button is-ghost has-text-white p-2 icon-mensaje-contenedor" title="Solicitudes de Cuenta Pendientes">
+              <span class="icon is-medium">
+                <i class="fas fa-user-clock fa-lg has-text-warning"></i>
+              </span>
+              <span class="badge-facebook">
+                {{ authStore.usuario.solicitudes_pendientes }}
+              </span>
+            </router-link>
+          </div>
+
+          <!-- Ícono de Mensajería Docente existente -->
           <div v-if="esDocenteOAdmin && authStore.usuario?.mensajes_sin_leer > 0" class="navbar-item">
             <router-link to="/mensajeria" class="button is-ghost has-text-white p-2 icon-mensaje-contenedor" title="Mensajería Docente">
               <span class="icon is-medium">
@@ -55,6 +81,16 @@
                 <span class="icon is-small mr-2"><i class="fas fa-users-cog"></i></span>
                 Gestión de Usuarios
               </router-link>
+              
+              <!-- NUEVO: Acceso directo desde el menú desplegable a las Solicitudes Pendientes -->
+              <router-link v-if="esDocenteOAdmin" to="/solicitudes-pendientes" class="navbar-item">
+                <span class="icon is-small mr-2"><i class="fas fa-user-clock has-text-warning"></i></span>
+                Solicitudes de Cuenta
+                <span v-if="authStore.usuario?.solicitudes_pendientes > 0" class="tag is-warning is-rounded ml-auto has-text-weight-bold">
+                  {{ authStore.usuario.solicitudes_pendientes }}
+                </span>
+              </router-link>
+
               <router-link v-if="esDocenteOAdmin" to="/escuelas" class="navbar-item">
                 <span class="icon is-small mr-2"><i class="fas fa-school"></i></span>
                 Gestionar Escuelas
@@ -125,46 +161,56 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 import api from './services/api';
 import UsuarioModal from './components/modals/usuarioModal.vue';
-import ExportarNotasModal from './components/modals/ExportarNotasModal.vue'; // Asegurate de que la ruta sea correcta
+import ExportarNotasModal from './components/modals/ExportarNotasModal.vue';
 
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 
+const menuAbierto = ref(false);
 const modalPerfilActivo = ref(false);
-const modalExportarActivo = ref(false); // Flag para el nuevo modal
+const modalExportarActivo = ref(false); 
 const usuarioParaEditar = ref(null); 
 const escuelas = ref([]);
 const roles = ref([]);
 
 /**
- * Propósito: Determinar la visibilidad de la barra de navegación basada en autenticación y ruta.
- * A quién alimenta: Template de App.vue (directiva v-if del nav).
- * Qué retorna: Booleano true/false.
+ * Propósito: Cerrar automáticamente el menú móvil cuando el usuario cambia de página o ruta en la aplicación.
+ * A quién alimenta: Comportamiento visual de la barra de navegación en resoluciones pequeñas (móvil y tablet).
+ * Qué retorna: Void (cambia el estado de la variable reactiva menuAbierto a false).
+ */
+watch(() => route.path, () => {
+  menuAbierto.value = false;
+});
+
+/**
+ * Propósito: Determinar la visibilidad de la barra de navegación basada en el estado de autenticación y la ruta activa.
+ * A quién alimenta: Template de App.vue (directiva v-if del tag nav).
+ * Qué retorna: Booleano (true si el usuario está autenticado y no está en login o raíz, false en caso contrario).
  */
 const mostrarNavbar = computed(() => {
-  const rutasSinNavbar = ['/login', '/'];
+  const rutasSinNavbar = ['/login', '/', '/solicitar-cuenta'];
   return authStore.token && !rutasSinNavbar.includes(route.path);
 });
 
 /**
- * Propósito: Obtener el nombre del usuario de forma reactiva desde el store.
- * A quién alimenta: Template de App.vue (saludo del usuario).
- * Qué retorna: String con el nombre o 'Usuario' por defecto.
+ * Propósito: Obtener el nombre del usuario logueado de forma reactiva para el saludo en el navbar.
+ * A quién alimenta: Template de App.vue (bloque de saludo e iniciales del avatar).
+ * Qué retorna: String con el nombre del usuario o 'Usuario' por defecto si el dato no está disponible.
  */
 const nombreUsuario = computed(() => {
   return authStore.usuario?.nombre || 'Usuario';
 });
 
 /**
- * Propósito: Validar permisos de acceso a menús administrativos.
- * A quién alimenta: Template de App.vue (directivas v-if de los menús dropdown).
- * Qué retorna: Booleano true si es admin (1) o docente (2).
+ * Propósito: Validar si el usuario actual tiene privilegios de Administración (1) o Docencia (2).
+ * A quién alimenta: Template de App.vue (directivas v-if de los elementos y enlaces del menú desplegable).
+ * Qué retorna: Booleano (true si es Administrador o Docente, false en caso contrario).
  */
 const esDocenteOAdmin = computed(() => {
   const rol = Number(authStore.usuario?.rol_id);
@@ -172,9 +218,9 @@ const esDocenteOAdmin = computed(() => {
 });
 
 /**
- * Propósito: Ejecutar el cierre de sesión y redirección.
- * A quién alimenta: Evento @click del botón "Cerrar Sesión".
- * Qué retorna: Void (redirecciona ruta).
+ * Propósito: Finalizar la sesión del usuario actual limpiando el almacenamiento y redirigiendo al login.
+ * A quién alimenta: Evento @click del botón "Cerrar Sesión" en el menú desplegable.
+ * Qué retorna: Void (ejecuta logout en el store y redirige la ruta a /login).
  */
 const handleLogout = () => {
   authStore.logout();
@@ -182,9 +228,9 @@ const handleLogout = () => {
 };
 
 /**
- * Propósito: Obtener catálogos de escuelas y roles para los modales.
- * A quién alimenta: Hook onMounted y función abrirPerfil.
- * Qué retorna: Void (asigna valores reactivos a ref escuelas y roles).
+ * Propósito: Obtener desde la API los catálogos de escuelas y roles necesarios para inicializar los modales del sistema.
+ * A quién alimenta: Hook onMounted al iniciar y función abrirPerfil antes de desplegar la edición de usuario.
+ * Qué retorna: Promise<void> (asigna los datos obtenidos a las referencias reactivas escuelas y roles).
  */
 const cargarMaestras = async () => {
   try {
@@ -200,9 +246,9 @@ const cargarMaestras = async () => {
 };
 
 /**
- * Propósito: Preparar y mostrar el modal de edición para el usuario logueado.
- * A quién alimenta: Evento @click de "Mi Perfil".
- * Qué retorna: Void (activa flag reactivo modalPerfilActivo).
+ * Propósito: Solicitar los datos actualizados del usuario en sesión y desplegar el modal para la edición de su perfil.
+ * A quién alimenta: Evento @click de la opción "Mi Perfil" en el menú de configuración.
+ * Qué retorna: Promise<void> (activa el flag reactivo modalPerfilActivo y carga usuarioParaEditar).
  */
 const abrirPerfil = async () => {
   try {
@@ -218,18 +264,18 @@ const abrirPerfil = async () => {
 };
 
 /**
- * Propósito: Abrir el modal de exportación de planillas de notas.
- * A quién alimenta: Evento @click de "Exportar Planilla Excel".
- * Qué retorna: Void (activa flag reactivo modalExportarActivo).
+ * Propósito: Desplegar el modal que permite la exportación de planillas generalizadas en Excel.
+ * A quién alimenta: Evento @click de la opción "Exportar Planilla Excel" en el menú de configuración.
+ * Qué retorna: Void (activa el flag reactivo modalExportarActivo poniendo su valor en true).
  */
 const abrirExportacion = () => {
   modalExportarActivo.value = true;
 };
 
 /**
- * Propósito: Refrescar la información del usuario tras una edición exitosa.
- * A quién alimenta: Evento @usuario-guardado emitido por UsuarioModal.vue.
- * Qué retorna: Void (actualiza el store de autenticación).
+ * Propósito: Sincronizar en el store global los datos modificados del usuario luego de cerrarse el modal de edición.
+ * A quién alimenta: Evento custom @usuario-guardado emitido por el componente hijo UsuarioModal.vue.
+ * Qué retorna: Promise<void> (cierra el modal de perfil y actualiza el estado local en authStore).
  */
 const refrescarDatos = async () => {
   modalPerfilActivo.value = false;
@@ -242,6 +288,11 @@ const refrescarDatos = async () => {
   }
 };
 
+/**
+ * Propósito: Disparar la carga inicial del catálogo de tablas maestras al montarse el componente principal en el DOM si hay sesión activa.
+ * A quién alimenta: Ciclo de vida inicial del componente Vue (onMounted).
+ * Qué retorna: Void.
+ */
 onMounted(() => {
   if (authStore.token) {
     cargarMaestras();

@@ -18,6 +18,31 @@ const router = createRouter({
       name: 'login',
       component: LoginView
     },
+    // ============================================================================
+    /**
+     * @ruta /solicitar-cuenta
+     * @propósito Exponer el formulario de solicitud para nuevos usuarios (alumnos o docentes) que deseen darse de alta en el sistema.
+     * @alimenta Enlace "Crear Cuenta" situado en el pie del formulario del LoginView.vue. Carga el componente SolicitudCuentaView.vue.
+     * @retorna Renderizado del componente visual de registro de solicitud (acceso público sin requerir token de autenticación previo).
+     */
+    {
+      path: '/solicitar-cuenta',
+      name: 'solicitar-cuenta',
+      component: () => import('../views/SolicitudCuentaView.vue')
+    },
+    // ============================================================================
+    /**
+     * @ruta /solicitudes-pendientes
+     * @propósito Exponer el listado de cuentas en espera de aprobación para que los administradores o docentes puedan habilitarlas o desestimarlas.
+     * @alimenta Botón con icono en el Navbar superior (App.vue) y menú desplegable de opciones. Carga el componente SolicitudesPendientesView.vue.
+     * @retorna Renderizado del componente visual si el usuario cumple con los roles jerárquicos [1, 2], o redirección al Dashboard por falta de permisos.
+     */
+    {
+      path: '/solicitudes-pendientes',
+      name: 'solicitudes-pendientes',
+      component: () => import('../views/SolicitudesPendientesView.vue'),
+      meta: { requiresAuth: true, roles: [1, 2] } // Solo Admin y Docente
+    },
     {
       path: '/dashboard',
       name: 'dashboard',

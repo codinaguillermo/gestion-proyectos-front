@@ -80,6 +80,20 @@ export const useAuthStore = defineStore('auth', {
         
         console.log("Store: Contador de mensajes sin leer reiniciado a cero.");
       }
+    },
+
+    /**
+     * Propósito: Actualizar en tiempo real dentro del estado de Pinia y en el almacenamiento local la cantidad de solicitudes de cuenta en espera de aprobación.
+     * Alimentado por: La vista de gestión de solicitudes pendientes (o tras aprobar una cuenta) en el Frontend para mantener sincronizado el icono del Navbar sin recargar la página.
+     * Datos que recibe: nuevoValor (número entero con el total actualizado de cuentas pendientes).
+     * Datos que retorna: void.
+     */
+    actualizarContadorPendientes(nuevoValor) {
+      if (this.usuario) {
+        this.usuario.solicitudes_pendientes = Number(nuevoValor);
+        localStorage.setItem('user', JSON.stringify(this.usuario));
+        console.log("Store: Contador de solicitudes pendientes sincronizado a:", nuevoValor);
+      }
     }
   }
 });

@@ -1,19 +1,19 @@
 <template>
   <section class="hero is-fullheight home-page">
-    <div class="hero-body">
+    <div class="hero-body is-flex is-justify-content-center is-align-items-center py-4-mobile">
       <div class="container has-text-centered">
-        <div class="logo-container mb-6">
+        <div class="logo-container mb-4-mobile mb-6-tablet">
           <img src="../assets/iconoOscuro.png" alt="GEPRES Logo" class="main-logo">
         </div>
 
-        <p class="subtitle is-4 has-text-info has-text-weight-light mb-6">
+        <p class="subtitle is-5-mobile is-4-tablet has-text-info has-text-weight-light mb-4-mobile mb-6-tablet px-2 has-text-centered">
           Gestión de Proyectos Estudiantiles
         </p>
 
-        <div class="columns is-centered">
-          <div class="column is-6">
-            <div class="box glass-box p-5">
-              <p class="has-text-white is-size-5">
+        <div class="columns is-centered is-mobile-padding">
+          <div class="column is-10-mobile is-8-tablet is-6-desktop">
+            <div class="box glass-box p-4-mobile p-5-tablet has-text-centered">
+              <p class="has-text-white is-size-6-mobile is-size-5-tablet has-text-centered">
                 Una plataforma integral diseñada para la planificación, el seguimiento 
                 y la organización de proyectos académicos. Facilita la colaboración 
                 entre equipos y el control de hitos, transformando ideas en resultados 
@@ -23,10 +23,10 @@
           </div>
         </div>
 
-        <div class="mt-6">
+        <div class="mt-4-mobile mt-6-tablet has-text-centered">
           <router-link 
             :to="rutaDestino" 
-            class="button is-info is-large is-rounded has-text-weight-bold shadow-lg"
+            class="button is-info is-medium-mobile is-large-tablet is-rounded has-text-weight-bold shadow-lg responsive-button"
           >
             {{ textoBoton }}
           </router-link>
@@ -35,7 +35,7 @@
     </div>
 
     <footer class="footer-home">
-      <div class="has-text-centered has-text-grey-light is-size-7">
+      <div class="has-text-centered has-text-grey-light is-size-7 px-2">
         &copy; {{ anioActual }} | Creado por Guillermo Codina.
       </div>
     </footer>
@@ -86,23 +86,71 @@ const rutaDestino = computed(() => {
               url('../assets/fondo.jpg');
   background-size: cover;
   background-position: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Tamaño del logo duplicado nuevamente (320px) para protagonismo central */
+/* El cuerpo toma todo el espacio disponible entre el tope y el footer para centrar el contenido */
+.hero-body {
+  flex-grow: 1;
+  display: flex !important;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+/* Contenedor del logo con centrado explícito */
+.logo-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Tamaño del logo estándar para escritorio y tablets */
 .main-logo {
   width: 320px;
   height: 320px;
   object-fit: contain;
   filter: drop-shadow(0 0 20px rgba(52, 152, 219, 0.4));
+  transition: width 0.3s ease, height 0.3s ease;
+  margin: 0 auto;
+  display: block;
 }
 
-/* Efecto de cristal para la descripción */
+/* Corrección de centrado para el contenedor de la columna en grillas nativas de Bulma */
+.columns {
+  width: 100%;
+  display: flex !important;
+  justify-content: center !important;
+  margin: 0 auto !important;
+}
+
+.column {
+  margin: 0 auto !important;
+  display: flex;
+  justify-content: center;
+}
+
+/* Efecto de cristal para la descripción con centrado forzado */
 .glass-box {
   background: rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 15px;
+  margin: 0 auto !important;
+  width: 100%;
+  text-align: center !important;
+}
+
+/* Garantizar que el texto interno de la caja de cristal herede el centrado */
+.glass-box p {
+  text-align: center !important;
+  width: 100%;
 }
 
 /* Sombra y respuesta visual del botón */
@@ -117,7 +165,77 @@ const rutaDestino = computed(() => {
 }
 
 .footer-home {
-  padding: 2rem 1rem;
+  padding: 1.5rem 1rem;
   background: transparent;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* 
+  Optimizaciones para Viewports Móviles Estándar (360x800 y 412x915)
+*/
+@media (max-width: 768px) {
+  .main-logo {
+    width: 200px;
+    height: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Alineación forzada para evitar que Bulma empuje el bloque de texto en móvil */
+  .columns {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+  }
+
+  .column {
+    margin: 0 auto !important;
+    float: none !important;
+  }
+
+  /* Ajuste para 360px y 412px de ancho lógico */
+  .main-logo {
+    width: 150px;
+    height: 150px;
+  }
+  
+  /* Reducción de márgenes verticales para pantallas de 800px/915px de alto */
+  .mb-4-mobile {
+    margin-bottom: 1rem !important;
+  }
+  
+  .mt-4-mobile {
+    margin-top: 1rem !important;
+  }
+
+  .py-4-mobile {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  /* Ajuste de espaciado interno en la tarjeta de cristal */
+  .p-4-mobile {
+    padding: 1rem !important;
+  }
+
+  /* Control del ancho del botón para mantener centrado absoluto */
+  .responsive-button {
+    width: 85%;
+    max-width: 280px;
+    white-space: normal;
+    height: auto;
+    padding-top: 0.75em;
+    padding-bottom: 0.75em;
+    margin: 0 auto;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+
+  .footer-home {
+    padding: 1rem 0.5rem;
+  }
 }
 </style>

@@ -17,6 +17,17 @@ export const authService = {
         
         const response = await api.post('/auth/login', { email, password });
         return response.data;
+    },
+
+    /**
+     * @función solicitarCuenta
+     * @propósito Enviar una petición HTTP POST al backend para registrar la solicitud de alta de una nueva cuenta de alumno o docente en estado inactivo.
+     * @alimenta a (quién la llama): Es invocada directamente por la función `enviarSolicitud` dentro de la vista `SolicitudCuentaView.vue`.
+     * @qué datos retorna: Promesa que resuelve al objeto JSON devuelto por el servidor en `response.data` (incluyendo mensaje de confirmación o error de negocio como email duplicado).
+     */
+    async solicitarCuenta(payload) {
+        const response = await api.post('/auth/solicitar-cuenta', payload);
+        return response.data;
     }
     // El logout lo manejamos directo en el Store
 };

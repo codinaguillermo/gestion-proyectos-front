@@ -1,4 +1,10 @@
 <script setup>
+/**
+ * usuarioModal.vue
+ * Propósito: Componente modal de interfaz gráfica para la creación de nuevos usuarios y la edición de perfiles existentes, permitiendo gestionar roles, vinculación con escuelas, datos de alumnos (curso, división, especialidad) y auditoría de proyectos asignados.
+ * Quién la alimenta (quién la llama): Vistas del sistema como usuariosView.vue (gestión general de usuarios por parte de directivos/administradores) o vistas de perfil propio al editar los datos del usuario logueado.
+ * Qué datos retorna (o emite): Emite el evento 'close' al cerrar la ventana modal y 'usuario-guardado' tras crear o actualizar con éxito un registro en el backend mediante usuarioService, refrescando la tabla principal.
+ */
 import { ref, reactive, watch, computed, onUnmounted } from 'vue';
 import usuarioService from '../../services/usuario.services';
 import { useAuthStore } from '../../stores/auth';
@@ -52,18 +58,12 @@ const tituloModal = computed(() => {
   return esModoEdicion.value ? 'Editar Usuario' : 'Nuevo Usuario';
 });
 
-// Función para cargar los proyectos
 const verProyectos = async () => {
-  console.log("BOTÓN PRESIONADO"); // Si esto no sale en Console, el @click no anda
   mostrarProyectosModal.value = true;
   cargandoProy.value = true;
-  
   try {
-    // Usamos el servicio en lugar de axios directo para evitar errores de importación
     const res = await usuarioService.getProyectosAsignados(form.id); 
     proyectosAlumno.value = res.data;
-    
-    console.log("DATOS RECIBIDOS:", res.data);
   } catch (err) {
     console.error("ERROR EN PETICIÓN:", err);
   } finally {
@@ -97,15 +97,14 @@ onUnmounted(() => {
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
 });
 
-watch(() => props.isActive, (val) => {
-  if (val) {
+watch(() => [props.isActive, props.usuarioEdit], ([activo, u]) => {
+  if (activo) {
     errorMsg.value = '';
     selectedFile.value = null;
     mostrarProyectosModal.value = false;
     if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
     previewUrl.value = null;
 
-    const u = props.usuarioEdit;
     if (u && (u.id || u.uid)) {
       if (u.telefono && u.telefono.startsWith('+')) {
         codPais.value = u.telefono.substring(0, 3);
@@ -127,14 +126,14 @@ watch(() => props.isActive, (val) => {
         activo: u.activo ?? true,
         avatar: u.avatar || null,
         password: '', 
-        escuelas_ids: u.escuelas?.map(e => e.id) || [],
-        especialidad_id: u.especialidad_id || 1,
+        escuelas_ids: u.escuelas?.map(e => Number(e.id)) || [],
+        especialidad_id: Number(u.especialidad_id || 1),
       });
     } else {
       resetForm();
     }
   }
-}, { immediate: true });
+}, { immediate: true, deep: true });
 
 const resetForm = () => {
   codPais.value = '+54';
@@ -188,16 +187,8 @@ const guardar = async () => {
     <div class="modal-background" @click="$emit('close')"></div>
     <div class="modal-card">
       <header class="modal-card-head">
-        <p class="modal-card-title">{{ tituloModal }}</p>
-        
-        <button 
-          v-if="esModoEdicion" 
-          class="button is-small is-info is-light" 
-          @click="verProyectos"
-        >
-          Ver Proyectos Asignados
-        </button>
-
+        <!-- Encabezado limpio: Solo el título a la izquierda y la cruz de cierre a la derecha -->
+        <p class="modal-card-title text-truncate-mobile">{{ tituloModal }}</p>
         <button class="delete" @click="$emit('close')"></button>
       </header>
       
@@ -253,7 +244,7 @@ const guardar = async () => {
             <label class="label">Escuela/s</label>
             <div class="select is-multiple is-fullwidth">
                 <select v-model="form.escuelas_ids" multiple :size="3" :disabled="!puedeEditarEstructura">
-                    <option v-for="e in escuelas" :key="e.id" :value="e.id">{{ e.nombre_corto }} | {{ e.nombre_largo }}</option>
+                    <option v-for="e in escuelas" :key="e.id" :value="Number(e.id)">{{ e.nombre_corto }} | {{ e.nombre_largo }}</option>
                 </select>
             </div>
           </div>
@@ -293,7 +284,7 @@ const guardar = async () => {
               <label class="label">Especialidad (Solo Escuelas Técnicas)</label>
               <div class="select is-fullwidth">
                 <select v-model="form.especialidad_id" :disabled="!puedeEditarDatosPropios">
-                  <option v-for="esp in especialidades" :key="esp.id" :value="esp.id">{{ esp.nombre }}</option>
+                  <option v-for="esp in especialidades" :key="esp.id" :value="Number(esp.id)">{{ esp.nombre }}</option>
                 </select>
               </div>
             </div>
@@ -306,7 +297,18 @@ const guardar = async () => {
         </div>
       </section>
       
+      <!-- Footer con el botón "Ver Proyectos" alineado a la izquierda mediante mr-auto -->
       <footer class="modal-card-foot is-justify-content-flex-end">
+        <button 
+          v-if="esModoEdicion" 
+          class="button is-info is-light mr-auto btn-proyectos-mobile" 
+          @click="verProyectos"
+          title="Ver Proyectos Asignados"
+        >
+          <span class="icon"><i class="fas fa-folder-open"></i></span>
+          <span>Ver Proyectos</span>
+        </button>
+
         <button class="button" @click="$emit('close')">Cancelar</button>
         <button class="button is-success" :class="{'is-loading': enviando}" @click="guardar">
           {{ esPropioPerfil ? 'Actualizar Mi Perfil' : (esModoEdicion ? 'Guardar Cambios' : 'Crear Usuario') }}
@@ -317,9 +319,9 @@ const guardar = async () => {
 
   <div class="modal" :class="{'is-active': mostrarProyectosModal}">
     <div class="modal-background" @click="mostrarProyectosModal = false"></div>
-    <div class="modal-content">
+    <div class="modal-content modal-content-mobile">
       <div class="box has-background-dark has-text-white">
-        <h3 class="title is-5 has-text-white">Proyectos de {{ form.nombre }}</h3>
+        <h3 class="title is-5 has-text-white text-truncate-mobile">Proyectos de {{ form.nombre }}</h3>
         <hr class="has-background-grey">
         
         <div v-if="cargandoProy" class="has-text-centered p-4">
@@ -335,10 +337,10 @@ const guardar = async () => {
           </thead>
           <tbody>
             <tr v-for="p in proyectosAlumno" :key="p.id">
-              <td class="has-text-weight-semibold has-text-white">
+              <td class="has-text-weight-semibold has-text-white text-truncate-mobile" style="max-width: 150px;">
                 {{ p.nombre }}
               </td>
-              <td class="has-text-info has-text-weight-bold">
+              <td class="has-text-info has-text-weight-bold text-truncate-mobile" style="max-width: 120px;">
                 {{ p.escuela }}
               </td>
             </tr>
@@ -356,11 +358,69 @@ const guardar = async () => {
 </template>
 
 <style scoped>
-/* Tus estilos anteriores */
 .has-background-transparent { background-color: transparent !important; }
 .avatar-container { position: relative; width: 128px; height: 128px; border-radius: 50%; transition: opacity 0.3s; }
 .avatar-container:hover { opacity: 0.8; }
 .avatar-placeholder { width: 128px; height: 128px; background-color: #f5f5f5; border: 2px dashed #dbdbdb; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
 .is-rounded { border-radius: 50% !important; }
 .overlay-camera { position: absolute; bottom: 0; width: 100%; background: rgba(0, 0, 0, 0.4); color: white; padding: 4px 0; font-size: 0.8rem; }
+
+/* Control de desbordamiento de texto */
+.text-truncate-mobile {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Blindaje anti-desbordamiento y ergonomía táctil para móviles */
+@media (max-width: 768px) {
+  .text-truncate-mobile {
+    max-width: 180px;
+  }
+  
+  .modal-card,
+  .modal-content-mobile {
+    margin: 0 12px !important;
+    width: calc(100vw - 24px) !important;
+    max-width: 500px !important;
+  }
+
+  .modal-card-head,
+  .modal-card-body,
+  .modal-card-foot {
+    padding: 12px 16px !important;
+  }
+
+  .modal-card-title {
+    font-size: 1rem !important;
+  }
+
+  /* Apilamiento de botones y prioridad con el pulgar (botón de acción primario arriba) */
+  .modal-card-foot {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    justify-content: stretch !important;
+  }
+  
+  .modal-card-foot .button {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  /* El botón verde principal de guardar va arriba del todo para el dedo del usuario */
+  .modal-card-foot .button.is-success {
+    order: 1;
+  }
+  
+  /* El botón "Ver Proyectos" va al final en móvil para no interferir con la edición rápida */
+  .modal-card-foot .btn-proyectos-mobile {
+    order: 3;
+    margin-right: 0 !important;
+  }
+  
+  .modal-card-foot .button:not(.is-success):not(.btn-proyectos-mobile) {
+    order: 2;
+  }
+}
 </style>
