@@ -4,20 +4,14 @@
     <div class="modal-card is-large glass-modal-v3">
       <header class="modal-card-head has-background-dark py-4">
         <p class="modal-card-title has-text-white is-size-5 header-title">
-          <i class="fas fa-file-invoice mr-2"></i> INFORME PEDAGÓGICO DIGITAL
+          <i class="fas fa-file-invoice mr-2"></i> Informe pedagógico
         </p>
-        <div class="buttons">
-          <button class="button is-danger is-inverted is-small btn-export" @click="exportarPDF" :disabled="historialFiltrado.length === 0">
-            <span class="icon is-small"><i class="fas fa-file-pdf"></i></span>
-            <span>PDF</span>
-          </button>
-          <button class="delete" @click="$emit('close')"></button>
-        </div>
+        <button class="delete" @click="$emit('close')"></button>
       </header>
       
-      <section class="modal-card-body has-background-light p-5" id="informe-pedagogico">
+      <section class="modal-card-body has-background-light p-4 p-md-5">
         
-        <div class="box mb-5 main-header-box border-info-v2 p-5">
+        <div class="box mb-5 main-header-box border-info-v2 p-4 p-md-5">
           <div class="columns is-vcentered">
             <div class="column is-8">
               <h2 class="title is-4 has-text-link mb-2 institution-name">{{ contexto.escuela || 'Cargando institución...' }}</h2>
@@ -27,8 +21,8 @@
                 CURSO: {{ alumno.curso }} {{ alumno.division }} - ESPECIALIDAD: {{ nombreEspecialidad }}
               </p>
             </div>
-            <div class="column is-4 has-text-right">
-              <div class="tags has-addons is-justify-content-flex-end score-badge">
+            <div class="column is-4 has-text-right-tablet has-text-left mt-3 mt-tablet-0">
+              <div class="tags has-addons is-justify-content-flex-start is-justify-content-flex-end-tablet score-badge">
                 <span class="tag is-dark is-large">PROMEDIO</span>
                 <span class="tag is-large has-text-weight-bold score-value" :class="obtenerColorNota(promedioCalculado)">
                   {{ promedioCalculado }} / 10
@@ -39,41 +33,78 @@
           </div>
         </div>
 
-        <div v-if="historial.length > 0" class="box p-4 mb-5 border-materia-filter data-filter-box">
-          <div class="field is-grouped is-align-items-center">
-            <div class="control">
-              <label class="label mb-0"><i class="fas fa-filter mr-1 has-text-grey"></i> Filtrar por Asignatura:</label>
-            </div>
-            <div class="control is-expanded">
-              <div class="select is-info is-fullwidth">
-                <select v-model="materiaSeleccionadaId">
-                  <option :value="null">Ver todas las materias...</option>
-                  <option v-for="mat in materiasDisponibles" :key="mat.id" :value="mat.id">
-                    {{ mat.nombre }}
-                  </option>
-                </select>
+        <!-- FILTROS DE ASIGNATURA Y AÑO LECTIVO + BOTÓN EXPORTAR A PDF -->
+        <div v-if="historial.length > 0" class="box p-3 p-md-4 mb-5 border-materia-filter data-filter-box">
+          <div class="columns is-multiline is-vcentered">
+            
+            <div class="column is-12-mobile is-5-tablet">
+              <div class="field mb-0">
+                <label class="label is-small mb-1"><i class="fas fa-filter mr-1 has-text-grey"></i> Asignatura:</label>
+                <div class="control is-expanded">
+                  <div class="select is-info is-fullwidth">
+                    <select v-model="materiaSeleccionadaId">
+                      <option :value="null">Ver todas las materias...</option>
+                      <option v-for="mat in materiasDisponibles" :key="mat.id" :value="mat.id">
+                        {{ mat.nombre }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
+
+            <div class="column is-12-mobile is-4-tablet">
+              <div class="field mb-0">
+                <label class="label is-small mb-1"><i class="fas fa-calendar-alt mr-1 has-text-grey"></i> Año Lectivo:</label>
+                <div class="control is-expanded">
+                  <div class="select is-info is-fullwidth" :class="{ 'is-loading': cargandoAniosGlobales }">
+                    <select v-model="anioSeleccionado">
+                      <option :value="null">Todos los años...</option>
+                      <option v-for="anio in opcionesAniosFiltro" :key="anio" :value="anio">
+                        {{ anio }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="column is-12-mobile is-3-tablet has-text-right-tablet">
+              <div class="field mb-0 mt-4 mt-tablet-0">
+                <label class="label is-small mb-1 is-invisible-mobile">&nbsp;</label>
+                <div class="control">
+                  <button class="button is-danger is-fullwidth btn-export" @click="exportarPDF" :disabled="historialFiltrado.length === 0">
+                    <span class="icon"><i class="fas fa-file-pdf"></i></span>
+                    <span>Exportar a PDF</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
 
         <div v-if="historialFiltrado.length > 0" class="table-section-vertical">
           <h3 class="subtitle is-6 uppercase-label mb-3"><i class="fas fa-list-ul mr-2"></i>Historial Detallado de Evaluaciones</h3>
-          <div class="table-container history-scroll-container">
+          
+          <!-- VISTA PANTALLA: TABLA EN PC / TABLET -->
+          <div class="table-container history-scroll-container is-hidden-mobile">
             <table class="table is-fullwidth is-striped is-hoverable is-bordered detailed-table">
               <thead>
                 <tr class="table-header-row">
                   <th class="th-fecha" style="width: 120px;">FECHA</th>
+                  <th class="th-anio" style="width: 90px;">AÑO</th>
                   <th class="th-mat">MATERIA / ASIGNATURA</th>
-                  <th class="th-cal has-text-centered" style="width: 200px;">CALIFICACIÓN NUMÉRICA</th>
-                  <th class="th-obs">OBSERVACIÓN / ANOTACIONES PEDAGÓGICAS</th>
-                  <th class="th-doc" style="width: 200px;">DOCENTE</th>
-                  <th v-if="esDocente" class="has-text-centered" style="width: 100px;">ACCIONES</th>
+                  <th class="th-cal has-text-centered" style="width: 160px;">CALIFICACIÓN</th>
+                  <th class="th-obs">OBSERVACIÓN</th>
+                  <th class="th-doc" style="width: 130px;">DOCENTE</th>
+                  <th v-if="esDocente" class="has-text-centered" style="width: 90px;">ACCIONES</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="seg in historialFiltrado" :key="seg.id" class="table-data-row">
                   <td class="is-size-6 has-text-weight-semibold data-fecha">{{ formatearFecha(seg.fecha_evaluacion || seg.created_at) }}</td>
+                  <td class="is-size-6 has-text-weight-bold data-anio has-text-centered">{{ seg.anio_lectivo || '2026' }}</td>
                   <td class="is-size-6 has-text-weight-bold data-materia has-text-link">{{ seg.materia?.nombre || 'LENGUAJE DE PROGRAMACION III' }}</td>
                   <td class="has-text-centered">
                     <span class="tag is-medium has-text-weight-bold" :class="obtenerColorNota(seg.desempeno)">
@@ -85,10 +116,10 @@
                   <td v-if="esDocente" class="has-text-centered">
                     <div class="buttons is-centered mb-0">
                       <button class="button is-small is-ghost has-text-info p-1" @click="prepararEdicion(seg)" title="Editar nota">
-                        <i class="fas fa-edit"></i>
+                        <i class="fas fa-edit fa-lg"></i>
                       </button>
                       <button class="button is-small is-ghost has-text-danger p-1" @click="prepararEliminacion(seg)" title="Eliminar nota">
-                        <i class="fas fa-trash-alt"></i>
+                        <i class="fas fa-trash-alt fa-lg"></i>
                       </button>
                     </div>
                   </td>
@@ -96,6 +127,38 @@
               </tbody>
             </table>
           </div>
+
+          <!-- VISTA PANTALLA: TARJETAS EN CELULARES -->
+          <div class="is-hidden-tablet mobile-cards-container">
+            <div v-for="seg in historialFiltrado" :key="'mob-'+seg.id" class="box mb-3 p-3 mobile-evaluation-card">
+              <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+                <span class="is-size-7 has-text-grey has-text-weight-semibold">
+                  <i class="far fa-calendar-alt mr-1"></i> {{ formatearFecha(seg.fecha_evaluacion || seg.created_at) }}
+                </span>
+                <span class="tag is-medium has-text-weight-bold" :class="obtenerColorNota(seg.desempeno)">
+                  {{ formatearNota(seg.desempeno) }} / 10
+                </span>
+              </div>
+              
+              <div class="mb-2">
+                <p class="is-size-6 has-text-weight-bold has-text-link">
+                  {{ seg.materia?.nombre || 'LENGUAJE DE PROGRAMACION III' }}
+                </p>
+              </div>
+
+              <div v-if="esDocente" class="is-flex is-justify-content-flex-end pt-2 border-top-light">
+                <button class="button is-small is-info is-light mr-2" @click="prepararEdicion(seg)">
+                  <span class="icon is-small"><i class="fas fa-edit"></i></span>
+                  <span>Editar</span>
+                </button>
+                <button class="button is-small is-danger is-light" @click="prepararEliminacion(seg)">
+                  <span class="icon is-small"><i class="fas fa-trash-alt"></i></span>
+                  <span>Eliminar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <div v-if="cargando" class="has-text-centered p-6 loading-state">
@@ -111,51 +174,120 @@
       </section>
     </div>
 
+    <!-- SECCIÓN OCULTA EXCLUSIVA PARA EL PDF -->
+    <div id="pdf-template" style="display: none; padding: 20px; font-family: 'Montserrat', sans-serif; background: #ffffff; color: #333;">
+      <div style="border-bottom: 4px solid #209cee; padding-bottom: 15px; margin-bottom: 20px;">
+        <h2 style="font-size: 20px; color: #209cee; margin: 0 0 5px 0; font-weight: 700;">{{ contexto.escuela || 'Institución Educativa' }}</h2>
+        <p style="margin: 3px 0; font-size: 14px;"><strong>Proyecto:</strong> {{ contexto.proyecto }}</p>
+        <p style="margin: 3px 0; font-size: 14px;"><strong>Alumno:</strong> {{ alumno.apellido?.toUpperCase() }}, {{ alumno.nombre }}</p>
+        <p style="margin: 3px 0; font-size: 12px; color: #666; text-transform: uppercase;">CURSO: {{ alumno.curso }} {{ alumno.division }} - ESPECIALIDAD: {{ nombreEspecialidad }}</p>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px;">
+        <span style="font-size: 14px; font-weight: bold;">PROMEDIO GENERAL:</span>
+        <span style="font-size: 18px; font-weight: bold; color: #209cee;">{{ promedioCalculado }} / 10</span>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px;">
+        <thead>
+          <tr style="background-color: #363636; color: #ffffff;">
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: left; width: 20%;">FECHA</th>
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: center; width: 15%;">AÑO</th>
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: left; width: 45%;">MATERIA / ASIGNATURA</th>
+            <th style="padding: 10px; border: 1px solid #ddd; text-align: center; width: 20%;">CALIFICACIÓN</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="seg in historialFiltrado" :key="'pdf-'+seg.id">
+            <td style="padding: 8px 10px; border: 1px solid #ddd;">{{ formatearFecha(seg.fecha_evaluacion || seg.created_at) }}</td>
+            <td style="padding: 8px 10px; border: 1px solid #ddd; text-align: center;">{{ seg.anio_lectivo || '2026' }}</td>
+            <td style="padding: 8px 10px; border: 1px solid #ddd; font-weight: bold;">{{ seg.materia?.nombre || 'LENGUAJE DE PROGRAMACION III' }}</td>
+            <td style="padding: 8px 10px; border: 1px solid #ddd; text-align: center; font-weight: bold;">{{ formatearNota(seg.desempeno) }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top: 30px; text-align: right; font-size: 11px; color: #777;">
+        Fecha de emisión: {{ fechaHoy }} - GEPRES Digital
+      </div>
+    </div>
+
+    <!-- MODAL DE EDICIÓN ADAPTADO A CELULARES -->
     <div class="modal" :class="{'is-active': mostrarModalEdicion}">
       <div class="modal-background" @click="mostrarModalEdicion = false"></div>
-      <div class="modal-card">
-        <header class="modal-card-head has-background-info">
-          <p class="modal-card-title has-text-white"><i class="fas fa-edit mr-2"></i> Editar Calificación</p>
+      <div class="modal-card modal-card-responsive">
+        <header class="modal-card-head has-background-info py-3">
+          <p class="modal-card-title has-text-white is-size-6"><i class="fas fa-edit mr-2"></i> Editar Calificación</p>
+          <button class="delete" @click="mostrarModalEdicion = false"></button>
         </header>
-        <section class="modal-card-body">
-          <div class="field">
-            <label class="label">Fecha Evaluada</label>
-            <div class="control">
-              <input class="input" type="date" v-model="formEdicion.fecha_evaluacion" required>
+        <section class="modal-card-body p-4">
+          <div class="columns is-multiline">
+            
+            <div class="column is-12-mobile is-6-tablet">
+              <div class="field mb-3">
+                <label class="label is-small">Fecha Evaluada</label>
+                <div class="control">
+                  <input class="input is-info" type="date" v-model="formEdicion.fecha_evaluacion" required>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="field">
-            <label class="label">Calificación Numérica (1 a 10)</label>
-            <div class="control">
-              <input class="input has-text-weight-bold has-text-info" type="number" step="0.01" min="1" max="10" v-model.number="formEdicion.desempeno" required>
+
+            <div class="column is-12-mobile is-6-tablet">
+              <div class="field mb-3">
+                <label class="label is-small">Año Lectivo</label>
+                <div class="control">
+                  <div class="select is-fullwidth is-info">
+                    <select v-model="formEdicion.anio_lectivo">
+                      <option v-for="anio in opcionesAnios" :key="anio" :value="anio">
+                        {{ anio }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="field">
-            <label class="label">Observación</label>
-            <div class="control">
-              <textarea class="textarea" v-model="formEdicion.observacion"></textarea>
+
+            <div class="column is-12">
+              <div class="field mb-3">
+                <label class="label is-small">Calificación Numérica (1 a 10)</label>
+                <div class="control">
+                  <input class="input has-text-weight-bold has-text-info" type="number" step="0.01" min="1" max="10" v-model.number="formEdicion.desempeno" required>
+                </div>
+              </div>
             </div>
+
+            <div class="column is-12">
+              <div class="field mb-0">
+                <label class="label is-small">Observación</label>
+                <div class="control">
+                  <textarea class="textarea" rows="3" v-model="formEdicion.observacion"></textarea>
+                </div>
+              </div>
+            </div>
+
           </div>
         </section>
-        <footer class="modal-card-foot is-justify-content-flex-end">
-          <button class="button" @click="mostrarModalEdicion = false">Cancelar</button>
-          <button class="button is-info" :class="{'is-loading': procesandoOperacion}" :disabled="!formEdicion.fecha_evaluacion || !formEdicion.desempeno || formEdicion.desempeno < 1 || formEdicion.desempeno > 10" @click="guardarEdicion">Guardar Cambios</button>
+        <footer class="modal-card-foot is-justify-content-flex-end py-3">
+          <button class="button is-small" @click="mostrarModalEdicion = false">Cancelar</button>
+          <button class="button is-small is-info" :class="{'is-loading': procesandoOperacion}" :disabled="!formEdicion.fecha_evaluacion || !formEdicion.anio_lectivo || !formEdicion.desempeno || formEdicion.desempeno < 1 || formEdicion.desempeno > 10" @click="guardarEdicion">Guardar Cambios</button>
         </footer>
       </div>
     </div>
 
+    <!-- MODAL DE ELIMINACIÓN -->
     <div class="modal" :class="{'is-active': mostrarModalEliminar}">
       <div class="modal-background" @click="mostrarModalEliminar = false"></div>
-      <div class="modal-card">
-        <header class="modal-card-head has-background-danger">
-          <p class="modal-card-title has-text-white"><i class="fas fa-exclamation-triangle mr-2"></i> Confirmar Eliminación</p>
+      <div class="modal-card modal-card-responsive">
+        <header class="modal-card-head has-background-danger py-3">
+          <p class="modal-card-title has-text-white is-size-6"><i class="fas fa-exclamation-triangle mr-2"></i> Confirmar Eliminación</p>
+          <button class="delete" @click="mostrarModalEliminar = false"></button>
         </header>
-        <section class="modal-card-body">
+        <section class="modal-card-body p-4">
           ¿Estás seguro que deseás eliminar la calificación de <strong>{{ segSeleccionado?.desempeno }}</strong> en la materia <strong>{{ segSeleccionado?.materia?.nombre }}</strong>? Esta acción no se puede deshacer.
         </section>
-        <footer class="modal-card-foot is-justify-content-flex-end">
-          <button class="button" @click="mostrarModalEliminar = false">Cancelar</button>
-          <button class="button is-danger" :class="{'is-loading': procesandoOperacion}" @click="confirmarEliminacion">Sí, Eliminar</button>
+        <footer class="modal-card-foot is-justify-content-flex-end py-3">
+          <button class="button is-small" @click="mostrarModalEliminar = false">Cancelar</button>
+          <button class="button is-small is-danger" :class="{'is-loading': procesandoOperacion}" @click="confirmarEliminacion">Sí, Eliminar</button>
         </footer>
       </div>
     </div>
@@ -166,6 +298,7 @@
 import html2pdf from 'html2pdf.js';
 import seguimientoService from '../../services/seguimiento.service';
 import { useAuthStore } from '../../stores/auth';
+import axios from 'axios';
 
 /**
  * @componente DetalleSeguimientoModal.vue
@@ -178,14 +311,17 @@ export default {
     return {
       historial: [],
       cargando: true,
+      cargandoAniosGlobales: false,
       contexto: { escuela: '', proyecto: '' },
       materiaSeleccionadaId: null,
+      anioSeleccionado: null,
       fechaHoy: new Date().toLocaleDateString('es-AR'),
       mostrarModalEdicion: false,
       mostrarModalEliminar: false,
       procesandoOperacion: false,
       segSeleccionado: null,
-      formEdicion: { id: null, fecha_evaluacion: '', desempeno: null, observacion: '' }
+      opcionesAnios: [],
+      formEdicion: { id: null, fecha_evaluacion: '', anio_lectivo: '2026', desempeno: null, observacion: '' }
     }
   },
   computed: {
@@ -203,9 +339,20 @@ export default {
       });
       return Object.values(mapeo).sort((a, b) => a.nombre.localeCompare(b.nombre));
     },
+    opcionesAniosFiltro() {
+      const aniosSet = new Set();
+      this.historial.forEach(seg => {
+        if (seg.anio_lectivo) aniosSet.add(String(seg.anio_lectivo));
+      });
+      aniosSet.add(String(new Date().getFullYear()));
+      return Array.from(aniosSet).sort((a, b) => b.localeCompare(a));
+    },
     historialFiltrado() {
-      if (!this.materiaSeleccionadaId) return this.historial;
-      return this.historial.filter(seg => seg.materia_id === Number(this.materiaSeleccionadaId));
+      return this.historial.filter(seg => {
+        const cumpleMateria = this.materiaSeleccionadaId === null || seg.materia_id === Number(this.materiaSeleccionadaId);
+        const cumpleAnio = this.anioSeleccionado === null || String(seg.anio_lectivo) === String(this.anioSeleccionado);
+        return cumpleMateria && cumpleAnio;
+      });
     },
     nombreEspecialidad() {
       if (this.historial.length > 0 && this.historial[0].alumno?.especialidad_detalle) {
@@ -223,13 +370,10 @@ export default {
     async cargarHistorial() {
         this.cargando = true;
         try {
-            // CAMBIO: Enviamos 'todos' para que el backend nos devuelva todo el historial del alumno
             const res = await seguimientoService.getHistorial('todos', this.alumno.id);
             
             if (res.data.success && res.data.data.length > 0) {
                 this.historial = res.data.data;
-                
-                // Mantenemos la lógica de contexto, pero tomamos los datos del primer registro encontrado
                 const registro = this.historial[0];
                 if (registro.proyecto) {
                     this.contexto.proyecto = registro.proyecto.nombre || 'Proyecto sin nombre';
@@ -245,11 +389,36 @@ export default {
             this.cargando = false;
         }
     },
+    async cargarAnioLectivoGlobal() {
+      this.cargandoAniosGlobales = true;
+      try {
+        const response = await axios.get('/api/configuraciones/anio-lectivo');
+        if (response.data && response.data.success && response.data.data) {
+          this.anioSeleccionado = String(response.data.data.valor);
+        } else {
+          this.anioSeleccionado = String(new Date().getFullYear());
+        }
+      } catch (err) {
+        console.error("Error al obtener el año lectivo global para el filtro:", err);
+        this.anioSeleccionado = String(new Date().getFullYear());
+      } finally {
+        this.cargandoAniosGlobales = false;
+      }
+    },
+    generarOpcionesAnios() {
+      const anioActual = new Date().getFullYear();
+      const anios = [];
+      for (let i = anioActual - 3; i <= anioActual + 2; i++) {
+        anios.push(String(i));
+      }
+      this.opcionesAnios = anios;
+    },
     prepararEdicion(seg) {
       this.segSeleccionado = seg;
       this.formEdicion = {
         id: seg.id,
         fecha_evaluacion: seg.fecha_evaluacion ? seg.fecha_evaluacion : (seg.created_at ? seg.created_at.split('T')[0] : ''),
+        anio_lectivo: seg.anio_lectivo ? String(seg.anio_lectivo) : String(new Date().getFullYear()),
         desempeno: seg.desempeno,
         observacion: seg.observacion || ''
       };
@@ -258,7 +427,12 @@ export default {
     async guardarEdicion() {
       this.procesandoOperacion = true;
       try {
-        await seguimientoService.actualizar(this.formEdicion.id, this.formEdicion);
+        await seguimientoService.actualizar(this.formEdicion.id, {
+          fecha_evaluacion: this.formEdicion.fecha_evaluacion,
+          anio_lectivo: Number(this.formEdicion.anio_lectivo),
+          desempeno: this.formEdicion.desempeno,
+          observacion: this.formEdicion.observacion
+        });
         this.mostrarModalEdicion = false;
         await this.cargarHistorial();
       } catch (err) {
@@ -284,15 +458,20 @@ export default {
       }
     },
     exportarPDF() {
-      const element = document.getElementById('informe-pedagogico');
+      const element = document.getElementById('pdf-template');
+      element.style.display = 'block';
+
       const opt = {
-        margin: [0.3, 0.3],
-        filename: `Informe_${this.alumno.apellido}_${this.materiaSeleccionadaId ? 'Filtrado' : 'General'}.pdf`,
+        margin: [0.4, 0.4],
+        filename: `Informe_${this.alumno.apellido}_General.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
       };
-      html2pdf().from(element).set(opt).save();
+
+      html2pdf().from(element).set(opt).save().then(() => {
+        element.style.display = 'none';
+      });
     },
     formatearFecha(f) { 
       if (!f) return '-';
@@ -314,6 +493,8 @@ export default {
   },
   mounted() { 
     this.cargarHistorial(); 
+    this.generarOpcionesAnios();
+    this.cargarAnioLectivoGlobal();
   }
 }
 </script>
@@ -330,10 +511,13 @@ export default {
 .border-materia-filter { border-left: 6px solid #209cee; background-color: #f5f5f5; }
 
 .history-scroll-container {
+  width: 100%;
   max-height: 350px; 
+  overflow-x: auto;
   overflow-y: auto;
   border: 1px solid rgba(0,0,0,0.1);
   border-radius: 6px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table-header-row th {
@@ -343,22 +527,54 @@ export default {
   position: sticky; 
   top: 0;
   z-index: 10;
+  white-space: nowrap;
 }
-.detailed-table td { font-size: 1rem !important; vertical-align: middle; }
+.detailed-table td { font-size: 0.95rem !important; vertical-align: middle; white-space: nowrap; }
 
-.history-scroll-container::-webkit-scrollbar { width: 8px; }
-.history-scroll-container::-webkit-scrollbar-track { background: #f1f1f1; }
-.history-scroll-container::-webkit-scrollbar-thumb { background: #209cee; border-radius: 10px; }
+.mobile-evaluation-card {
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-left: 4px solid #209cee;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
 
+.border-top-light {
+  border-top: 1px solid #f5f5f5;
+}
 
 .glass-modal-v3 { 
   border-radius: 12px; 
   overflow: hidden; 
   border: 1px solid rgba(0,0,0,0.1); 
-  width: 90vw !important; 
+  width: 95vw !important; 
   max-width: 1200px !important;
+  margin: 0 auto;
 }
 
 .border-info-v2 { border-top: 8px solid #209cee; }
 .uppercase-label { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; font-weight: bold; }
+
+/* Estilo responsivo específico para que los sub-modales (Edición/Eliminación) se ajusten en celulares */
+.modal-card-responsive {
+  width: 92vw !important;
+  max-width: 500px !important;
+  margin: 0 auto !important;
+}
+
+@media screen and (max-width: 768px) {
+  .glass-modal-v3 {
+    width: 100vw !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+  .modal-card {
+    margin: 0 !important;
+    max-height: 100vh !important;
+  }
+  .modal-card-responsive {
+    width: 95vw !important;
+    max-height: 90vh !important;
+  }
+}
 </style>

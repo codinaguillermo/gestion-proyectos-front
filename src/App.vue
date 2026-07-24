@@ -23,7 +23,15 @@
       <div class="navbar-menu" :class="{ 'is-active': menuAbierto }">
         <div class="navbar-end">
           
-          <!-- NUEVO: Ícono de Solicitudes Pendientes con burbuja de notificación -->
+          <!-- NUEVO: Indicador visual del Ciclo Lectivo activo en GEPRES para toda la comunidad educativa -->
+          <div class="navbar-item is-flex is-align-items-center">
+            <span class="tag is-info is-light has-text-weight-bold px-3 py-2 badge-anio-mobile" title="Ciclo Lectivo Activo en el Sistema">
+              <span class="icon is-small mr-1"><i class="fas fa-calendar-alt"></i></span>
+              <span>Ciclo {{ anioLectivoActual }}</span>
+            </span>
+          </div>
+
+          <!-- Ícono de Solicitudes Pendientes con burbuja de notificación -->
           <div v-if="esDocenteOAdmin && authStore.usuario?.solicitudes_pendientes > 0" class="navbar-item">
             <router-link to="/solicitudes-pendientes" class="button is-ghost has-text-white p-2 icon-mensaje-contenedor" title="Solicitudes de Cuenta Pendientes">
               <span class="icon is-medium">
@@ -77,12 +85,19 @@
             </a>
 
             <div class="navbar-dropdown is-right">
+              <!-- NUEVO: Acceso exclusivo para Administradores al Modal de Configuración Global (Año Lectivo) -->
+              <a v-if="esAdmin" class="navbar-item has-background-warning-light" @click="abrirConfiguracion">
+                <span class="icon is-small mr-2 has-text-dark"><i class="fas fa-cogs"></i></span>
+                <strong class="has-text-dark">Configuración GEPRES</strong>
+              </a>
+              <hr v-if="esAdmin" class="navbar-divider">
+
               <router-link v-if="esDocenteOAdmin" to="/usuarios" class="navbar-item">
                 <span class="icon is-small mr-2"><i class="fas fa-users-cog"></i></span>
                 Gestión de Usuarios
               </router-link>
               
-              <!-- NUEVO: Acceso directo desde el menú desplegable a las Solicitudes Pendientes -->
+              <!-- Acceso directo desde el menú desplegable a las Solicitudes Pendientes -->
               <router-link v-if="esDocenteOAdmin" to="/solicitudes-pendientes" class="navbar-item">
                 <span class="icon is-small mr-2"><i class="fas fa-user-clock has-text-warning"></i></span>
                 Solicitudes de Cuenta
@@ -107,12 +122,12 @@
               </a>
 
               <router-link v-if="esDocenteOAdmin" to="/sugerencias" class="navbar-item">
-                <span class="icon is-small mr-2"><i class="fas fa-lightbulb has-text-warning"></i></span>
+                <span class="icon is-small mr-2 has-text-warning"><i class="fas fa-lightbulb"></i></span>
                 Sugerencias y Errores
               </router-link>
 
               <router-link v-if="esDocenteOAdmin" to="/mensajeria" class="navbar-item">
-                <span class="icon is-small mr-2"><i class="fas fa-envelope-open-text has-text-info"></i></span>
+                <span class="icon is-small mr-2 has-text-info"><i class="fas fa-envelope-open-text"></i></span>
                 Mensajería Docente
               </router-link>
               
@@ -143,6 +158,14 @@
 
   <router-view />
 
+  <!-- NUEVO: Modal de Configuración Global para administrar el Año Lectivo (GEPRES V3.0.0) -->
+  <ConfiguracionModal 
+    v-if="modalConfiguracionActivo"
+    :is-active="modalConfiguracionActivo"
+    @close="modalConfiguracionActivo = false"
+    @anio-actualizado="handleAnioActualizado"
+  />
+
   <UsuarioModal 
     v-if="modalPerfilActivo && roles.length > 0 && escuelas.length > 0"
     :key="usuarioParaEditar?.id" 
@@ -168,6 +191,10 @@ import api from './services/api';
 import UsuarioModal from './components/modals/usuarioModal.vue';
 import ExportarNotasModal from './components/modals/ExportarNotasModal.vue';
 
+// NUEVAS IMPORTACIONES: Módulo de Configuración Global GEPRES V3.0.0
+import ConfiguracionModal from './components/modals/ConfiguracionModal.vue';
+import configuracionService from './services/configuracion.service';
+
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
@@ -175,9 +202,13 @@ const router = useRouter();
 const menuAbierto = ref(false);
 const modalPerfilActivo = ref(false);
 const modalExportarActivo = ref(false); 
+const modalConfiguracionActivo = ref(false); // Flag reactivo para el nuevo modal
 const usuarioParaEditar = ref(null); 
 const escuelas = ref([]);
 const roles = ref([]);
+
+// Variable reactiva para almacenar y mostrar el año lectivo activo en el navbar
+const anioLectivoActual = ref('2026');
 
 /**
  * Propósito: Cerrar automáticamente el menú móvil cuando el usuario cambia de página o ruta en la aplicación.
@@ -218,6 +249,15 @@ const esDocenteOAdmin = computed(() => {
 });
 
 /**
+ * Propósito: Validar estrictamente si el usuario actual posee rol de Administrador (1) para autorizar cambios en parámetros globales.
+ * A quién alimenta: Template de App.vue (directiva v-if de la opción "Configuración GEPRES" en el menú desplegable).
+ * Qué retorna: Booleano (true si el rol_id corresponde a un Administrador, false en caso contrario).
+ */
+const esAdmin = computed(() => {
+  return Number(authStore.usuario?.rol_id) === 1;
+});
+
+/**
  * Propósito: Finalizar la sesión del usuario actual limpiando el almacenamiento y redirigiendo al login.
  * A quién alimenta: Evento @click del botón "Cerrar Sesión" en el menú desplegable.
  * Qué retorna: Void (ejecuta logout en el store y redirige la ruta a /login).
@@ -243,6 +283,42 @@ const cargarMaestras = async () => {
   } catch (err) {
     console.error("Error al cargar maestras en App.vue", err);
   }
+};
+
+/**
+ * Propósito: Consultar al backend la variable global del año lectivo para exhibirla en el encabezado superior de GEPRES.
+ * A quién alimenta: Hook onMounted y callback de actualización desde el modal de configuración.
+ * Qué retorna: Promise<void> (asigna el valor recuperado a la variable reactiva anioLectivoActual).
+ */
+const cargarAnioLectivo = async () => {
+  try {
+    const res = await configuracionService.getAnioLectivo();
+    if (res.data && res.data.success && res.data.data) {
+      anioLectivoActual.value = String(res.data.data.valor);
+    }
+  } catch (error) {
+    console.error("Error al cargar año lectivo en App.vue:", error);
+  }
+};
+
+/**
+ * Propósito: Desplegar la ventana modal de administración para modificar variables globales del sistema (como el año lectivo activo).
+ * A quién alimenta: Evento @click de la opción "Configuración GEPRES" en el menú desplegable.
+ * Qué retorna: Void (cambia el estado de modalConfiguracionActivo a true y cierra el menú táctil si estaba abierto).
+ */
+const abrirConfiguracion = () => {
+  modalConfiguracionActivo.value = true;
+  menuAbierto.value = false;
+};
+
+/**
+ * Propósito: Actualizar en tiempo real el indicador visual del año lectivo en la barra superior cuando el Administrador confirma un cambio.
+ * A quién alimenta: Evento custom @anio-actualizado emitido por el componente ConfiguracionModal.vue.
+ * Qué retorna: Void (sobrescribe la referencia reactiva anioLectivoActual con el nuevo valor recibido y cierra la ventana).
+ */
+const handleAnioActualizado = (nuevoAnio) => {
+  anioLectivoActual.value = String(nuevoAnio);
+  modalConfiguracionActivo.value = false;
 };
 
 /**
@@ -289,13 +365,14 @@ const refrescarDatos = async () => {
 };
 
 /**
- * Propósito: Disparar la carga inicial del catálogo de tablas maestras al montarse el componente principal en el DOM si hay sesión activa.
+ * Propósito: Disparar la carga inicial del catálogo de tablas maestras y parámetros globales al montarse la aplicación en el DOM si hay sesión activa.
  * A quién alimenta: Ciclo de vida inicial del componente Vue (onMounted).
  * Qué retorna: Void.
  */
 onMounted(() => {
   if (authStore.token) {
     cargarMaestras();
+    cargarAnioLectivo();
   }
 });
 </script>
@@ -357,5 +434,19 @@ onMounted(() => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(0, 0, 0, 0.1);
   z-index: 10;
+}
+
+/* Cambio de color claro para las líneas de la hamburguesa y la X en dispositivos móviles */
+.navbar-burger span {
+  background-color: #f5f5f5 !important; /* Blanco humo / tono claro */
+}
+
+/* Blindaje y ergonomía para celulares pequeñas en el encabezado de navegación */
+@media (max-width: 768px) {
+  .badge-anio-mobile {
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+  }
 }
 </style>
