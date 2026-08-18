@@ -24,7 +24,8 @@ api.interceptors.request.use((config) => {
 /**
  * Propósito: Interceptar las respuestas del servidor para detectar errores de autenticación 
  * (código 401). Si el token expira o es inválido, limpia el almacenamiento local y 
- * redirige de forma segura (HTTPS) a la pantalla de login para evitar advertencias de contenido mixto.
+ * redirige dinámicamente a la pantalla de login utilizando rutas relativas, adaptándose 
+ * automáticamente al host (desarrollo local o producción).
  * A quién alimenta (quién la llama): Es ejecutada automáticamente por Axios inmediatamente 
  * después de recibir la respuesta del backend y antes de entregarla al componente que realizó la llamada.
  * Qué datos retorna: Retorna el objeto 'response' intacto si la petición fue exitosa. 
@@ -44,8 +45,8 @@ api.interceptors.response.use(
             localStorage.removeItem('usuario');
 
             // 2. REDIRECCIÓN DIRECTA (Sin alerts molestos)
-            // Se actualizó a https:// para prevenir bloqueos por contenido mixto en la nueva arquitectura
-            window.location.href = "https://eet24proyectos.ddns.net:3000/login?session=expired";
+            // Se utiliza una ruta relativa para que funcione impecable tanto en Windows como en Debian (Nginx)
+            window.location.href = "/login?session=expired";
         }
         
         // Devolvemos el error para que el componente que hizo la llamada pueda manejarlo si quiere

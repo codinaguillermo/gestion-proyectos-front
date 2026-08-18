@@ -297,7 +297,7 @@
                             <tr v-for="nota in notasHistorial" :key="nota.id">
                               <td class="is-size-7 custom-date-font td-compacta-fecha">{{ convertirFechaLocal(nota.fecha_evaluacion || nota.fecha) }}</td>
                               <td class="has-text-weight-bold is-size-7 td-compacta-concepto">{{ hitoNormalizado(nota) }}</td>
-                              <td class="has-text-centered"><span class="tag is-small has-text-weight-bold" :class="obtenerColorNota(nota.nota)">{{ nota.nota }}</span></td>
+                              <td class="has-text-centered"><span class="tag is-small has-text-weight-bold" :class="obtenerColorNota(nota.nota)"></span></td>
                               <td class="is-size-7 has-text-grey-lighter is-hidden-mobile">{{ nota.docente_calificador?.apellido }}, {{ nota.docente_calificador?.nombre }}</td>
                               <td class="is-size-7 desc-cell-format is-hidden-mobile" :title="nota.descripcion">{{ nota.descripcion || '-' }}</td>
                               <td class="has-text-centered">
@@ -328,7 +328,8 @@
                     <p class="help has-text-grey-lighter is-size-7 mt-1">Acceso rápido al repositorio de archivos digitales del proyecto.</p>
                   </div>
 
-                  <div class="field has-addons mb-4" v-if="esDocente">
+                  <!-- Se removió el v-if="esDocente" para que los alumnos puedan agregar documentos -->
+                  <div class="field has-addons mb-4">
                     <div class="control is-expanded"><input class="input is-small-mobile custom-input-entregable" type="text" v-model="nuevoEntregableNombre" placeholder="Nombre del nuevo documento..." @keyup.enter="agregarEntregableRAM"></div>
                     <div class="control"><button class="button is-info is-small-mobile" @click="agregarEntregableRAM"><i class="fas fa-plus"></i></button></div>
                   </div>
@@ -339,7 +340,7 @@
                         <tr>
                           <th class="has-text-info is-size-7">Documento</th>
                           <th class="has-text-info is-size-7">Enlace de Drive</th>
-                          <th style="width: 40px;" v-if="esDocente"></th>
+                          <th style="width: 40px;"></th> <!-- Se removió restricción docente del header -->
                         </tr>
                       </thead>
                       <tbody>
@@ -347,11 +348,13 @@
                           <td class="data-text-bright is-size-7 text-truncate-mobile" style="max-width: 120px;">{{ e.nombre }}</td>
                           <td>
                             <div class="field has-addons mb-0">
-                              <div class="control is-expanded"><input class="input custom-input-table is-small" type="text" v-model="e.link_drive" placeholder="Pegar link..." :disabled="!esDocente"></div>
+                              <!-- Se removió el :disabled="!esDocente" para que los alumnos editen links -->
+                              <div class="control is-expanded"><input class="input custom-input-table is-small" type="text" v-model="e.link_drive" placeholder="Pegar link..."></div>
                               <div class="control"><button class="button is-info is-small is-outlined" :disabled="!e.link_drive" @click="abrirEnlace(e.link_drive)"><i class="fas fa-external-link-alt"></i></button></div>
                             </div>
                           </td>
-                          <td class="has-text-centered" v-if="esDocente"><button class="button is-ghost has-text-danger p-1" @click="prepararEliminacion(index)"><i class="fas fa-trash-alt"></i></button></td>
+                          <!-- Se removió el v-if="esDocente" para que los alumnos puedan borrar links de la lista -->
+                          <td class="has-text-centered"><button class="button is-ghost has-text-danger p-1" @click="prepararEliminacion(index)"><i class="fas fa-trash-alt"></i></button></td>
                         </tr>
                       </tbody>
                     </table>

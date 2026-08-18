@@ -158,7 +158,7 @@
 
   <router-view />
 
-  <!-- NUEVO: Modal de Configuración Global para administrar el Año Lectivo (GEPRES V3.0.0) -->
+  
   <ConfiguracionModal 
     v-if="modalConfiguracionActivo"
     :is-active="modalConfiguracionActivo"
@@ -191,7 +191,7 @@ import api from './services/api';
 import UsuarioModal from './components/modals/usuarioModal.vue';
 import ExportarNotasModal from './components/modals/ExportarNotasModal.vue';
 
-// NUEVAS IMPORTACIONES: Módulo de Configuración Global GEPRES V3.0.0
+
 import ConfiguracionModal from './components/modals/ConfiguracionModal.vue';
 import configuracionService from './services/configuracion.service';
 
