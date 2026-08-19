@@ -204,19 +204,28 @@
                   </div>
                   
                   <div class="field mb-4">
-                    <label class="label has-text-white is-size-7 uppercase-label">Documentación de Respaldo</label>
-                    <div class="field has-addons mt-1">
-                      <div class="control is-expanded has-icons-left">
-                        <input class="input is-dark is-small-mobile" type="text" v-model="form.documentoViabilidadLink" placeholder="Link del documento..." :disabled="!esDocente">
-                        <span class="icon is-left is-small-mobile has-text-info"><i class="fas fa-link"></i></span>
+                    <!-- BOTÓN DE ACCESO A CONTROL DE CRONOGRAMA -->
+                    <div class="box is-dark-box p-3-mobile p-4-tablet mb-4">
+                      <div class="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap" style="gap: 10px;">
+                        <div>
+                          <h4 class="title is-6 has-text-info uppercase-label mb-1">
+                            <i class="fas fa-tasks mr-2"></i> Control de Avances (Cronograma)
+                          </h4>
+                          <p class="is-size-7 has-text-grey-light mb-0">
+                            Auditoría y contraste de tareas completadas según el cronograma por materia.
+                          </p>
+                        </div>
+                        <router-link 
+                          :to="{ name: 'control-cronograma', params: { id: form.id } }" 
+                          class="button is-info is-small has-text-weight-bold uppercase-label"
+                        >
+                          <span class="icon is-small"><i class="fas fa-clipboard-check"></i></span>
+                          <span>Ver Cronograma</span>
+                        </router-link>
                       </div>
-                      <div class="control"><button class="button is-info is-small-mobile" :disabled="!form.documentoViabilidadLink" @click="abrirEnlace(form.documentoViabilidadLink)"><i class="fas fa-external-link-alt"></i></button></div>
                     </div>
                   </div>
-
-                  <article v-if="form.viable && !form.documentoViabilidadLink" class="message is-warning is-small mb-4">
-                    <div class="message-body"><strong>Falta Respaldo:</strong> No se puede considerar viable sin el link al documento digitalizado.</div>
-                  </article>
+                 
                   
                   <hr class="has-background-grey-dark my-4">
                   
@@ -490,7 +499,30 @@ export default {
     obtenerIniciales(n) { return n ? n.split(' ').map(x => x[0]).join('').toUpperCase().substring(0, 2) : '?'; },
     async buscarUsuarios() { if (this.busqueda.length < 2) return this.resultadosBusqueda = []; try { const res = await axios.get(`/api/usuarios?q=${this.busqueda}&escuela_id=${this.proyectoOriginal.escuela_id}`, { headers: { 'Authorization': `Bearer ${useAuthStore().token}` } }); this.resultadosBusqueda = res.data.filter(u => u.activo && !this.miembrosAsignados.some(m => m.id === u.id)); } catch (err) { console.error(err); } },
     seleccionarUsuario(u) { this.miembrosAsignados.push({ ...u }); this.busqueda = ''; this.resultadosBusqueda = []; },
-    async confirmarCambios() { if (!this.form.nombre.trim()) return (this.modalErrorMsg = "El nombre del proyecto es obligatorio.", this.showModalError = true); if (this.form.viable && !this.form.documentoViabilidadLink) return (this.modalErrorMsg = "Atención Profe: Para marcar el proyecto como VIABLE debe adjuntar el link del documento digitalizado de respaldo.", this.showModalError = true, this.tabActiva = 'viabilidad'); this.guardando = true; try { await axios.put(`/api/proyectos/${this.form.id}`, { ...this.form, usuariosIds: this.miembrosAsignados.map(m => m.id) }, { headers: { 'Authorization': `Bearer ${useAuthStore().token}` } }); this.volver(); } catch (e) { console.error(e); this.modalErrorMsg = "Error de conexión."; this.showModalError = true; } finally { this.guardando = false; } },
+    
+    /**
+ * Propósito: Validar los datos esenciales del formulario y enviar la actualización general del proyecto al backend.
+ * A quién alimenta (quién la llama): Es ejecutada por el botón "GUARDAR" en el encabezado de la vista de configuración del proyecto.
+ * Qué datos retorna: No retorna datos locales. Realiza una petición PUT a la API y redirige al dashboard si es exitosa, o activa un modal de error si falla.
+ */
+async confirmarCambios() { 
+      if (!this.form.nombre.trim()) return (this.modalErrorMsg = "El nombre del proyecto es obligatorio.", this.showModalError = true); 
+      
+      // Se eliminó la validación estricta del documentoViabilidadLink
+      
+      this.guardando = true; 
+      try { 
+          await axios.put(`/api/proyectos/${this.form.id}`, { ...this.form, usuariosIds: this.miembrosAsignados.map(m => m.id) }, { headers: { 'Authorization': `Bearer ${useAuthStore().token}` } }); 
+          this.volver(); 
+      } catch (e) { 
+          console.error(e); 
+          this.modalErrorMsg = "Error de conexión."; 
+          this.showModalError = true; 
+      } finally { 
+          this.guardando = false; 
+      } 
+  },
+
     confirmarEliminacionUsuario(miembro) { this.miembroAEliminar = miembro; this.mostrarModalConfirmacion = true; },
     intentarVerDetalle(miembro) { if (this.esDocente || this.usuarioLogueado.id === miembro.id) { this.alumnoSeleccionado = miembro; this.mostrarDetalle = true; } else { this.modalErrorMsg = "No tienes permiso para ver las notas de este compañero."; this.showModalError = true; } },
     volver() { this.$router.push('/dashboard'); }

@@ -96,6 +96,20 @@ const router = createRouter({
       meta: { requiresAuth: true, roles: [1, 2] } // Solo Admin y Docente
     },
 
+    // ============================================================================
+    /**
+     * @ruta /proyectos/:id/cronograma
+     * @propósito Exponer la vista de control y seguimiento de avances del proyecto contrastado con el cronograma de materias.
+     * @alimenta Botón "Control de Avances" en la vista de configuración del proyecto (ProyectoConfigView.vue). Carga ControlCronogramaView.vue.
+     * @retorna Renderizado del componente visual para todos los miembros del proyecto (las restricciones de escritura se aplican dentro de la vista).
+     */
+    {
+      path: '/proyectos/:id/cronograma',
+      name: 'control-cronograma',
+      component: () => import('../views/ControlCronogramaView.vue'),
+      meta: { requiresAuth: true }
+    },
+
     // --- GESTIÓN DE PROYECTO Y SUGERENCIAS ---
     {
       path: '/sugerencias',
