@@ -751,4 +751,167 @@ async confirmarCambios() {
     order: 2;
   }
 }
+
+
+/* ==========================================
+   ADAPTACIÓN MODO CLARO: CONFIGURACIÓN DE PROYECTO
+   ================================---------- */
+
+/* 1. Título y subtítulo del encabezado principal */
+body.theme-light .glass-panel h1.title {
+    color: #1a252f !important;
+}
+
+body.theme-light .glass-panel p.subtitle {
+    color: #4a5568 !important;
+}
+
+/* 2. Botón de retroceso en el encabezado */
+body.theme-light .glass-panel .button.is-ghost {
+    color: #1d6fa5 !important;
+}
+
+/* ==========================================
+   ADAPTACIÓN MODO CLARO: CONFIGURACIÓN DE PROYECTO (ETIQUETAS Y TEXTOS)
+   ================================---------- */
+
+/* 1. Etiquetas y títulos secundarios (Hitos, Estado, Cierres, Notas, Títulos de Alcance) */
+body.theme-light .box.glass-panel h3.title,
+body.theme-light label.label,
+body.theme-light p.subtitle {
+    color: #2c3e50 !important;
+}
+
+/* 2. Cajas oscuras internas de paneles en modo claro */
+body.theme-light .is-dark-box {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+}
+
+body.theme-light .is-dark-box .has-text-white {
+    color: #2c3e50 !important;
+}
+
+body.theme-light .is-dark-box .has-text-grey-light {
+    color: #64748b !important;
+}
+
+/* 3. Textareas y inputs dentro de cajas oscuras en modo claro */
+body.theme-light textarea.custom-textarea,
+body.theme-light input.input.is-dark {
+    background: #f8f9fa !important;
+    color: #2c3e50 !important;
+    border: 1px solid #cbd5e1 !important;
+}
+/* ==========================================
+   AJUSTES FINALES MODO CLARO: TABS Y BOTONES
+   ================================---------- */
+
+/* 1. Textos e íconos de las pestañas inactivas en modo claro */
+body.theme-light .custom-tabs li a {
+    color: #4a5568 !important;
+}
+
+body.theme-light .custom-tabs li.is-active a {
+    color: #1d6fa5 !important;
+}
+
+/* 2. Botón "Cancelar" en el encabezado */
+body.theme-light .glass-panel .button.is-light {
+    color: #2c3e50 !important;
+    background-color: #e2e8f0 !important;
+    border-color: #cbd5e1 !important;
+}
+
+body.theme-light .glass-panel .button.is-light:hover {
+    background-color: #cbd5e1 !important;
+}
+
+/* ==========================================
+   TAMAÑO DE FUENTE GLOBAL PARA CONTROLES DE EVALUACIÓN (.is-small)
+   ================================---------- */
+input[type="date"].input.is-small,
+select.is-small,
+select option,
+input[type="number"].input.is-small,
+textarea.textarea.is-small {
+    font-size: 1rem !important;
+}
+
+/* ==========================================
+   CORRECCIÓN DE FONDO Y CONTRASTE EN TABLA DE NOTAS (MODO CLARO)
+   ================================---------- */
+
+body.theme-light .container-table-accordion {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+body.theme-light .delivery-table-v2 td {
+    color: #2c3e50 !important;
+}
+
+body.theme-light .custom-date-font {
+    color: #4a5568 !important;
+}
+
+body.theme-light .desc-cell-format {
+    color: #4a5568 !important;
+}
+
+/* ==========================================
+   MEJORA DE CONTRASTE PARA BOTÓN BACKLOG (MODO CLARO)
+   ================================---------- */
+
+body.theme-light .glass-panel .button.is-info.is-outlined {
+    color: #1d6fa5 !important;
+    border-color: #1d6fa5 !important;
+    font-weight: 600 !important;
+    background-color: transparent !important;
+}
+
+body.theme-light .glass-panel .button.is-info.is-outlined:hover {
+    background-color: #1d6fa5 !important;
+    color: #ffffff !important;
+}
+
+
+/* ==========================================
+   AJUSTES FINALES EN PESTAÑA DOCS (MODO CLARO)
+   ================================---------- */
+
+/* 1. Texto de ayuda de la carpeta raíz */
+body.theme-light .help.has-text-grey-lighter {
+    color: #4a5568 !important;
+}
+
+/* 2. Encabezados de la tabla de documentos */
+body.theme-light .delivery-table-v2 th {
+    color: #2c3e50 !important;
+}
+
+/* ==========================================
+   AMPLIACIÓN GLOBAL DE FUENTES (MODO APTO PARA TODOS)
+   ================================---------- */
+
+/* 1. Inputs, selects y textareas de toda la vista */
+.input, .textarea, .select select {
+    font-size: 1.05rem !important;
+}
+
+/* 2. Textos de ayuda e instrucciones secundarias */
+.help, .is-size-7 {
+    font-size: 0.9rem !important;
+}
+
+/* 3. Celdas y textos dentro de las tablas */
+.delivery-table-v2 td, .delivery-table-v2 th {
+    font-size: 0.95rem !important;
+}
+
+/* 4. Placeholder de los inputs para que no queden chicos */
+::placeholder {
+    font-size: 0.95rem !important;
+}
 </style>

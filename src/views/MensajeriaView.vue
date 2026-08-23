@@ -267,4 +267,45 @@ onMounted(async () => {
 .border-info { border: 1px solid #3498db; }
 .uppercase-label { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; font-weight: bold; color: #3498db; }
 .nota-footer { border-top: 1px solid rgba(255,255,255,0.1); }
+
+/* ==========================================
+   ADAPTACIÓN MODO CLARO: MENSAJERÍA DOCENTE
+   ================================---------- */
+
+/* 1. Título y subtítulo del encabezado */
+body.theme-light .glass-panel h1.title {
+    color: #1a252f !important;
+}
+
+body.theme-light .glass-panel p.subtitle {
+    color: #4a5568 !important;
+}
+
+/* 2. Etiqueta de filtrado por proyecto */
+body.theme-light label.label {
+    color: #2c3e50 !important;
+}
+
+/* 3. Tarjetas de notas (fondo blanco nítido y textos oscuros legibles) */
+body.theme-light .is-dark-box {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+}
+
+body.theme-light .is-dark-box h3.title {
+    color: #2c3e50 !important;
+}
+
+body.theme-light .is-dark-box p {
+    color: #4a5568 !important;
+}
+
+body.theme-light .nota-footer {
+    border-top: 1px solid #e2e8f0 !important;
+}
+
+body.theme-light .is-dark-box .has-text-grey-light {
+    color: #64748b !important;
+}
 </style>

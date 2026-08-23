@@ -59,14 +59,14 @@
               </div>
 
               <div v-if="esEstadoRevision || esEstadoFinalizado" class="box has-background-black-ter p-4 mb-5 border-info">
-                <label class="label is-size-6 has-text-info">Comentarios de Cierre/Revisión</label>
+                <label class="label is-size-6 has-text-white">Comentarios de Cierre/Revisión</label>
                 <textarea v-model="form.comentario_cierre" class="textarea custom-input is-small" rows="2"></textarea>
               </div>
 
               <div class="field">
-                <label class="label has-text-info is-size-5">Criterios de Aceptación</label>
+                <label class="label is-size-5 has-text-white">Criterios de Aceptación</label>
                 <div class="control">
-                  <textarea v-model="form.criterios_aceptacion" class="textarea is-small custom-input" rows="3" :disabled="!tienePermisoEstructura"></textarea>
+                  <textarea v-model="form.criterios_aceptacion" class="textarea custom-textarea-criterios custom-input" rows="3" :disabled="!tienePermisoEstructura"></textarea>
                 </div>
               </div>
             </div>
@@ -74,7 +74,7 @@
             <!-- ACORDEÓN DE TRAZABILIDAD / HISTORIAL -->
             <div class="box glass-panel p-0 mb-5 field-accordion" v-if="esEdicion">
               <button class="button is-dark is-fullwidth is-flex is-justify-content-space-between is-align-items-center p-4 custom-accordion-btn" type="button" @click="historialAbierto = !historialAbierto">
-                <span class="has-text-weight-bold has-text-info is-size-6">
+                <span class="has-text-weight-bold has-text-white is-size-6">
                   <i class="fas fa-history mr-2"></i> Trazabilidad de Estados ({{ form.historial.length }})
                 </span>
                 <span class="icon is-small">
@@ -102,7 +102,7 @@
                         </div>
                         <div>
                           <p class="is-size-6 has-text-white custom-date-font mb-0">
-                            <i class="far fa-calendar-alt mr-1 has-text-info-light"></i> {{ formatoFechaCorta(log.fecha_registro) }}
+                            <i class="far fa-calendar-alt mr-1"></i> {{ formatoFechaCorta(log.fecha_registro) }}
                           </p>
                         </div>
                       </div>
@@ -113,11 +113,11 @@
 
                     <!-- Vista Detalle Expandida (Acordeón) -->
                     <div v-if="filaExpandida === log.id" class="mt-3 pt-2 border-top-dark animate__animated animate__fadeIn">
-                      <p class="is-size-6 has-text-white mb-2">
-                        <strong class="has-text-info-light">Modificado por:</strong> {{ nombreCompleto(log.usuario_detalle) }}
+                      <p class="is-size-6 mb-2 has-text-white">
+                        Modificado por: {{ nombreCompleto(log.usuario_detalle) }}
                       </p>
-                      <p class="is-size-6 has-text-white mb-0">
-                        <strong class="has-text-info-light"><i class="far fa-clock mr-1"></i> Hora exacta:</strong> {{ formatoHora(log.fecha_registro) }}
+                      <p class="is-size-6 mb-0 has-text-white">
+                        <i class="far fa-clock mr-1"></i> Hora exacta: {{ formatoHora(log.fecha_registro) }}
                       </p>
                     </div>
                   </div>
@@ -159,7 +159,7 @@
               </div>
 
               <div class="field mb-5">
-                <label class="label has-text-link">Estado Actual</label>
+                <label class="label has-text-white">Estado Actual</label>
                 <div class="select is-fullwidth is-medium custom-select">
                   <select v-model="form.estado_id" :disabled="!puedeGuardar">
                     <option v-for="e in estadosOrdenados" :key="e.id" :value="Number(e.id)">{{ e.nombre }}</option>
@@ -176,7 +176,7 @@
             </div>
 
             <div class="glass-panel p-5 mb-5">
-              <label class="label has-text-info is-size-6 mb-3">Checklist de Calidad</label>
+              <label class="label has-text-white is-size-6 mb-3">Checklist de Calidad</label>
               
               <div class="field">
                 <label class="checkbox has-text-white is-size-7">
@@ -200,7 +200,7 @@
               </div>
 
               <div v-if="form.documentado" class="field mt-3 mb-4 animate__animated animate__fadeIn">
-                <label class="label is-size-7 has-text-info">Enlace de Evidencia</label>
+                <label class="label is-size-7 has-text-white">Enlace de Evidencia</label>
                 <div class="field has-addons">
                   <div class="control is-expanded has-icons-left">
                     <input 
@@ -454,6 +454,11 @@ onMounted(cargarDatos);
 .field.has-addons .control .button { height: 100%; }
 .border-info { border: 1px solid #3e8ed0; border-radius: 8px; }
 
+/* Tamaño de fuente ampliado para el textarea de Criterios de Aceptación */
+.custom-textarea-criterios {
+    font-size: 1rem !important;
+}
+
 /* ESTILOS DEL ACORDEÓN DE HISTORIAL */
 .field-accordion { overflow: hidden; border: 1px solid rgba(52, 152, 219, 0.2); border-radius: 8px; }
 .custom-accordion-btn { background: rgba(20, 20, 20, 0.5) !important; border: none !important; text-align: left; cursor: pointer; transition: background 0.2s ease; }
@@ -466,4 +471,55 @@ onMounted(cargarDatos);
 .avatar-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; background-color: rgba(52, 152, 219, 0.2); color: #3498db; flex-shrink: 0; font-size: 0.8rem; border: 1px solid rgba(52, 152, 219, 0.4); }
 
 .animate__animated { animation-duration: 0.4s; }
+
+/* ==========================================
+   ADAPTACIÓN MODO CLARO: GESTIÓN DE TAREAS
+   ================================---------- */
+
+/* 1. Títulos de los campos y etiquetas generales */
+body.theme-light .label {
+    color: #2c3e50 !important;
+}
+
+body.theme-light h1.title,
+body.theme-light .subtitle {
+    color: #1a252f !important;
+}
+
+/* 2. Botón de retroceso */
+body.theme-light .button.is-ghost {
+    color: #1d6fa5 !important;
+}
+
+/* 3. Acordeón de Trazabilidad de Estados en modo claro */
+body.theme-light .container-table-accordion {
+    background: #ffffff !important;
+    border: 1px solid #dcdcdc !important;
+}
+
+body.theme-light .log-item {
+    background: #f8f9fa !important;
+    border: 1px solid #e9ecef !important;
+}
+
+body.theme-light .log-item:hover {
+    background: #f1f5f8 !important;
+}
+
+body.theme-light .log-item p.has-text-white,
+body.theme-light .log-item .mt-3 p {
+    color: #2c3e50 !important;
+}
+
+body.theme-light .log-item .fa-calendar-alt,
+body.theme-light .log-item .fa-clock {
+    color: #1d6fa5 !important;
+}
+
+/* 4. Checklist de Calidad */
+body.theme-light .checkbox {
+    color: #2c3e50 !important;
+}
+
+
 </style>

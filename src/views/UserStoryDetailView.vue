@@ -395,4 +395,58 @@ onMounted(cargarDatos);
     padding: 0.75rem 0.4rem !important;
   }
 }
+
+/* ==========================================
+   ADAPTACIÓN MODO CLARO: FORMULARIO US
+   ================================---------- */
+
+/* 1. Etiquetas (labels) de los campos */
+body.theme-light .label {
+    color: #2c3e50 !important;
+}
+
+/* 2. Inputs, textareas y selects en modo claro */
+body.theme-light .custom-input,
+body.theme-light textarea.textarea,
+body.theme-light input[type="date"].input {
+    background: #ffffff !important;
+    color: #2c3e50 !important;
+    border: 1px solid #cbd5e1 !important;
+}
+
+body.theme-light .custom-input::placeholder,
+body.theme-light textarea::placeholder {
+    color: #94a3b8 !important;
+}
+
+/* 3. Botón de retroceso y textos del encabezado */
+body.theme-light .button.is-ghost {
+    color: #1d6fa5 !important;
+}
+
+
+/* ==========================================
+   ADAPTACIÓN MODO CLARO: TABLA DE TAREAS (US DETAIL)
+   ================================---------- */
+
+/* 1. Título "Tareas Técnicas" */
+body.theme-light h3.title {
+    color: #1a252f !important;
+    background: transparent !important;
+}
+
+/* 2. Textos de las filas de tareas en la tabla */
+body.theme-light .glass-table .data-text-bright {
+    color: #2c3e50 !important;
+    text-shadow: none !important;
+}
+
+body.theme-light .glass-table th {
+    color: #1d6fa5 !important;
+}
+
+/* 3. Hover sobre las filas de tareas en modo claro */
+body.theme-light .glass-table .clickable-row:hover {
+    background-color: #f1f5f8 !important;
+}
 </style>

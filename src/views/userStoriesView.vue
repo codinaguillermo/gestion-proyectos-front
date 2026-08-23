@@ -479,4 +479,79 @@ onMounted(() => {
     margin: 0 !important;
   }
 }
+/* ==========================================
+   ADAPTACIÓN MODO CLARO: PRODUCT BACKLOG
+   ================================---------- */
+
+/* 1. Encabezado principal y botones de navegación */
+body.theme-light .glass-panel h1.title,
+body.theme-light .glass-panel h2 {
+    color: #1a252f !important;
+}
+
+body.theme-light .glass-panel .button.is-ghost {
+    color: #1d6fa5 !important; /* Flecha de retroceso visible */
+}
+
+body.theme-light .glass-panel .button.is-outlined {
+    color: #1d6fa5 !important;
+    border-color: #1d6fa5 !important;
+}
+body.theme-light .glass-panel .button.is-outlined:hover {
+    background-color: rgba(29, 111, 165, 0.1) !important;
+    color: #0b5ed7 !important;
+}
+
+body.theme-light .glass-panel .has-text-grey-lighter {
+    color: #606f7b !important;
+}
+
+/* 2. Pestañas de navegación (Tabs) */
+body.theme-light .custom-tabs ul {
+    border-bottom-color: rgba(0, 0, 0, 0.15) !important;
+}
+body.theme-light .custom-tabs li a {
+    color: #2c3e50 !important;
+}
+body.theme-light .custom-tabs li.is-active a {
+    background-color: rgba(52, 152, 219, 0.15) !important;
+    color: #1d6fa5 !important;
+    border-bottom-color: #1d6fa5 !important;
+}
+
+/* 3. Tarjetas tipo Post-it con el color exacto solicitado */
+body.theme-light .card-wrapper {
+    background-color: rgba(236, 227, 183, 0.95) !important;
+    border: 1px solid rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+}
+
+/* 4. Tarjetas internas de la pestaña "Carga por Miembro" */
+body.theme-light .box.has-background-dark {
+    background: #ffffff !important;
+    border: 1px solid #dcdcdc !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+}
+body.theme-light .box.has-background-dark .has-text-white {
+    color: #2c3e50 !important;
+}
+
+/* 5. Título y subtítulos de la solapa Carga por Miembro */
+body.theme-light .glass-panel h3.title {
+    color: #1a252f !important;
+}
+
+body.theme-light .glass-panel .box.has-background-dark .has-text-info-light {
+    color: #1d6fa5 !important;
+}
+
+/* 6. Cajas individuales de tareas dentro de la tarjeta de miembro */
+body.theme-light .task-link-box {
+    background: #f8f9fa !important;
+    border: 1px solid #e9ecef !important;
+}
+body.theme-light .task-link-box:hover {
+    background: #e2e8f0 !important;
+    border-color: #cbd5e1 !important;
+}
 </style>

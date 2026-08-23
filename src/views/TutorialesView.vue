@@ -128,4 +128,33 @@ const tutoriales = ref([
 .letter-spacing-1 { letter-spacing: 1px; }
 .opacity-5 { opacity: 0.2; }
 .h-full { height: 100%; }
+
+/* ==========================================
+   ADAPTACIÓN MODO CLARO: CENTRO DE AYUDA (TUTORIALES)
+   ================================---------- */
+
+/* 1. Título y subtítulo del encabezado */
+body.theme-light .glass-panel h1.title {
+    color: #1a252f !important;
+}
+
+body.theme-light .glass-panel h2.subtitle {
+    color: #1d6fa5 !important;
+}
+
+/* 2. Tarjetas de tutoriales (fondo blanco nítido y textos oscuros legibles) */
+body.theme-light .glass-panel.card-hover-effect,
+body.theme-light a.video-card-link .glass-panel {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+}
+
+body.theme-light .glass-panel h3.title {
+    color: #2c3e50 !important;
+}
+
+body.theme-light .glass-panel p.subtitle {
+    color: #4a5568 !important;
+}
 </style>

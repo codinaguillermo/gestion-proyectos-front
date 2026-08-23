@@ -680,4 +680,47 @@ onMounted(() => {
     margin-bottom: 1.25rem !important;
   }
 }
+
+/* ==========================================
+   ADAPTACIÓN MODO CLARO: DASHBOARD
+   ================================---------- */
+
+/* 1. Título principal ("Mis Proyectos") */
+body.theme-light h1.title {
+    color: #1a252f !important;
+}
+
+/* 2. Tabla de escritorio */
+body.theme-light .glass-table {
+    color: #2c3e50 !important;
+}
+body.theme-light .glass-table th {
+    color: #1d6fa5 !important;
+}
+body.theme-light .glass-table td .has-text-white {
+    color: #2c3e50 !important;
+}
+body.theme-light .glass-table td.has-text-grey-lighter,
+body.theme-light .glass-table td.has-text-grey-light {
+    color: #606f7b !important;
+}
+
+/* 3. Tarjetas de la vista móvil */
+body.theme-light .mobile-project-card {
+    background: #ffffff !important;
+    border: 1px solid #dcdcdc !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+}
+body.theme-light .project-title {
+    color: #1d6fa5 !important; /* Título del proyecto en azul legible */
+}
+body.theme-light .project-desc,
+body.theme-light .indicator-item,
+body.theme-light .project-date {
+    color: #606f7b !important; /* Textos secundarios en gris oscuro legible */
+}
+body.theme-light .status-badge {
+    background: rgba(0, 0, 0, 0.05) !important;
+    color: #334155 !important;
+}
 </style>

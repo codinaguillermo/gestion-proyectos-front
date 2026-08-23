@@ -162,6 +162,13 @@ const colorEstado = computed(() => {
   box-shadow: 0 8px 15px rgba(0,0,0,0.1) !important;
 }
 
+/* Etiquetas ampliadas considerablemente más grandes */
+.tag {
+  font-size: 1rem !important; /* Aumentado 2 puntos más */
+  height: auto !important;
+  padding: 0.45em 0.85em !important;
+}
+
 .custom-title-clamp {
   display: -webkit-box !important;
   -webkit-line-clamp: 2 !important;
@@ -183,5 +190,9 @@ const colorEstado = computed(() => {
 }
 .progress {
   transition: all 0.5s ease;
+}
+
+.card-content .is-size-7 {
+  font-size: 0.95rem !important;
 }
 </style>

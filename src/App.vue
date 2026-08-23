@@ -22,6 +22,14 @@
 
       <div class="navbar-menu" :class="{ 'is-active': menuAbierto }">
         <div class="navbar-end">
+          <!-- BOTÓN MODO CLARO/OSCURO -->
+          <div class="navbar-item">
+            <button class="button is-ghost has-text-white p-2" @click="themeStore.toggleTheme" title="Alternar Tema">
+              <span class="icon is-medium">
+                <i class="fas" :class="themeStore.esModoOscuro ? 'fa-sun has-text-warning' : 'fa-moon has-text-link'"></i>
+              </span>
+            </button>
+          </div>
           
           <!-- NUEVO: Indicador visual del Ciclo Lectivo activo en GEPRES para toda la comunidad educativa -->
           <div class="navbar-item is-flex is-align-items-center">
@@ -184,6 +192,7 @@
 </template>
 
 <script setup>
+import { useThemeStore } from './stores/theme.store';
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from './stores/auth';
@@ -196,6 +205,7 @@ import ConfiguracionModal from './components/modals/ConfiguracionModal.vue';
 import configuracionService from './services/configuracion.service';
 
 const authStore = useAuthStore();
+const themeStore = useThemeStore();
 const route = useRoute();
 const router = useRouter();
 
@@ -209,6 +219,8 @@ const roles = ref([]);
 
 // Variable reactiva para almacenar y mostrar el año lectivo activo en el navbar
 const anioLectivoActual = ref('2026');
+
+
 
 /**
  * Propósito: Cerrar automáticamente el menú móvil cuando el usuario cambia de página o ruta en la aplicación.
@@ -370,6 +382,7 @@ const refrescarDatos = async () => {
  * Qué retorna: Void.
  */
 onMounted(() => {
+  themeStore.aplicarClaseGlobal();
   if (authStore.token) {
     cargarMaestras();
     cargarAnioLectivo();
@@ -449,4 +462,56 @@ onMounted(() => {
     margin-bottom: 0.5rem;
   }
 }
+
+/* ==========================================
+   MAGIA DE CASCADA PARA MODO CLARO (GEPRES)
+   ================================---------- */
+
+/* 1. Fondos generales y paneles */
+body.theme-light .dashboard-bg {
+    background: #f4f7f6 !important; 
+}
+body.theme-light .glass-panel,
+body.theme-light .box.is-dark-box {
+    background: #ffffff !important;
+    border: 1px solid #dcdcdc !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+}
+body.theme-light .navbar.is-dark {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid #dcdcdc !important;
+}
+body.theme-light .custom-input,
+body.theme-light .custom-select select {
+    background-color: #ffffff !important;
+    color: #2c3e50 !important;
+    border: 1px solid #b8c2cc !important;
+}
+
+/* 2. NEUTRALIZADOR DE CLASES CLARAS DE BULMA Y FUERZA BRUTA A TEXTOS */
+/* Atrapa cualquier variante de texto blanco/claro y la vuelve oscura */
+body.theme-light [class*="has-text-white"],
+body.theme-light [class*="has-text-light"],
+body.theme-light .title,
+body.theme-light .subtitle,
+body.theme-light label,
+body.theme-light p,
+body.theme-light td,
+body.theme-light span:not(.tag):not(.icon):not(.fas):not(.far) {
+    color: #2c3e50 !important;
+}
+
+/* 3. ENCABEZADOS DE TABLA (th) EN AZUL FUERTE */
+body.theme-light th {
+    color: #1d6fa5 !important; /* Azul fuerte bien legible */
+}
+
+/* 4. TABLAS Y HOVER EN MODO CLARO */
+body.theme-light .table {
+    background-color: transparent !important;
+}
+body.theme-light .table.is-hoverable tbody tr:not(.is-selected):hover {
+    background-color: #f1f5f8 !important;
+}
+
 </style>
