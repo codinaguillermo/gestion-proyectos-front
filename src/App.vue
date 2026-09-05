@@ -39,13 +39,13 @@
             </span>
           </div>
 
-          <!-- ACCESO DIRECTO EN NAVBAR: Toma de Asistencia (Solo Docentes y Admins) -->
+          <!-- ACCESO DIRECTO EN NAVBAR: Toma de Asistencia (Texto visible en PC y Móvil) -->
           <div v-if="esDocenteOAdmin" class="navbar-item">
             <router-link to="/asistencia" class="button is-ghost has-text-white p-2" title="Toma de Asistencia">
               <span class="icon is-medium">
                 <i class="fas fa-clipboard-check fa-lg has-text-success"></i>
               </span>
-              <span class="is-hidden-touch ml-1">Asistencia</span>
+              <span class="ml-1">Toma de asistencia</span>
             </router-link>
           </div>
 
@@ -132,6 +132,17 @@
               <router-link v-if="esDocenteOAdmin" to="/gestion-curricular" class="navbar-item">
                 <span class="icon is-small mr-2"><i class="fas fa-book"></i></span>
                 Especialidades y Materias
+              </router-link>
+
+              <router-link v-if="esDocenteOAdmin" to="/asistencia" class="navbar-item">
+                <span class="icon is-small mr-2"><i class="fas fa-clipboard-check has-text-success"></i></span>
+                Toma de Asistencia
+              </router-link>
+              
+              <!-- NUEVO: Enlace directo al Informe de Asistencia -->
+              <router-link v-if="esDocenteOAdmin" to="/reporte-asistencia" class="navbar-item">
+                <span class="icon is-small mr-2"><i class="fas fa-chart-line has-text-info"></i></span>
+                Informe de Asistencia
               </router-link>
 
               <a v-if="esDocenteOAdmin" class="navbar-item" @click="abrirExportacion">
@@ -222,15 +233,12 @@ const router = useRouter();
 const menuAbierto = ref(false);
 const modalPerfilActivo = ref(false);
 const modalExportarActivo = ref(false); 
-const modalConfiguracionActivo = ref(false); // Flag reactivo para el nuevo modal
+const modalConfiguracionActivo = ref(false); 
 const usuarioParaEditar = ref(null); 
 const escuelas = ref([]);
 const roles = ref([]);
 
-// Variable reactiva para almacenar y mostrar el año lectivo activo en el navbar
 const anioLectivoActual = ref('2026');
-
-
 
 /**
  * Propósito: Cerrar automáticamente el menú móvil cuando el usuario cambia de página o ruta en la aplicación.
@@ -432,7 +440,6 @@ onMounted(() => {
     font-weight: bold;
 }
 
-/* Contenedor relativo del ícono de mensajes para anclar el globo flotante */
 .icon-mensaje-contenedor {
   position: relative;
   display: inline-flex;
@@ -440,12 +447,11 @@ onMounted(() => {
   justify-content: center;
 }
 
-/* Burbuja indicadora de mensajes nuevos al estilo Facebook */
 .badge-facebook {
   position: absolute;
   top: 0px;
   right: -2px;
-  background-color: #f14668; /* Rojo is-danger de Bulma */
+  background-color: #f14668;
   color: #ffffff;
   font-size: 0.7rem;
   font-weight: 700;
@@ -459,12 +465,10 @@ onMounted(() => {
   z-index: 10;
 }
 
-/* Cambio de color claro para las líneas de la hamburguesa en dispositivos móviles */
 .navbar-burger span {
   background-color: #f5f5f5 !important;
 }
 
-/* Blindaje y ergonomía para celulares pequeñas en el encabezado de navegación */
 @media (max-width: 768px) {
   .badge-anio-mobile {
     width: 100%;
@@ -473,11 +477,6 @@ onMounted(() => {
   }
 }
 
-/* ==========================================================
-   CORRECCIONES DE VISIBILIDAD EN MENÚ MÓVIL (LUNA, USUARIO, ETC.)
-   ========================================================== */
-
-/* Forzar que el sol y la luna estén siempre amarillos */
 .icono-siempre-amarillo {
   color: #ffdd57 !important;
 }
@@ -496,11 +495,6 @@ onMounted(() => {
   }
 }
 
-/* ==========================================
-   MAGIA DE CASCADA PARA MODO CLARO (GEPRES)
-   ================================---------- */
-
-/* 1. Fondos generales y paneles */
 body.theme-light .dashboard-bg {
     background: #f4f7f6 !important; 
 }
@@ -521,7 +515,6 @@ body.theme-light .custom-select select {
     border: 1px solid #b8c2cc !important;
 }
 
-/* 2. NEUTRALIZADOR DE CLASES CLARAS DE BULMA Y FUERZA BRUTA A TEXTOS */
 body.theme-light [class*="has-text-white"],
 body.theme-light [class*="has-text-light"],
 body.theme-light .title,
@@ -534,22 +527,18 @@ body.theme-light .navbar-burger {
     color: #2c3e50 !important;
 }
 
-/* Sincronizar específicamente las líneas de la hamburguesa / X del menú móvil con el color del título GEPRES en modo claro */
 body.theme-light .navbar-burger span {
     background-color: #2c3e50 !important;
 }
 
-/* 3. ENCABEZADOS DE TABLA (th) EN AZUL FUERTE */
 body.theme-light th {
     color: #1d6fa5 !important;
 }
 
-/* 4. TABLAS Y HOVER EN MODO CLARO */
 body.theme-light .table {
     background-color: transparent !important;
 }
 body.theme-light .table.is-hoverable tbody tr:not(.is-selected):hover {
     background-color: #f1f5f8 !important;
 }
-
 </style>

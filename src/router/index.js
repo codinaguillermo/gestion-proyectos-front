@@ -146,6 +146,12 @@ const router = createRouter({
       name: 'asistencia',
       component: () => import('../views/AsistenciaView.vue'),
       meta: { requiresAuth: true } // Para que pida login
+    },
+    {
+      path: '/reporte-asistencia',
+      name: 'reporte de asistencia',
+      component: () => import('../views/ReporteAsistenciaView.vue'),
+      meta: { requiresAuth: true } // Para que pida login
     }
   ]
 });
