@@ -140,6 +140,12 @@ const router = createRouter({
       name: 'mensajeria',
       component: MensajeriaView,
       meta: { requiresAuth: true } // Para que pida login
+    },
+    {
+      path: '/asistencia',
+      name: 'asistencia',
+      component: () => import('../views/AsistenciaView.vue'),
+      meta: { requiresAuth: true } // Para que pida login
     }
   ]
 });

@@ -22,21 +22,31 @@
 
       <div class="navbar-menu" :class="{ 'is-active': menuAbierto }">
         <div class="navbar-end">
-          <!-- BOTÓN MODO CLARO/OSCURO -->
+          <!-- BOTÓN MODO CLARO/OSCURO (Icono siempre amarillo) -->
           <div class="navbar-item">
             <button class="button is-ghost has-text-white p-2" @click="themeStore.toggleTheme" title="Alternar Tema">
               <span class="icon is-medium">
-                <i class="fas" :class="themeStore.esModoOscuro ? 'fa-sun has-text-warning' : 'fa-moon has-text-link'"></i>
+                <i class="fas icono-siempre-amarillo" :class="themeStore.esModoOscuro ? 'fa-sun' : 'fa-moon'"></i>
               </span>
             </button>
           </div>
           
-          <!-- NUEVO: Indicador visual del Ciclo Lectivo activo en GEPRES para toda la comunidad educativa -->
+          <!-- Indicador visual del Ciclo Lectivo activo en GEPRES -->
           <div class="navbar-item is-flex is-align-items-center">
             <span class="tag is-info is-light has-text-weight-bold px-3 py-2 badge-anio-mobile" title="Ciclo Lectivo Activo en el Sistema">
               <span class="icon is-small mr-1"><i class="fas fa-calendar-alt"></i></span>
               <span>Ciclo {{ anioLectivoActual }}</span>
             </span>
+          </div>
+
+          <!-- ACCESO DIRECTO EN NAVBAR: Toma de Asistencia (Solo Docentes y Admins) -->
+          <div v-if="esDocenteOAdmin" class="navbar-item">
+            <router-link to="/asistencia" class="button is-ghost has-text-white p-2" title="Toma de Asistencia">
+              <span class="icon is-medium">
+                <i class="fas fa-clipboard-check fa-lg has-text-success"></i>
+              </span>
+              <span class="is-hidden-touch ml-1">Asistencia</span>
+            </router-link>
           </div>
 
           <!-- Ícono de Solicitudes Pendientes con burbuja de notificación -->
@@ -80,20 +90,20 @@
               </div>
             </figure>
             
-            <span class="has-text-white">
+            <span class="has-text-white texto-usuario-movil">
               Hola, <strong class="has-text-white">{{ nombreUsuario }}</strong>
             </span>
           </div>
 
           <div class="navbar-item has-dropdown is-arrowless is-hoverable">
             <a class="navbar-link is-arrowless">
-              <span class="icon has-text-white">
+              <span class="icon has-text-white engranaje-icono">
                 <i class="fas fa-cog"></i> 
               </span>
             </a>
 
             <div class="navbar-dropdown is-right">
-              <!-- NUEVO: Acceso exclusivo para Administradores al Modal de Configuración Global (Año Lectivo) -->
+              <!-- Acceso exclusivo para Administradores al Modal de Configuración Global (Año Lectivo) -->
               <a v-if="esAdmin" class="navbar-item has-background-warning-light" @click="abrirConfiguracion">
                 <span class="icon is-small mr-2 has-text-dark"><i class="fas fa-cogs"></i></span>
                 <strong class="has-text-dark">Configuración GEPRES</strong>
@@ -449,9 +459,9 @@ onMounted(() => {
   z-index: 10;
 }
 
-/* Cambio de color claro para las líneas de la hamburguesa y la X en dispositivos móviles */
+/* Cambio de color claro para las líneas de la hamburguesa en dispositivos móviles */
 .navbar-burger span {
-  background-color: #f5f5f5 !important; /* Blanco humo / tono claro */
+  background-color: #f5f5f5 !important;
 }
 
 /* Blindaje y ergonomía para celulares pequeñas en el encabezado de navegación */
@@ -460,6 +470,29 @@ onMounted(() => {
     width: 100%;
     justify-content: center;
     margin-bottom: 0.5rem;
+  }
+}
+
+/* ==========================================================
+   CORRECCIONES DE VISIBILIDAD EN MENÚ MÓVIL (LUNA, USUARIO, ETC.)
+   ========================================================== */
+
+/* Forzar que el sol y la luna estén siempre amarillos */
+.icono-siempre-amarillo {
+  color: #ffdd57 !important;
+}
+
+.texto-usuario-movil {
+  color: #ffffff !important;
+}
+
+.engranaje-icono {
+  color: #ffffff !important;
+}
+
+@media screen and (max-width: 1023px) {
+  .navbar-menu.is-active {
+    background-color: #22272e !important;
   }
 }
 
@@ -489,7 +522,6 @@ body.theme-light .custom-select select {
 }
 
 /* 2. NEUTRALIZADOR DE CLASES CLARAS DE BULMA Y FUERZA BRUTA A TEXTOS */
-/* Atrapa cualquier variante de texto blanco/claro y la vuelve oscura */
 body.theme-light [class*="has-text-white"],
 body.theme-light [class*="has-text-light"],
 body.theme-light .title,
@@ -497,13 +529,19 @@ body.theme-light .subtitle,
 body.theme-light label,
 body.theme-light p,
 body.theme-light td,
-body.theme-light span:not(.tag):not(.icon):not(.fas):not(.far) {
+body.theme-light span:not(.tag):not(.icon):not(.fas):not(.far),
+body.theme-light .navbar-burger {
     color: #2c3e50 !important;
+}
+
+/* Sincronizar específicamente las líneas de la hamburguesa / X del menú móvil con el color del título GEPRES en modo claro */
+body.theme-light .navbar-burger span {
+    background-color: #2c3e50 !important;
 }
 
 /* 3. ENCABEZADOS DE TABLA (th) EN AZUL FUERTE */
 body.theme-light th {
-    color: #1d6fa5 !important; /* Azul fuerte bien legible */
+    color: #1d6fa5 !important;
 }
 
 /* 4. TABLAS Y HOVER EN MODO CLARO */
