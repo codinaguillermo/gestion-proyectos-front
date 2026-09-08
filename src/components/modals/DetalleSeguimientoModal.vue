@@ -33,17 +33,18 @@
           </div>
         </div>
 
-        <!-- FILTROS DE ASIGNATURA Y AÑO LECTIVO + BOTÓN EXPORTAR A PDF -->
+        <!-- FILTROS DE ASIGNATURA, AÑO LECTIVO Y CUATRIMESTRE + BOTÓN EXPORTAR A PDF -->
         <div v-if="historial.length > 0" class="box p-3 p-md-4 mb-5 border-materia-filter data-filter-box">
           <div class="columns is-multiline is-vcentered">
             
-            <div class="column is-12-mobile is-5-tablet">
+            <!-- Asignatura -->
+            <div class="column is-12-mobile is-4-tablet">
               <div class="field mb-0">
                 <label class="label is-small mb-1"><i class="fas fa-filter mr-1 has-text-grey"></i> Asignatura:</label>
                 <div class="control is-expanded">
                   <div class="select is-info is-fullwidth">
                     <select v-model="materiaSeleccionadaId">
-                      <option :value="null">Ver todas las materias...</option>
+                      <option :value="null">Todas las materias...</option>
                       <option v-for="mat in materiasDisponibles" :key="mat.id" :value="mat.id">
                         {{ mat.nombre }}
                       </option>
@@ -53,12 +54,13 @@
               </div>
             </div>
 
-            <div class="column is-12-mobile is-4-tablet">
+            <!-- Año Lectivo -->
+            <div class="column is-12-mobile is-3-tablet">
               <div class="field mb-0">
-                <label class="label is-small mb-1"><i class="fas fa-calendar-alt mr-1 has-text-grey"></i> Año Lectivo:</label>
+                <label class="label is-small mb-1"><i class="fas fa-calendar-alt mr-1 has-text-grey"></i> Año:</label>
                 <div class="control is-expanded">
-                  <div class="select is-info is-fullwidth" :class="{ 'is-loading': cargandoAniosGlobales }">
-                    <select v-model="anioSeleccionado">
+                  <div class="select is-info is-fullwidth">
+                    <select v-model="anioSeleccionado" @change="cargarHistorial">
                       <option :value="null">Todos los años...</option>
                       <option v-for="anio in opcionesAniosFiltro" :key="anio" :value="anio">
                         {{ anio }}
@@ -69,13 +71,30 @@
               </div>
             </div>
 
-            <div class="column is-12-mobile is-3-tablet has-text-right-tablet">
-              <div class="field mb-0 mt-4 mt-tablet-0">
+            <!-- Cuatrimestre -->
+            <div class="column is-12-mobile is-3-tablet">
+              <div class="field mb-0">
+                <label class="label is-small mb-1"><i class="fas fa-layer-group mr-1 has-text-grey"></i> Período:</label>
+                <div class="control is-expanded">
+                  <div class="select is-info is-fullwidth">
+                    <select v-model="cuatrimestreSeleccionado" @change="cargarHistorial">
+                      <option :value="null">Todo el año</option>
+                      <option value="1">1er Cuatrimestre</option>
+                      <option value="2">2do Cuatrimestre</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botón PDF -->
+            <div class="column is-12-mobile is-2-tablet has-text-right-tablet">
+              <div class="field mb-0 mt-3 mt-tablet-0">
                 <label class="label is-small mb-1 is-invisible-mobile">&nbsp;</label>
                 <div class="control">
                   <button class="button is-danger is-fullwidth btn-export" @click="exportarPDF" :disabled="historialFiltrado.length === 0">
                     <span class="icon"><i class="fas fa-file-pdf"></i></span>
-                    <span>Exportar a PDF</span>
+                    <span>PDF</span>
                   </button>
                 </div>
               </div>
@@ -144,6 +163,9 @@
                 <p class="is-size-6 has-text-weight-bold has-text-link">
                   {{ seg.materia?.nombre || 'LENGUAJE DE PROGRAMACION III' }}
                 </p>
+                <p class="is-size-7 has-text-grey mt-1" v-if="seg.observacion">
+                  <em>"{{ seg.observacion }}"</em>
+                </p>
               </div>
 
               <div v-if="esDocente" class="is-flex is-justify-content-flex-end pt-2 border-top-light">
@@ -168,7 +190,7 @@
 
         <div v-else-if="historialFiltrado.length === 0" class="notification is-warning is-light has-text-centered empty-state">
           <i class="fas fa-exclamation-triangle mr-2"></i>
-          No se encontraron registros de evaluaciones para el criterio seleccionado.
+          No se encontraron registros de evaluaciones para el período y criterios seleccionados.
         </div>
 
       </section>
@@ -184,7 +206,7 @@
       </div>
 
       <div style="display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px;">
-        <span style="font-size: 14px; font-weight: bold;">PROMEDIO GENERAL:</span>
+        <span style="font-size: 14px; font-weight: bold;">PROMEDIO DEL PERÍODO:</span>
         <span style="font-size: 18px; font-weight: bold; color: #209cee;">{{ promedioCalculado }} / 10</span>
       </div>
 
@@ -212,7 +234,7 @@
       </div>
     </div>
 
-    <!-- MODAL DE EDICIÓN ADAPTADO A CELULARES -->
+    <!-- MODAL DE EDICIÓN -->
     <div class="modal" :class="{'is-active': mostrarModalEdicion}">
       <div class="modal-background" @click="mostrarModalEdicion = false"></div>
       <div class="modal-card modal-card-responsive">
@@ -298,23 +320,17 @@
 import html2pdf from 'html2pdf.js';
 import seguimientoService from '../../services/seguimiento.service';
 import { useAuthStore } from '../../stores/auth';
-import axios from 'axios';
 
-/**
- * @componente DetalleSeguimientoModal.vue
- * @propósito Mostrar el historial cuantitativo indexado por materia de un alumno, calculando sus promedios en escala 1-10.
- * @alimenta Monitor de Desempeño en ProyectoConfigView.vue. Permite emitir e imprimir reportes PDF.
- */
 export default {
   props: ['alumno', 'proyectoId'],
   data() {
     return {
       historial: [],
       cargando: true,
-      cargandoAniosGlobales: false,
       contexto: { escuela: '', proyecto: '' },
       materiaSeleccionadaId: null,
-      anioSeleccionado: null,
+      anioSeleccionado: null,          // Arranca en null para ver todos los años por defecto
+      cuatrimestreSeleccionado: null,  // Arranca en null para ver todo el año
       fechaHoy: new Date().toLocaleDateString('es-AR'),
       mostrarModalEdicion: false,
       mostrarModalEliminar: false,
@@ -341,17 +357,23 @@ export default {
     },
     opcionesAniosFiltro() {
       const aniosSet = new Set();
+      
+      // 1. Extraemos dinámicamente los años presentes en el historial
       this.historial.forEach(seg => {
         if (seg.anio_lectivo) aniosSet.add(String(seg.anio_lectivo));
       });
-      aniosSet.add(String(new Date().getFullYear()));
+      
+      // 2. Garantizamos un rango robusto (ej. desde 2024 hasta el año actual + 1) para que 2025 y 2026 siempre aparezcan
+      const anioActual = new Date().getFullYear();
+      for (let i = anioActual - 2; i <= anioActual + 1; i++) {
+        aniosSet.add(String(i));
+      }
+      
       return Array.from(aniosSet).sort((a, b) => b.localeCompare(a));
     },
     historialFiltrado() {
       return this.historial.filter(seg => {
-        const cumpleMateria = this.materiaSeleccionadaId === null || seg.materia_id === Number(this.materiaSeleccionadaId);
-        const cumpleAnio = this.anioSeleccionado === null || String(seg.anio_lectivo) === String(this.anioSeleccionado);
-        return cumpleMateria && cumpleAnio;
+        return this.materiaSeleccionadaId === null || seg.materia_id === Number(this.materiaSeleccionadaId);
       });
     },
     nombreEspecialidad() {
@@ -370,14 +392,18 @@ export default {
     async cargarHistorial() {
         this.cargando = true;
         try {
-            const res = await seguimientoService.getHistorial('todos', this.alumno.id);
+            const params = {};
+            // Enviamos los filtros limpios al backend
+            if (this.anioSeleccionado) params.anio_lectivo = this.anioSeleccionado;
+            if (this.cuatrimestreSeleccionado) params.cuatrimestre = this.cuatrimestreSeleccionado;
+
+            const res = await seguimientoService.getHistorial('todos', this.alumno.id, params);
             
-            if (res.data.success && res.data.data.length > 0) {
-                this.historial = res.data.data;
-                const registro = this.historial[0];
-                if (registro.proyecto) {
-                    this.contexto.proyecto = registro.proyecto.nombre || 'Proyecto sin nombre';
-                    const esc = registro.proyecto.Escuela || registro.proyecto.escuela;
+            if (res.data.success) {
+                this.historial = res.data.data || [];
+                if (this.historial.length > 0 && this.historial[0].proyecto) {
+                    this.contexto.proyecto = this.historial[0].proyecto.nombre || 'Proyecto sin nombre';
+                    const esc = this.historial[0].proyecto.Escuela || this.historial[0].proyecto.escuela;
                     this.contexto.escuela = esc?.nombre_largo || 'Institución No Definida';
                 }
             } else {
@@ -388,22 +414,6 @@ export default {
         } finally {
             this.cargando = false;
         }
-    },
-    async cargarAnioLectivoGlobal() {
-      this.cargandoAniosGlobales = true;
-      try {
-        const response = await axios.get('/api/configuraciones/anio-lectivo');
-        if (response.data && response.data.success && response.data.data) {
-          this.anioSeleccionado = String(response.data.data.valor);
-        } else {
-          this.anioSeleccionado = String(new Date().getFullYear());
-        }
-      } catch (err) {
-        console.error("Error al obtener el año lectivo global para el filtro:", err);
-        this.anioSeleccionado = String(new Date().getFullYear());
-      } finally {
-        this.cargandoAniosGlobales = false;
-      }
     },
     generarOpcionesAnios() {
       const anioActual = new Date().getFullYear();
@@ -492,9 +502,8 @@ export default {
     }
   },
   mounted() { 
-    this.cargarHistorial(); 
     this.generarOpcionesAnios();
-    this.cargarAnioLectivoGlobal();
+    this.cargarHistorial(); // Cargamos directamente el historial sin depender del endpoint protegido con 403
   }
 }
 </script>
@@ -555,7 +564,6 @@ export default {
 .border-info-v2 { border-top: 8px solid #209cee; }
 .uppercase-label { text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; font-weight: bold; }
 
-/* Estilo responsivo específico para que los sub-modales (Edición/Eliminación) se ajusten en celulares */
 .modal-card-responsive {
   width: 92vw !important;
   max-width: 500px !important;

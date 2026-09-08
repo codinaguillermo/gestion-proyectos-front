@@ -53,6 +53,34 @@
             </div>
           </div>
         </div>
+
+        <!-- Nuevo: Año Lectivo -->
+        <div class="field">
+          <label class="label">Año Lectivo</label>
+          <div class="control is-expanded">
+            <div class="select is-fullwidth">
+              <select v-model="form.anio_lectivo">
+                <option v-for="anio in opcionesAniosFiltro" :key="anio" :value="anio">
+                  {{ anio }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nuevo: Período / Cuatrimestre -->
+        <div class="field">
+          <label class="label">Período</label>
+          <div class="control is-expanded">
+            <div class="select is-fullwidth">
+              <select v-model="form.cuatrimestre">
+                <option :value="null">Todo el año</option>
+                <option value="1">1er Cuatrimestre</option>
+                <option value="2">2do Cuatrimestre</option>
+              </select>
+            </div>
+          </div>
+        </div>
         
         <div v-if="errorMsg" class="notification is-danger is-light mt-4">
           <button class="delete" @click="errorMsg = ''"></button>
@@ -83,6 +111,7 @@ import reporteService from '../../services/reporte.service';
 
 export default {
   data() {
+    const anioActualStr = String(new Date().getFullYear());
     return {
       cargandoFiltros: true,
       procesando: false,
@@ -90,21 +119,32 @@ export default {
       filtros: {
         escuelas: [],
         cursosDivisiones: [],
-        materias: [] // <-- Agregado al estado
+        materias: []
       },
       form: {
         escuela_id: null,
-        materia_id: null // <-- Agregado al formulario
+        materia_id: null,
+        anio_lectivo: anioActualStr, // Por defecto año en curso
+        cuatrimestre: null            // Por defecto todo el año
       },
       cursoDivisionSeleccionado: null
     }
   },
   computed: {
+    opcionesAniosFiltro() {
+      const anioActual = new Date().getFullYear();
+      const anios = [];
+      // Rango coherente para reportes históricos recientes
+      for (let i = anioActual - 2; i <= anioActual + 1; i++) {
+        anios.push(String(i));
+      }
+      return anios;
+    },
     formularioValido() {
-      // Exigimos que también se haya elegido la materia
       return this.form.escuela_id !== null && 
              this.cursoDivisionSeleccionado !== null && 
-             this.form.materia_id !== null;
+             this.form.materia_id !== null &&
+             this.form.anio_lectivo !== null;
     }
   },
   methods: {
@@ -132,7 +172,9 @@ export default {
           escuela_id: this.form.escuela_id,
           curso: this.cursoDivisionSeleccionado.curso,
           division: this.cursoDivisionSeleccionado.division,
-          materia_id: this.form.materia_id // <-- Lo sumamos al payload
+          materia_id: this.form.materia_id,
+          anio_lectivo: this.form.anio_lectivo,
+          cuatrimestre: this.form.cuatrimestre
         };
 
         const res = await reporteService.generarPlanillaExcel(payload);
@@ -141,7 +183,7 @@ export default {
           const datos = res.data.data;
           
           if (datos.length === 0) {
-            this.errorMsg = "No se encontraron alumnos para los criterios seleccionados.";
+            this.errorMsg = "No se encontraron alumnos para los criterios y el período seleccionado.";
             this.procesando = false;
             return;
           }
@@ -150,8 +192,9 @@ export default {
           const libro = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(libro, hoja, "Promedios");
 
-          // Nombre dinámico más completo
-          const nombreArchivo = `Notas_${this.cursoDivisionSeleccionado.curso}_${this.cursoDivisionSeleccionado.division}_GEPRES.xlsx`;
+          // Nombre dinámico con curso, división, año y cuatrimestre
+          const sufijoCuatrimestre = this.form.cuatrimestre ? `C${this.form.cuatrimestre}` : 'Todo_Anio';
+          const nombreArchivo = `Notas_${this.cursoDivisionSeleccionado.curso}_${this.cursoDivisionSeleccionado.division}_${this.form.anio_lectivo}_${sufijoCuatrimestre}_GEPRES.xlsx`;
           
           XLSX.writeFile(libro, nombreArchivo);
           this.$emit('close');

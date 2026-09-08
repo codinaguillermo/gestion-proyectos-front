@@ -103,11 +103,11 @@
             </a>
 
             <div class="navbar-dropdown is-right">
-              <!-- Acceso exclusivo para Administradores al Modal de Configuración Global (Año Lectivo) -->
-              <a v-if="esAdmin" class="navbar-item has-background-warning-light" @click="abrirConfiguracion">
+              <!-- Acceso exclusivo para Administradores a la Vista General de Configuración (Parámetros del Sistema) -->
+              <router-link v-if="esAdmin" to="/configuracion" class="navbar-item has-background-warning-light">
                 <span class="icon is-small mr-2 has-text-dark"><i class="fas fa-cogs"></i></span>
                 <strong class="has-text-dark">Configuración GEPRES</strong>
-              </a>
+              </router-link>
               <hr v-if="esAdmin" class="navbar-divider">
 
               <router-link v-if="esDocenteOAdmin" to="/usuarios" class="navbar-item">
@@ -139,9 +139,9 @@
                 Toma de Asistencia
               </router-link>
               
-              <!-- NUEVO: Enlace directo al Informe de Asistencia -->
+              <!-- Enlace directo al Informe de Asistencia -->
               <router-link v-if="esDocenteOAdmin" to="/reporte-asistencia" class="navbar-item">
-                <span class="icon is-small mr-2"><i class="fas fa-chart-line has-text-info"></i></span>
+                <span class="icon is-small mr-2 has-text-info"><i class="fas fa-chart-line has-text-info"></i></span>
                 Informe de Asistencia
               </router-link>
 
@@ -187,14 +187,6 @@
 
   <router-view />
 
-  
-  <ConfiguracionModal 
-    v-if="modalConfiguracionActivo"
-    :is-active="modalConfiguracionActivo"
-    @close="modalConfiguracionActivo = false"
-    @anio-actualizado="handleAnioActualizado"
-  />
-
   <UsuarioModal 
     v-if="modalPerfilActivo && roles.length > 0 && escuelas.length > 0"
     :key="usuarioParaEditar?.id" 
@@ -220,9 +212,6 @@ import { useAuthStore } from './stores/auth';
 import api from './services/api';
 import UsuarioModal from './components/modals/usuarioModal.vue';
 import ExportarNotasModal from './components/modals/ExportarNotasModal.vue';
-
-
-import ConfiguracionModal from './components/modals/ConfiguracionModal.vue';
 import configuracionService from './services/configuracion.service';
 
 const authStore = useAuthStore();
@@ -233,7 +222,6 @@ const router = useRouter();
 const menuAbierto = ref(false);
 const modalPerfilActivo = ref(false);
 const modalExportarActivo = ref(false); 
-const modalConfiguracionActivo = ref(false); 
 const usuarioParaEditar = ref(null); 
 const escuelas = ref([]);
 const roles = ref([]);
@@ -317,7 +305,7 @@ const cargarMaestras = async () => {
 
 /**
  * Propósito: Consultar al backend la variable global del año lectivo para exhibirla en el encabezado superior de GEPRES.
- * A quién alimenta: Hook onMounted y callback de actualización desde el modal de configuración.
+ * A quién alimenta: Hook onMounted inicial.
  * Qué retorna: Promise<void> (asigna el valor recuperado a la variable reactiva anioLectivoActual).
  */
 const cargarAnioLectivo = async () => {
@@ -329,26 +317,6 @@ const cargarAnioLectivo = async () => {
   } catch (error) {
     console.error("Error al cargar año lectivo en App.vue:", error);
   }
-};
-
-/**
- * Propósito: Desplegar la ventana modal de administración para modificar variables globales del sistema (como el año lectivo activo).
- * A quién alimenta: Evento @click de la opción "Configuración GEPRES" en el menú desplegable.
- * Qué retorna: Void (cambia el estado de modalConfiguracionActivo a true y cierra el menú táctil si estaba abierto).
- */
-const abrirConfiguracion = () => {
-  modalConfiguracionActivo.value = true;
-  menuAbierto.value = false;
-};
-
-/**
- * Propósito: Actualizar en tiempo real el indicador visual del año lectivo en la barra superior cuando el Administrador confirma un cambio.
- * A quién alimenta: Evento custom @anio-actualizado emitido por el componente ConfiguracionModal.vue.
- * Qué retorna: Void (sobrescribe la referencia reactiva anioLectivoActual con el nuevo valor recibido y cierra la ventana).
- */
-const handleAnioActualizado = (nuevoAnio) => {
-  anioLectivoActual.value = String(nuevoAnio);
-  modalConfiguracionActivo.value = false;
 };
 
 /**

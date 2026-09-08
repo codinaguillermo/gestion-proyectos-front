@@ -53,14 +53,15 @@ export default {
 
     /**
      * @función getHistorial
-     * @propósito Obtener el desglose cronológico y completo de las notas de concepto de un alumno, incluyendo la materia asociada.
+     * @propósito Obtener el desglose cronológico y completo de las notas de concepto de un alumno, incluyendo la materia asociada y filtros opcionales de período.
      * @alimenta DetalleSeguimientoModal.vue (Gráficos por materia, tablas históricas y exportación a PDF)
      * @parámetros {Number|String} proyectoId - ID del proyecto.
      * @parámetros {Number|String} alumnoId - ID del usuario con rol alumno.
-     * @retorna {Promise} Promesa con la colección completa de registros ordenados de forma descendente.
+     * @parámetros {Object} [params] - Parámetros opcionales de filtrado (ej: anio_lectivo, cuatrimestre).
+     * @retorna {Promise} Promesa con la colección completa de registros filtrados.
      */
-    getHistorial(proyectoId, alumnoId) {
-        return api.get(`/seguimientos/historial/${proyectoId}/${alumnoId}`);
+    getHistorial(proyectoId, alumnoId, params = {}) {
+        return api.get(`/seguimientos/historial/${proyectoId}/${alumnoId}`, { params });
     },
 
     /**

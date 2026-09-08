@@ -152,7 +152,13 @@ const router = createRouter({
       name: 'reporte de asistencia',
       component: () => import('../views/ReporteAsistenciaView.vue'),
       meta: { requiresAuth: true } // Para que pida login
-    }
+    },
+    {
+      path: '/configuracion',
+      name: 'configuracion',
+      component: () => import('../views/ConfiguracionView.vue'),
+      meta: { requiresAuth: true, roles: [1, 2] } // Solo Admin y Docente
+    },
   ]
 });
 

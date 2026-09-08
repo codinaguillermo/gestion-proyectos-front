@@ -31,13 +31,13 @@
             </div>
           </div>
 
-          <!-- Selector de Año Lectivo (Por defecto GEPRES, editable) -->
+          <!-- Selector de Año Lectivo (Por defecto año actual del sistema, editable) -->
           <div class="column is-12-mobile is-6-tablet">
             <div class="field mb-3">
               <label class="label is-small">Año Lectivo</label>
               <div class="control">
-                <div class="select is-fullwidth is-info" :class="{ 'is-loading': cargandoAnios }">
-                  <select v-model="form.anio_lectivo" :disabled="cargandoAnios">
+                <div class="select is-fullwidth is-info">
+                  <select v-model="form.anio_lectivo">
                     <option v-for="anio in opcionesAnios" :key="anio" :value="anio">
                       {{ anio }}
                     </option>
@@ -111,11 +111,10 @@
 
 <script>
 import seguimientoService from '../../services/seguimiento.service';
-import axios from 'axios';
 
 /**
  * @componente SeguimientoModal.vue
- * @propósito Formulario modal para registrar un nuevo informe actitudinal/pedagógico cuantitativo individual asignado a una materia específica, año lectivo y con fecha seleccionable[cite: 8].
+ * @propósito Formulario modal para registrar un nuevo informe actitudinal/pedagógico cuantitativo individual asignado a una materia específica, año lectivo actual y con fecha seleccionable[cite: 8].
  * @interactúa Alimenta a: ProyectoConfigView.vue (Monitor de desempeño por integrantes)[cite: 8]
  * @emite 'success' al impactar la API con éxito, 'close' para destruir la instancia visual[cite: 8].
  */
@@ -131,15 +130,15 @@ export default {
     }
   },
   data() {
+    const anioActualStr = String(new Date().getFullYear());
     return {
       enviando: false,
       cargandoMaterias: false,
-      cargandoAnios: false,
       materias: [],
       opcionesAnios: [],
       form: { 
         fecha_evaluacion: new Date().toISOString().split('T')[0],
-        anio_lectivo: '2026',
+        anio_lectivo: anioActualStr,
         materia_id: null, 
         desempeno: null, 
         observacion: '' 
@@ -147,41 +146,20 @@ export default {
     }
   },
   mounted() {
-    this.cargarAnioLectivoGlobal();
     this.cargarMateriasCurriculares();
     this.generarOpcionesAnios();
   },
   methods: {
     /**
-     * @función cargarAnioLectivoGlobal
-     * @propósito Consultar el endpoint GET /api/configuraciones/anio-lectivo para preseleccionar el año activo en GEPRES[cite: 8].
-     * @quien_la_llama Hook mounted() al inicializar el componente[cite: 8].
-     * @retorna Void. Asigna datos al campo `anio_lectivo`[cite: 8].
-     */
-    async cargarAnioLectivoGlobal() {
-      this.cargandoAnios = true;
-      try {
-        const response = await axios.get('/api/configuraciones/anio-lectivo');
-        if (response.data && response.data.success && response.data.data) {
-          this.form.anio_lectivo = String(response.data.data.valor);
-        }
-      } catch (err) {
-        console.error("Error al obtener el año lectivo global[cite: 8]:", err);
-      } finally {
-        this.cargandoAnios = false;
-      }
-    },
-
-    /**
      * @función generarOpcionesAnios
-     * @propósito Crear un rango razonable de años lectivos para el selector (ej: desde 3 años atrás hasta 2 años adelante)[cite: 8].
+     * @propósito Crear un rango de años lectivos para el selector basado en el año actual del sistema[cite: 8].
      * @quien_la_llama Hook mounted() al inicializar el componente[cite: 8].
      * @retorna Void. Pobla el array `opcionesAnios`[cite: 8].
      */
     generarOpcionesAnios() {
       const anioActual = new Date().getFullYear();
       const anios = [];
-      for (let i = anioActual - 3; i <= anioActual + 2; i++) {
+      for (let i = anioActual - 1; i <= anioActual + 1; i++) {
         anios.push(String(i));
       }
       this.opcionesAnios = anios;
