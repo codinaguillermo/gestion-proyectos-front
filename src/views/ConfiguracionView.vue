@@ -1,11 +1,24 @@
 <template>
   <div class="container pb-6">
-    <div class="box mt-5">
-      <h1 class="title is-4 has-text-info">
-        <i class="fas fa-cogs mr-2"></i> Configuración General del Sistema
-      </h1>
+    <div class="mb-4 mt-5">
+      <button class="button is-small is-light mb-3" @click="$router.back()">
+        <span class="icon is-small"><i class="fas fa-arrow-left"></i></span>
+        <span>Volver</span>
+      </button>
+    </div>
+
+    <div class="box">
+      <div class="is-flex is-justify-content-space-between is-align-items-center mb-2">
+        <h1 class="title is-4 has-text-info mb-0">
+          <i class="fas fa-cogs mr-2"></i> Configuración General del Sistema
+        </h1>
+        <router-link to="/especialidades" class="button is-link is-light is-small">
+          <span class="icon"><i class="fas fa-graduation-cap"></i></span>
+          <span>Ver Especialidades</span>
+        </router-link>
+      </div>
       <p class="subtitle is-6 has-text-grey">
-        Administre los parámetros institucionales, año lectivo activo y rangos de fechas para los cuatrimestres.
+        Administre los parámetros institucionales, año lectivo activo y rangos de fechas para los cuatrimestres[cite: 9].
       </p>
 
       <hr>
@@ -34,7 +47,7 @@
         <div class="notification is-info is-light py-3 mb-4">
           <p class="is-size-7">
             <i class="fas fa-info-circle mr-1"></i> 
-            <strong>Aviso importante para fechas:</strong> Cuando modifique parámetros que correspondan a fechas (como inicios o cierres de cuatrimestre), ingréselas estrictamente en el formato <strong>AAAA-MM-DD</strong> (ejemplo: <em>2026-03-01</em>) o utilice el selector desplegable del calendario. No utilice formato de barras invertidas (dd-mm-aaaa) para evitar errores en el sistema.
+            <strong>Aviso importante para fechas:</strong> Cuando modifique parámetros que correspondan a fechas (como inicios o cierres de cuatrimestre), ingréselas estrictamente en el formato <strong>AAAA-MM-DD</strong> (ejemplo: <em>2026-03-01</em>) o utilice el selector desplegable del calendario. No utilice formato de barras invertidas (dd-mm-aaaa) para evitar errores en el sistema[cite: 9].
           </p>
         </div>
 

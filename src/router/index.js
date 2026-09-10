@@ -81,6 +81,12 @@ const router = createRouter({
       component: () => import('../views/EscuelasLista.vue'), 
       meta: { requiresAuth: true, roles: [1, 2] } // Solo Admin y Docente
     },
+    {
+      path: '/especialidades',
+      name: 'especialidades',
+      component: () => import('../views/EspecialidadesView.vue'),
+      meta: { requiresAuth: true, roles: [1, 2] } // Solo Admin y Docente
+    },
     
     // ============================================================================
     /**

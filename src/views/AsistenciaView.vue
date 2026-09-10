@@ -21,29 +21,16 @@
       <div class="columns is-multiline is-mobile is-vcentered">
         
         <!-- Fecha (Máximo hoy) -->
-        <div class="column is-12-mobile is-4-tablet">
+        <div class="column is-12-mobile is-6-tablet">
           <label class="label is-small">Fecha</label>
           <input class="input" type="date" v-model="filtros.fecha" :max="hoy" @change="cargarListaAlumnos">
         </div>
 
-        <!-- Escuela -->
-        <div class="column is-12-mobile is-4-tablet">
-          <label class="label is-small">Escuela</label>
-          <div class="select is-fullwidth">
-            <select v-model="filtros.escuela_id" @change="limpiarEspecialidad">
-              <option value="">Seleccione Escuela</option>
-              <option v-for="esc in escuelas" :key="esc.id" :value="esc.id">
-                {{ esc.nombre_corto }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Especialidad -->
-        <div class="column is-12-mobile is-4-tablet">
+        <!-- Especialidad (Habilitada de entrada al tener la escuela por defecto) -->
+        <div class="column is-12-mobile is-6-tablet">
           <label class="label is-small">Especialidad</label>
           <div class="select is-fullwidth">
-            <select v-model="filtros.especialidad_id" :disabled="!filtros.escuela_id" @change="limpiarYcargarMaterias">
+            <select v-model="filtros.especialidad_id" @change="limpiarYcargarMaterias">
               <option value="">Seleccione Especialidad</option>
               <option v-for="esp in especialidades" :key="esp.id" :value="esp.id">
                 {{ esp.nombre }}
@@ -170,16 +157,18 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '../stores/auth';
 import api from '../services/api';
 import asistenciaService from '../services/asistencia.services';
 
 const router = useRouter();
+const authStore = useAuthStore();
 
-// Estado inicial
+// Estado inicial: recuperamos la escuela de forma automática desde la sesión global del usuario
 const hoy = new Date().toISOString().split('T')[0];
 const filtros = reactive({
   fecha: hoy,
-  escuela_id: '',
+  escuela_id: authStore.usuario?.escuelas?.[0]?.id || '',
   especialidad_id: '',
   curso: '',
   division: '',
@@ -187,7 +176,6 @@ const filtros = reactive({
 });
 
 // Listas maestras y de datos
-const escuelas = ref([]);
 const especialidades = ref([]);
 const materias = ref([]);
 const alumnos = ref([]);
@@ -223,31 +211,17 @@ const cantidadPresentes = computed(() => {
 });
 
 /**
- * Propósito: Obtener los catálogos de escuelas y especialidades para popular los primeros selectores del filtro.
+ * Propósito: Obtener el catálogo de especialidades para popular el selector inicial.
  * A quién alimenta: Hook onMounted del ciclo de vida del componente.
- * Qué datos retorna: Promise<void> tras asignar los datos a las referencias reactivas escuelas y especialidades.
+ * Qué datos retorna: Promise<void> tras asignar los datos a la referencia reactiva especialidades.
  */
 const cargarMaestras = async () => {
   try {
-    const [resEsc, resEsp] = await Promise.all([
-      api.get('/common/escuelas'),
-      api.get('/common/especialidades')
-    ]);
-    escuelas.value = resEsc.data;
+    const resEsp = await api.get('/common/especialidades');
     especialidades.value = resEsp.data;
   } catch (error) {
-    console.error("Error al cargar maestras:", error);
+    console.error("Error al cargar especialidades:", error);
   }
-};
-
-/**
- * Propósito: Resetear los selectores dependientes (especialidad, curso, división, materia y lista) al cambiar la escuela.
- * A quién alimenta: Evento @change del selector de Escuela en el template.
- * Qué datos retorna: Void. Modifica el estado del objeto reactivo filtros.
- */
-const limpiarEspecialidad = () => {
-  filtros.especialidad_id = '';
-  limpiarYcargarMaterias();
 };
 
 /**
@@ -350,7 +324,7 @@ const confirmarAsistencia = async () => {
 };
 
 /**
- * Propósito: Disparar la carga inicial de catálogos maestros al montarse el componente en el DOM.
+ * Propósito: Disparar la carga inicial de catálogos al montarse el componente en el DOM.
  * A quién alimenta: Hook onMounted del ciclo de vida de Vue para AsistenciaView.vue.
  * Qué datos retorna: Void.
  */

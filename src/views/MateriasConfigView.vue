@@ -1,5 +1,12 @@
 <template>
   <div class="container mt-5 px-2-mobile">
+    <div class="mb-4">
+      <button class="button is-small is-light mb-3" @click="$router.back()">
+        <span class="icon is-small"><i class="fas fa-arrow-left"></i></span>
+        <span>Volver</span>
+      </button>
+    </div>
+
     <div class="box p-3-mobile p-4-tablet">
       <h1 class="title is-size-5-mobile is-size-4-tablet has-text-link">
         <span class="icon mr-2"><i class="fas fa-book"></i></span>

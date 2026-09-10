@@ -1,14 +1,14 @@
 <template>
   <nav v-if="mostrarNavbar" class="navbar is-dark">
     <div class="container">
-      <div class="navbar-brand">
-        <router-link to="/dashboard" class="navbar-item has-text-weight-bold has-text-white">
-          GEPRES
+      <div class="navbar-brand is-flex is-align-items-center">
+        <router-link to="/dashboard" class="navbar-item has-text-weight-bold has-text-white is-size-5">
+          GEPRES{{ nombreEscuelaNavbar ? ' - ' + nombreEscuelaNavbar : '' }}
         </router-link>
 
         <a 
           role="button" 
-          class="navbar-burger" 
+          class="navbar-burger ml-auto" 
           :class="{ 'is-active': menuAbierto }"
           aria-label="menu" 
           aria-expanded="false" 
@@ -22,7 +22,7 @@
 
       <div class="navbar-menu" :class="{ 'is-active': menuAbierto }">
         <div class="navbar-end">
-          <!-- BOTÓN MODO CLARO/OSCURO (Icono siempre amarillo) -->
+          <!-- MODO CLARO/OSCURO -->
           <div class="navbar-item">
             <button class="button is-ghost has-text-white p-2" @click="themeStore.toggleTheme" title="Alternar Tema">
               <span class="icon is-medium">
@@ -39,7 +39,7 @@
             </span>
           </div>
 
-          <!-- ACCESO DIRECTO EN NAVBAR: Toma de Asistencia (Texto visible en PC y Móvil) -->
+          <!-- ACCESO DIRECTO EN NAVBAR: Toma de Asistencia -->
           <div v-if="esDocenteOAdmin" class="navbar-item">
             <router-link to="/asistencia" class="button is-ghost has-text-white p-2" title="Toma de Asistencia">
               <span class="icon is-medium">
@@ -103,7 +103,7 @@
             </a>
 
             <div class="navbar-dropdown is-right">
-              <!-- Acceso exclusivo para Administradores a la Vista General de Configuración (Parámetros del Sistema) -->
+              <!-- Acceso exclusivo para Administradores a la Vista General de Configuración -->
               <router-link v-if="esAdmin" to="/configuracion" class="navbar-item has-background-warning-light">
                 <span class="icon is-small mr-2 has-text-dark"><i class="fas fa-cogs"></i></span>
                 <strong class="has-text-dark">Configuración GEPRES</strong>
@@ -115,7 +115,6 @@
                 Gestión de Usuarios
               </router-link>
               
-              <!-- Acceso directo desde el menú desplegable a las Solicitudes Pendientes -->
               <router-link v-if="esDocenteOAdmin" to="/solicitudes-pendientes" class="navbar-item">
                 <span class="icon is-small mr-2"><i class="fas fa-user-clock has-text-warning"></i></span>
                 Solicitudes de Cuenta
@@ -139,7 +138,6 @@
                 Toma de Asistencia
               </router-link>
               
-              <!-- Enlace directo al Informe de Asistencia -->
               <router-link v-if="esDocenteOAdmin" to="/reporte-asistencia" class="navbar-item">
                 <span class="icon is-small mr-2 has-text-info"><i class="fas fa-chart-line has-text-info"></i></span>
                 Informe de Asistencia
@@ -228,68 +226,46 @@ const roles = ref([]);
 
 const anioLectivoActual = ref('2026');
 
-/**
- * Propósito: Cerrar automáticamente el menú móvil cuando el usuario cambia de página o ruta en la aplicación.
- * A quién alimenta: Comportamiento visual de la barra de navegación en resoluciones pequeñas (móvil y tablet).
- * Qué retorna: Void (cambia el estado de la variable reactiva menuAbierto a false).
- */
 watch(() => route.path, () => {
   menuAbierto.value = false;
 });
 
-/**
- * Propósito: Determinar la visibilidad de la barra de navegación basada en el estado de autenticación y la ruta activa.
- * A quién alimenta: Template de App.vue (directiva v-if del tag nav).
- * Qué retorna: Booleano (true si el usuario está autenticado y no está en login o raíz, false en caso contrario).
- */
 const mostrarNavbar = computed(() => {
   const rutasSinNavbar = ['/login', '/', '/solicitar-cuenta'];
   return authStore.token && !rutasSinNavbar.includes(route.path);
 });
 
-/**
- * Propósito: Obtener el nombre del usuario logueado de forma reactiva para el saludo en el navbar.
- * A quién alimenta: Template de App.vue (bloque de saludo e iniciales del avatar).
- * Qué retorna: String con el nombre del usuario o 'Usuario' por defecto si el dato no está disponible.
- */
 const nombreUsuario = computed(() => {
   return authStore.usuario?.nombre || 'Usuario';
 });
 
 /**
- * Propósito: Validar si el usuario actual tiene privilegios de Administración (1) o Docencia (2).
- * A quién alimenta: Template de App.vue (directivas v-if de los elementos y enlaces del menú desplegable).
- * Qué retorna: Booleano (true si es Administrador o Docente, false en caso contrario).
+ * Propósito: Obtener el nombre corto o largo de la escuela vinculada en la sesión para mostrarla en la navbar principal.
+ * A quién alimenta: Template de App.vue al lado del logo GEPRES.
+ * Qué retorna: String con el nombre de la institución o cadena vacía si no está definida.
  */
+const nombreEscuelaNavbar = computed(() => {
+  const listaEscuelas = authStore.usuario?.escuelas;
+  if (listaEscuelas && listaEscuelas.length > 0) {
+    return listaEscuelas[0].nombre_corto || listaEscuelas[0].nombre_largo || '';
+  }
+  return '';
+});
+
 const esDocenteOAdmin = computed(() => {
   const rol = Number(authStore.usuario?.rol_id);
   return rol === 1 || rol === 2;
 });
 
-/**
- * Propósito: Validar estrictamente si el usuario actual posee rol de Administrador (1) para autorizar cambios en parámetros globales.
- * A quién alimenta: Template de App.vue (directiva v-if de la opción "Configuración GEPRES" en el menú desplegable).
- * Qué retorna: Booleano (true si el rol_id corresponde a un Administrador, false en caso contrario).
- */
 const esAdmin = computed(() => {
   return Number(authStore.usuario?.rol_id) === 1;
 });
 
-/**
- * Propósito: Finalizar la sesión del usuario actual limpiando el almacenamiento y redirigiendo al login.
- * A quién alimenta: Evento @click del botón "Cerrar Sesión" en el menú desplegable.
- * Qué retorna: Void (ejecuta logout en el store y redirige la ruta a /login).
- */
 const handleLogout = () => {
   authStore.logout();
   router.push('/login');
 };
 
-/**
- * Propósito: Obtener desde la API los catálogos de escuelas y roles necesarios para inicializar los modales del sistema.
- * A quién alimenta: Hook onMounted al iniciar y función abrirPerfil antes de desplegar la edición de usuario.
- * Qué retorna: Promise<void> (asigna los datos obtenidos a las referencias reactivas escuelas y roles).
- */
 const cargarMaestras = async () => {
   try {
     const [resE, resR] = await Promise.all([
@@ -303,11 +279,6 @@ const cargarMaestras = async () => {
   }
 };
 
-/**
- * Propósito: Consultar al backend la variable global del año lectivo para exhibirla en el encabezado superior de GEPRES.
- * A quién alimenta: Hook onMounted inicial.
- * Qué retorna: Promise<void> (asigna el valor recuperado a la variable reactiva anioLectivoActual).
- */
 const cargarAnioLectivo = async () => {
   try {
     const res = await configuracionService.getAnioLectivo();
@@ -319,11 +290,6 @@ const cargarAnioLectivo = async () => {
   }
 };
 
-/**
- * Propósito: Solicitar los datos actualizados del usuario en sesión y desplegar el modal para la edición de su perfil.
- * A quién alimenta: Evento @click de la opción "Mi Perfil" en el menú de configuración.
- * Qué retorna: Promise<void> (activa el flag reactivo modalPerfilActivo y carga usuarioParaEditar).
- */
 const abrirPerfil = async () => {
   try {
     const res = await api.get(`/usuarios/${authStore.usuario.id}`);
@@ -337,36 +303,20 @@ const abrirPerfil = async () => {
   }
 };
 
-/**
- * Propósito: Desplegar el modal que permite la exportación de planillas generalizadas en Excel.
- * A quién alimenta: Evento @click de la opción "Exportar Planilla Excel" en el menú de configuración.
- * Qué retorna: Void (activa el flag reactivo modalExportarActivo poniendo su valor en true).
- */
 const abrirExportacion = () => {
   modalExportarActivo.value = true;
 };
 
-/**
- * Propósito: Sincronizar en el store global los datos modificados del usuario luego de cerrarse el modal de edición.
- * A quién alimenta: Evento custom @usuario-guardado emitido por el componente hijo UsuarioModal.vue.
- * Qué retorna: Promise<void> (cierra el modal de perfil y actualiza el estado local en authStore).
- */
 const refrescarDatos = async () => {
   modalPerfilActivo.value = false;
   try {
     const res = await api.get(`/usuarios/${authStore.usuario.id}`);
     authStore.actualizarDatosUsuario(res.data);
-    console.log("Avatar actualizado en Store:", authStore.usuario.avatar);
   } catch (error) {
     console.error("Error al refrescar datos:", error);
   }
 };
 
-/**
- * Propósito: Disparar la carga inicial del catálogo de tablas maestras y parámetros globales al montarse la aplicación en el DOM si hay sesión activa.
- * A quién alimenta: Ciclo de vida inicial del componente Vue (onMounted).
- * Qué retorna: Void.
- */
 onMounted(() => {
   themeStore.aplicarClaseGlobal();
   if (authStore.token) {
