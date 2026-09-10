@@ -1,12 +1,13 @@
 <script setup>
 /**
  * usuarioModal.vue
- * Propósito: Componente modal de interfaz gráfica para la creación de nuevos usuarios y la edición de perfiles existentes, permitiendo gestionar roles, vinculación con escuelas, datos de alumnos (curso, división, especialidad) y auditoría de proyectos asignados.
+ * Propósito: Componente modal de interfaz gráfica para la creación de nuevos usuarios y la edición de perfiles existentes, permitiendo gestionar roles, datos de alumnos (curso, división, especialidad) y auditoría de proyectos asignados bajo una arquitectura de escuela única.
  * Quién la alimenta (quién la llama): Vistas del sistema como usuariosView.vue (gestión general de usuarios por parte de directivos/administradores) o vistas de perfil propio al editar los datos del usuario logueado.
  * Qué datos retorna (o emite): Emite el evento 'close' al cerrar la ventana modal y 'usuario-guardado' tras crear o actualizar con éxito un registro en el backend mediante usuarioService, refrescando la tabla principal.
  */
 import { ref, reactive, watch, computed, onUnmounted } from 'vue';
 import usuarioService from '../../services/usuario.services';
+import api from '../../services/api';
 import { useAuthStore } from '../../stores/auth';
 
 const props = defineProps({
@@ -25,6 +26,9 @@ const fileInput = ref(null);
 const selectedFile = ref(null);
 const previewUrl = ref(null);
 
+// Lista local de especialidades para asegurar carga independiente si la prop padre llega vacía
+const especialidadesLocales = ref([]);
+
 // --- LÓGICA PROYECTOS ASIGNADOS ---
 const mostrarProyectosModal = ref(false);
 const proyectosAlumno = ref([]);
@@ -36,7 +40,7 @@ const numLocal = ref('');
 
 const form = reactive({
   id: null, nombre: '', apellido: '', email: '', password: '',
-  rol_id: 3, curso: '', division: '', telefono: '', activo: true, escuelas_ids: [],
+  rol_id: 3, curso: '', division: '', telefono: '', activo: true,
   avatar: null,
   especialidad_id: 1
 });
@@ -97,15 +101,29 @@ onUnmounted(() => {
   if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
 });
 
-watch(() => [props.isActive, props.usuarioEdit], ([activo, u]) => {
+watch(() => props.isActive, async (activo) => {
   if (activo) {
+    // Sincronizamos especialidades: priorizamos props, si no hay, consultamos directo a la API
+    if (props.especialidades && props.especialidades.length > 0) {
+      especialidadesLocales.value = props.especialidades;
+    } else {
+      try {
+        const res = await api.get('/common/especialidades');
+        especialidadesLocales.value = res.data.data || res.data || [];
+        console.log("🔍 [DEBUG MODAL] Especialidades cargadas de forma autónoma:", especialidadesLocales.value);
+      } catch (err) {
+        console.error("❌ Error cargando especialidades en modal:", err);
+      }
+    }
+
     errorMsg.value = '';
     selectedFile.value = null;
     mostrarProyectosModal.value = false;
     if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
     previewUrl.value = null;
 
-    if (u && (u.id || u.uid)) {
+    if (props.usuarioEdit && (props.usuarioEdit.id || props.usuarioEdit.uid)) {
+      const u = props.usuarioEdit;
       if (u.telefono && u.telefono.startsWith('+')) {
         codPais.value = u.telefono.substring(0, 3);
         numLocal.value = u.telefono.substring(3);
@@ -126,21 +144,20 @@ watch(() => [props.isActive, props.usuarioEdit], ([activo, u]) => {
         activo: u.activo ?? true,
         avatar: u.avatar || null,
         password: '', 
-        escuelas_ids: u.escuelas?.map(e => Number(e.id)) || [],
         especialidad_id: Number(u.especialidad_id || 1),
       });
     } else {
       resetForm();
     }
   }
-}, { immediate: true, deep: true });
+}, { immediate: true });
 
 const resetForm = () => {
   codPais.value = '+54';
   numLocal.value = '';
   Object.assign(form, {
     id: null, nombre: '', apellido: '', email: '', password: '',
-    rol_id: 3, curso: '', division: 'A', telefono: '', activo: true, escuelas_ids: [], avatar: null, especialidad_id: 1
+    rol_id: 3, curso: '', division: 'A', telefono: '', activo: true, avatar: null, especialidad_id: 1
   });
 };
 
@@ -148,9 +165,6 @@ const guardar = async () => {
   enviando.value = true;
   errorMsg.value = '';
   try {
-    if (elUsuarioEsAlumno.value && form.escuelas_ids.length !== 1) {
-      throw new Error("Un alumno debe pertenecer a exactamente una escuela.");
-    }
     const telefonoFinal = `${codPais.value}${numLocal.value.trim()}`;
     const formData = new FormData();
     formData.append('nombre', form.nombre);
@@ -163,7 +177,7 @@ const guardar = async () => {
     formData.append('activo', form.activo);
     formData.append('especialidad_id', form.especialidad_id);
     if (form.password) formData.append('password', form.password);
-    form.escuelas_ids.forEach(id => formData.append('escuelas_ids[]', id));
+    
     if (selectedFile.value && puedeCambiarAvatar.value) {
       formData.append('avatar', selectedFile.value);
     }
@@ -240,14 +254,7 @@ const guardar = async () => {
               <p class="control is-expanded"><input v-model="numLocal" class="input" type="text" placeholder="3624XXXXXX" :disabled="!puedeEditarDatosPropios"></p>
             </div>
           </div>
-          <div class="column is-12">
-            <label class="label">Escuela/s</label>
-            <div class="select is-multiple is-fullwidth">
-                <select v-model="form.escuelas_ids" multiple :size="3" :disabled="!puedeEditarEstructura">
-                    <option v-for="e in escuelas" :key="e.id" :value="Number(e.id)">{{ e.nombre_corto }} | {{ e.nombre_largo }}</option>
-                </select>
-            </div>
-          </div>
+
           <template v-if="elUsuarioEsAlumno">
             <div class="column is-6">
               <label class="label">Curso</label>
@@ -284,7 +291,10 @@ const guardar = async () => {
               <label class="label">Especialidad (Solo Escuelas Técnicas)</label>
               <div class="select is-fullwidth">
                 <select v-model="form.especialidad_id" :disabled="!puedeEditarDatosPropios">
-                  <option v-for="esp in especialidades" :key="esp.id" :value="Number(esp.id)">{{ esp.nombre }}</option>
+                  <option value="" disabled>Selecciona especialidad...</option>
+                  <option v-for="esp in especialidadesLocales" :key="esp.id" :value="Number(esp.id)">
+                    {{ esp.nombre }}
+                  </option>
                 </select>
               </div>
             </div>

@@ -77,7 +77,6 @@
             <th>Apellido, Nombre</th>
             <th class="is-hidden-mobile">Email</th>
             <th>Rol</th>
-            <th class="is-hidden-mobile">Escuela/s</th>
             <th class="has-text-centered is-hidden-mobile">Especialidad</th> 
             <th class="has-text-centered is-hidden-mobile">Curso/Div</th>
             <th class="has-text-centered">Estado</th>
@@ -86,7 +85,7 @@
         </thead>
         <tbody>
           <tr v-if="usuarios.length === 0 && !cargando">
-            <td colspan="8" class="has-text-centered py-5 has-text-grey">
+            <td colspan="7" class="has-text-centered py-5 has-text-grey">
               No se encontraron usuarios con los filtros aplicados.
             </td>
           </tr>
@@ -97,17 +96,9 @@
             </td>
             <td class="is-vcentered is-hidden-mobile">{{ u.email }}</td>
             <td class="is-vcentered">
-              <span class="tag is-info is-light is-normal">{{ u.rol?.nombre }}</span>
-            </td>
-            <td class="is-vcentered is-hidden-mobile">
-              <div class="tags mb-0">
-                <span v-for="esc in u.escuelas" 
-                    :key="esc.id" 
-                    class="tag is-info is-light" 
-                    :title="'Nombre oficial: ' + esc.nombre_largo">
-                  {{ esc.nombre_corto }}
-                </span>
-              </div>
+              <span :class="['tag', Number(u.rol_id) === 2 ? 'has-background-info has-text-white has-text-weight-bold' : 'is-info is-light']">
+                {{ u.rol?.nombre }}
+              </span>
             </td>
             <td class="has-text-centered is-vcentered is-hidden-mobile">
               <span v-if="Number(u.rol_id) === 3" class="tag is-white">
@@ -133,8 +124,9 @@
       </table>
     </div>
 
+    <!-- MODAL DE USUARIO -->
     <UsuarioModal 
-        v-if="roles.length > 0 && escuelas.length > 0 && especialidades.length > 0"
+        v-if="modalActivo"
         :is-active="modalActivo"
         :usuario-edit="usuarioParaEditar"
         :escuelas="escuelas"
@@ -147,6 +139,12 @@
 </template>
 
 <script setup>
+/**
+ * @componente usuariosView.vue
+ * @propósito Vista principal de administración de usuarios en el sistema GEPRES, permitiendo listar, filtrar y gestionar cuentas institucionales.
+ * Quién la alimenta (quién la llama): Sistema de enrutamiento web (Vue Router).
+ * Qué datos retorna (o emite): Gestiona llamadas asíncronas a usuarioService y endpoints comunes para abastecer las tablas y modales.
+ */
 import { ref, reactive, onMounted } from 'vue';
 import usuarioService from '../services/usuario.services';
 import api from '../services/api';
@@ -173,7 +171,6 @@ const cargarUsuarios = async () => {
     cargando.value = false;
   }
 };
-
 
 const getEspecialidadNombre = (u) => {
   if (!u || !especialidades.value.length) return '-';
@@ -216,7 +213,6 @@ const limpiarFiltros = () => {
   cargarUsuarios();
 };
 
-// ARREGLADO: Cargamos primero las maestras para asegurar que los nombres estén disponibles
 onMounted(async () => {
   await cargarMaestras();
   await cargarUsuarios();
@@ -236,7 +232,6 @@ onMounted(async () => {
   100% { transform: rotate(360deg); }
 }
 
-/* Blindaje anti-desbordamiento y ajuste de celdas para pantallas móviles de 360px - 400px */
 @media (max-width: 768px) {
   .table td, .table th {
     padding: 0.75rem 0.35rem !important;

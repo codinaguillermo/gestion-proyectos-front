@@ -114,6 +114,92 @@
                 </p>
               </div>
 
+              <!-- SECCIÓN CONDICIONAL SI EL USUARIO ES ALUMNO (Rol ID 3) -->
+              <template v-if="esAlumno">
+                <hr class="has-background-grey-dark my-4">
+                <p class="is-size-6 has-text-weight-bold cyan-subtitle mb-3">DATOS ACADÉMICOS (ALUMNO)</p>
+
+                <!-- Fila: Curso y División -->
+                <div class="columns is-mobile is-multiline mb-2">
+                  <div class="column is-12-mobile is-6-tablet pb-1">
+                    <div class="field">
+                      <label class="label has-text-white is-size-5-mobile is-size-4-tablet">CURSO</label>
+                      <div class="control has-icons-left is-expanded">
+                        <div class="select is-fullwidth custom-select-wrapper">
+                          <select 
+                            v-model="form.curso" 
+                            class="transparent-input is-medium-tablet is-normal-mobile custom-select" 
+                            :required="esAlumno"
+                            :disabled="exito"
+                          >
+                            <option value="" disabled>Selecciona curso...</option>
+                            <option value="1ro">1ro Año</option>
+                            <option value="2do">2do Año</option>
+                            <option value="3ro">3ro Año</option>
+                            <option value="4to">4to Año</option>
+                            <option value="5to">5to Año</option>
+                            <option value="6to">6to Año</option>
+                          </select>
+                        </div>
+                        <span class="icon is-small is-left" style="z-index: 5;">📖</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="column is-12-mobile is-6-tablet pb-1">
+                    <div class="field">
+                      <label class="label has-text-white is-size-5-mobile is-size-4-tablet">DIVISIÓN</label>
+                      <div class="control has-icons-left is-expanded">
+                        <div class="select is-fullwidth custom-select-wrapper">
+                          <select 
+                            v-model="form.division" 
+                            class="transparent-input is-medium-tablet is-normal-mobile custom-select" 
+                            :required="esAlumno"
+                            :disabled="exito"
+                          >
+                            <option value="" disabled>Selecciona división...</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="1ra">1ra</option>
+                            <option value="2da">2da</option>
+                            <option value="3ra">3ra</option>
+                            <option value="4ta">4ta</option>
+                          </select>
+                        </div>
+                        <span class="icon is-small is-left" style="z-index: 5;">👥</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Especialidad -->
+                <div class="field mb-5">
+                  <label class="label has-text-white is-size-5-mobile is-size-4-tablet">ESPECIALIDAD</label>
+                  <div class="control has-icons-left is-expanded">
+                    <div class="select is-fullwidth custom-select-wrapper">
+                      <select 
+                        v-model="form.especialidad_id" 
+                        class="transparent-input is-medium-tablet is-normal-mobile custom-select" 
+                        :required="esAlumno"
+                        :disabled="exito"
+                      >
+                        <option :value="null" disabled>Selecciona especialidad...</option>
+                        <option v-for="esp in especialidades" :key="esp.id" :value="esp.id">
+                          {{ esp.nombre }}
+                        </option>
+                      </select>
+                    </div>
+                    <span class="icon is-small is-left" style="z-index: 5;">⚙️</span>
+                  </div>
+                </div>
+              </template>
+
+              <!-- RECAPTCHA WIDGET CONTAINER -->
+              <div v-if="!exito" class="field is-flex is-justify-content-center my-4">
+                <div id="recaptcha-container"></div>
+              </div>
+
               <!-- Notificación de Error -->
               <div v-if="errorMsg" class="notification is-danger is-light py-3 px-4 mt-4 is-size-6 has-text-weight-bold">
                 <i class="fas fa-exclamation-triangle mr-1"></i> {{ errorMsg }}
@@ -164,9 +250,16 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue';
+/**
+ * @componente SolicitudCuentaView.vue
+ * @propósito Vista de interfaz gráfica pública para el registro y solicitud de cuentas de nuevos usuarios, incorporando validación reCAPTCHA v2 y datos académicos condicionales.
+ * Quién la alimenta (quién la llama): Sistema de enrutamiento web (Vue Router) al acceder a la ruta de registro público.
+ * Qué datos retorna (o emite): Envía mediante authService.solicitarCuenta los datos ingresados al backend incluyendo la respuesta del captcha.
+ */
+import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { authService } from '../services/auth.service';
+import api from '../services/api';
 
 const router = useRouter();
 
@@ -175,41 +268,122 @@ const form = reactive({
   apellido: '',
   telefono: '',
   rol_id: null,
-  email: ''
+  email: '',
+  curso: '',
+  division: '',
+  especialidad_id: null
 });
+
+const especialidades = ref([]);
+const recaptchaToken = ref(null);
+let widgetId = null;
 
 const errorMsg = ref('');
 const exitoMsg = ref('');
 const exito = ref(false);
 const cargando = ref(false);
 
-/**
- * Propósito: Calcular y proveer de manera reactiva el año calendario actual para renderizar el aviso de derechos de autor en el pie de página de la solicitud de cuenta.
- * A quién alimenta (quién la llama): Es invocada directamente en la plantilla de maquetado HTML del pie de página (footer) mediante interpolación de variables Vue ({{ anioActual }}).
- * Qué datos retorna: Retorna un número entero de cuatro dígitos que representa el año en curso (ej. 2026).
- */
-const anioActual = computed(() => new Date().getFullYear());
+const esAlumno = computed(() => Number(form.rol_id) === 3);
 
 /**
- * Propósito: Redirigir al usuario de regreso hacia la vista de inicio de sesión ('/login').
- * A quién alimenta (quién la llama): Disparada por el evento `@click` del botón "Volver al login".
- * Qué datos retorna: No retorna una structure de datos (función tipo void). Efectúa un cambio programático de ruta web en el enrutador Vue Router.
+ * Propósito: Consultar de forma asíncrona el listado maestro de especialidades disponibles desde el backend para poblar el selector del formulario de solicitud.
+ * A quién alimenta (quién la llama): Es invocada automáticamente por el gancho de ciclo de vida `onMounted` al inicializar la vista.
+ * Qué datos retorna: No retorna datos; muta la variable reactiva `especialidades.value`.
  */
+const cargarCatalogos = async () => {
+  try {
+    const resEspecialidades = await api.get('/common/especialidades').catch(() => ({ data: { data: [] } }));
+    especialidades.value = resEspecialidades.data.data || resEspecialidades.data || [];
+  } catch (err) {
+    console.error("❌ Error al cargar especialidades para la solicitud:", err);
+  }
+};
+
+/**
+ * Propósito: Inyectar dinámicamente el script oficial de Google reCAPTCHA y renderizar el widget visual en el contenedor correspondiente.
+ * A quién alimenta (quién la llama): Invocada al montar el componente en el cliente mediante onMounted.
+ * Qué datos retorna: Void. Inicializa la variable global de Google `grecaptcha`.
+ */
+const initRecaptcha = () => {
+  if (window.grecaptcha && window.grecaptcha.render) {
+    renderWidget();
+    return;
+  }
+
+  // Si el script no fue cargado previamente, lo inyectamos de forma segura
+  if (!document.getElementById('recaptcha-script')) {
+    const script = document.createElement('script');
+    script.id = 'recaptcha-script';
+    script.src = 'https://www.google.com/recaptcha/api.js?render=explicit';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      window.grecaptcha.ready(() => {
+        renderWidget();
+      });
+    };
+    document.head.appendChild(script);
+  }
+};
+
+const renderWidget = () => {
+  const container = document.getElementById('recaptcha-container');
+  if (container && window.grecaptcha && widgetId === null) {
+    try {
+      widgetId = window.grecaptcha.render('recaptcha-container', {
+        sitekey: import.meta.env.VITE_RECAPTCHA_SITE_KEY,
+        callback: (token) => {
+          recaptchaToken.value = token;
+          errorMsg.value = ''; // Limpiamos error si el usuario resuelve el captcha
+        },
+        'expired-callback': () => {
+          recaptchaToken.value = null;
+        }
+      });
+    } catch (e) {
+      console.error("Error al renderizar reCAPTCHA:", e);
+    }
+  }
+};
+
+onMounted(() => {
+  cargarCatalogos();
+  initRecaptcha();
+});
+
+onUnmounted(() => {
+  // Limpieza defensiva del widget si el usuario abandona la vista
+  widgetId = null;
+});
+
+const anioActual = computed(() => new Date().getFullYear());
+
 const volverAlLogin = () => {
   router.push('/login');
 };
 
 /**
- * Propósito: Validar y despachar de forma asíncrona los datos del formulario de solicitud de nueva cuenta hacia el servicio de autenticación; controla la retroalimentación visual de errores (ej. correo duplicado) o éxito para el usuario.
- * A quién alimenta (quién la llama): Es disparada al capturar el evento de envío del formulario mediante la directiva de escucha (`@submit.prevent`) del elemento `<form>`.
- * Qué datos retorna: No retorna una estructura de datos (función asíncrona tipo void). Muta el estado local (`cargando`, `errorMsg`, `exitoMsg`, `exito`) para reflejar el resultado del alta inactiva.
+ * Propósito: Validar y despachar de forma asíncrona los datos del formulario de solicitud junto al token de reCAPTCHA hacia el backend.
+ * A quién alimenta (quién la llama): Disparada por el evento `@submit.prevent` del formulario.
+ * Qué datos retorna: Void. Muta el estado local para reflejar éxito o error.
  */
 const enviarSolicitud = async () => {
   errorMsg.value = '';
   exitoMsg.value = '';
   
   if (!form.nombre || !form.apellido || !form.telefono || !form.rol_id || !form.email) {
-    errorMsg.value = 'Por favor, completa todos los campos del formulario para continuar.';
+    errorMsg.value = 'Por favor, completa todos los campos obligatorios del formulario para continuar.';
+    return;
+  }
+
+  if (esAlumno.value && (!form.curso || !form.division || !form.especialidad_id)) {
+    errorMsg.value = 'Por favor, completa todos los datos académicos requeridos para el perfil de alumno.';
+    return;
+  }
+
+  // Validación estricta del reCAPTCHA en el cliente
+  if (!recaptchaToken.value) {
+    errorMsg.value = 'Por favor, completa la verificación de seguridad "No soy un robot".';
     return;
   }
 
@@ -221,7 +395,11 @@ const enviarSolicitud = async () => {
       apellido: form.apellido.trim(),
       telefono: form.telefono.trim(),
       rol_id: Number(form.rol_id),
-      email: form.email.trim().toLowerCase()
+      email: form.email.trim().toLowerCase(),
+      curso: esAlumno.value ? form.curso : null,
+      division: esAlumno.value ? form.division : null,
+      especialidad_id: esAlumno.value ? Number(form.especialidad_id) : null,
+      recaptchaToken: recaptchaToken.value
     };
 
     const respuesta = await authService.solicitarCuenta(payload);
@@ -234,6 +412,12 @@ const enviarSolicitud = async () => {
     }
   } catch (err) {
     console.error("❌ ERROR EN SOLICITUD DE CUENTA:", err);
+    // Si el backend rechaza el token o hay otro error, reseteamos el widget para que el usuario pueda reintentar
+    if (window.grecaptcha && widgetId !== null) {
+      try { window.grecaptcha.reset(widgetId); } catch(ex) {}
+    }
+    recaptchaToken.value = null;
+
     if (err.response && err.response.data && (err.response.data.mensaje || err.response.data.error)) {
       errorMsg.value = `${err.response.data.error || 'Error'}: ${err.response.data.mensaje || ''}`;
     } else {
@@ -264,14 +448,12 @@ const enviarSolicitud = async () => {
   width: 100%;
 }
 
-/* Contenedor central adaptable - un poco más ancho que el login para alojar las columnas */
 .custom-solicitud-width {
   width: 100%;
   max-width: 650px; 
   margin: 0 auto;
 }
 
-/* Efecto Glassmorphism oscuro similar a la imagen */
 .glass-box {
   background: rgba(20, 25, 30, 0.65) !important;
   backdrop-filter: blur(16px);
@@ -282,7 +464,6 @@ const enviarSolicitud = async () => {
               0 0 15px rgba(0, 210, 255, 0.1);
 }
 
-/* Logotipo circular con resplandor neón */
 .logo-circle-container {
   width: 100px;
   height: 100px;
@@ -302,7 +483,6 @@ const enviarSolicitud = async () => {
   object-fit: contain;
 }
 
-/* Acentos visuales en cyan neón */
 .cyan-glow-text {
   text-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
   letter-spacing: 2px;
@@ -313,13 +493,11 @@ const enviarSolicitud = async () => {
   font-weight: 500;
 }
 
-/* Refuerzo de tipografía accesible para etiquetas del formulario */
 .label {
   letter-spacing: 0.5px;
   margin-bottom: 0.6em !important;
 }
 
-/* Estilo del Botón estilo Cían Neón con tipografía ampliada */
 .cyan-button {
   background: linear-gradient(135deg, #00d2ff 0%, #0099cc 100%) !important;
   color: #000000 !important;
@@ -336,7 +514,6 @@ const enviarSolicitud = async () => {
   transform: translateY(-2px);
 }
 
-/* Estilo del Input reforzado con fuente de mayor tamaño para fácil lectura */
 .transparent-input {
   background: rgba(255, 255, 255, 0.9) !important;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -362,7 +539,6 @@ const enviarSolicitud = async () => {
   font-size: 1.05rem !important;
 }
 
-/* Blindaje del Autocompletado de Chrome/Safari */
 .transparent-input:-webkit-autofill,
 .transparent-input:-webkit-autofill:hover, 
 .transparent-input:-webkit-autofill:focus {
@@ -371,7 +547,6 @@ const enviarSolicitud = async () => {
   transition: background-color 5000s ease-in-out 0s;
 }
 
-/* Ajustes para el elemento Select con mayor área de toque */
 .custom-select-wrapper {
   height: 55px;
 }
@@ -382,7 +557,6 @@ const enviarSolicitud = async () => {
   font-size: 1.15rem !important;
 }
 
-/* Footer responsivo estilo consola */
 .footer-dashboard {
   flex-shrink: 0;
   background: rgba(5, 10, 15, 0.9);
@@ -413,7 +587,6 @@ const enviarSolicitud = async () => {
   border: 1px solid rgba(0, 210, 255, 0.3);
 }
 
-/* MEDIA QUERIES PARA ADAPTACIÓN MÓVIL ESTRICTA */
 @media screen and (max-width: 768px) {
   .custom-solicitud-width {
     max-width: 100%;
