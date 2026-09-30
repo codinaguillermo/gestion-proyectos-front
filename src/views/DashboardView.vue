@@ -20,6 +20,21 @@
           </div>
         </div>
 
+        <!-- Barra de búsqueda rápida por nombre de proyecto -->
+        <div class="field mb-4">
+          <div class="control has-icons-left">
+            <input 
+              class="input is-rounded glass-search-input" 
+              type="text" 
+              v-model="filtroNombre" 
+              placeholder="Buscar proyecto por nombre..."
+            >
+            <span class="icon is-left has-text-info">
+              <i class="fas fa-search"></i>
+            </span>
+          </div>
+        </div>
+
         <div v-if="cargando" class="notification glass-notification is-info">
           <span class="icon"><i class="fas fa-spinner fa-pulse"></i></span> Cargando proyectos...
         </div>
@@ -102,7 +117,7 @@
               <tr v-if="proyectosVisibles.length === 0">
                 <td colspan="9" class="has-text-centered has-text-grey-light py-6">
                   <i class="fas fa-folder-open fa-3x mb-3"></i><br>
-                  No tienes proyectos asignados actualmente.
+                  No se encontraron proyectos que coincidan con la búsqueda.
                 </td>
               </tr>
             </tbody>
@@ -188,7 +203,7 @@
           <!-- Estado vacío versión móvil -->
           <div v-if="proyectosVisibles.length === 0" class="box mobile-project-card has-text-centered py-6">
             <i class="fas fa-folder-open fa-3x mb-3 has-text-grey-light"></i>
-            <p class="has-text-grey-light">No tienes proyectos asignados actualmente.</p>
+            <p class="has-text-grey-light">No se encontraron proyectos que coincidan con la búsqueda.</p>
           </div>
         </div>
 
@@ -198,7 +213,7 @@
     <footer class="footer-dashboard">
         <div class="footer-container">
             <div class="footer-info">
-                Gestión de Proyectos Estudiantiles <span class="version-badge">v4.3.2</span>
+                Gestión de Proyectos Estudiantiles <span class="version-badge">v4.3.3</span>
             </div>
             <div class="footer-credits">
                 &copy; {{ anioActual }} | Creado por Ing. Guillermo Codina.
@@ -272,15 +287,15 @@ import ConfirmarModal from '../components/modals/ConfirmarModal.vue';
 
 /**
  * Propósito: Instanciar el store de autenticación para consultar datos y rol del usuario logueado.
- * Alimentado por: Pinia Store (auth.js).
- * Datos que retorna: Object (Instancia reactiva del store de autenticación).
+ * Quién la alimenta (quién la llama): Pinia Store (auth.js).
+ * Qué datos retorna: Object (Instancia reactiva del store de autenticación).
  */
 const authStore = useAuthStore();
 
 /**
  * Propósito: Instanciar el enrutador de Vue para gestionar la navegación programática entre vistas.
- * Alimentado por: Vue Router.
- * Datos que retorna: Object (Instancia del router).
+ * Quién la alimenta (quién la llama): Vue Router.
+ * Qué datos retorna: Object (Instancia del router).
  */
 const router = useRouter();
 
@@ -296,16 +311,23 @@ const proyectoAEliminar = ref(null);
 const formProyecto = reactive({ nombre: '', descripcion: '', escuela_id: null });
 
 /**
+ * Propósito: Almacenar el texto ingresado en la barra de búsqueda rápida para filtrar proyectos por nombre.
+ * Quién la alimenta (quién la llama): Input de búsqueda en el template mediante v-model.
+ * Qué datos retorna: String (Término de búsqueda actual).
+ */
+const filtroNombre = ref('');
+
+/**
  * Propósito: Calcular el año en curso para mostrar en los créditos del pie de página.
- * Alimentado por: Renderizado del template (footer).
- * Datos que retorna: Number (Año actual de 4 dígitos).
+ * Quién la alimenta (quién la llama): Renderizado del template (footer).
+ * Qué datos retorna: Number (Año actual de 4 dígitos).
  */
 const anioActual = computed(() => new Date().getFullYear());
 
 /**
  * Propósito: Extraer y normalizar en formato numérico el identificador de rol del usuario actual.
- * Alimentado por: authStore.usuario (propiedades rol_id o rolId).
- * Datos que retorna: Number (ID del rol o 99 por defecto si no existe).
+ * Quién la alimenta (quién la llama): authStore.usuario (propiedades rol_id o rolId).
+ * Qué datos retorna: Number (ID del rol o 99 por defecto si no existe).
  */
 const miRol = computed(() => {
     const rol = authStore.usuario?.rol_id || authStore.usuario?.rolId;
@@ -314,37 +336,49 @@ const miRol = computed(() => {
 
 /**
  * Propósito: Determinar si el usuario tiene privilegios de Administración (1) o Docencia (2).
- * Alimentado por: Propiedad computada miRol.
- * Datos que retorna: Boolean (true si es Admin o Docente, false en caso contrario).
+ * Quién la alimenta (quién la llama): Propiedad computada miRol.
+ * Qué datos retorna: Boolean (true si es Admin o Docente, false en caso contrario).
  */
 const esAdminODocente = computed(() => {
     return miRol.value === 1 || miRol.value === 2;
 });
 
 /**
- * Propósito: Filtrar la lista total de proyectos para retornar únicamente aquellos que el usuario tiene permiso de ver (todos para Admin, propios/asignados para el resto).
- * Alimentado por: authStore.usuario, miRol y el arreglo reactivo proyectos.
- * Datos que retorna: Array (Lista filtrada de objetos de proyectos).
+ * Propósito: Filtrar la lista total de proyectos por permisos de usuario y por coincidencia en el nombre según el filtro de búsqueda.
+ * Quién la alimenta (quién la llama): authStore.usuario, miRol, el arreglo reactivo proyectos y la variable filtroNombre.
+ * Qué datos retorna: Array (Lista filtrada y optimizada de objetos de proyectos).
  */
 const proyectosVisibles = computed(() => {
     const user = authStore.usuario;
     if (!user) return [];
     const miId = Number(user.id);
 
-    if (miRol.value === 1) return proyectos.value;
+    // 1. Filtrar por permisos del usuario
+    let lista = [];
+    if (miRol.value === 1) {
+        lista = proyectos.value;
+    } else {
+        lista = proyectos.value.filter(p => {
+            const integrantes = p.integrantes || p.Usuarios || p.usuarios || [];
+            const esDuenio = Number(p.docente_owner_id) === miId;
+            const esIntegrante = integrantes.some(i => Number(i.id) === miId);
+            return esDuenio || esIntegrante;
+        });
+    }
 
-    return proyectos.value.filter(p => {
-        const integrantes = p.integrantes || p.Usuarios || p.usuarios || [];
-        const esDuenio = Number(p.docente_owner_id) === miId;
-        const esIntegrante = integrantes.some(i => Number(i.id) === miId);
-        return esDuenio || esIntegrante;
-    });
+    // 2. Filtrar por texto de búsqueda (Nombre del proyecto)
+    if (filtroNombre.value.trim() !== '') {
+        const termino = filtroNombre.value.toLowerCase().trim();
+        lista = lista.filter(p => p.nombre && p.nombre.toLowerCase().includes(termino));
+    }
+
+    return lista;
 });
 
 /**
  * Propósito: Evaluar si el usuario logueado tiene permisos de edición o borrado sobre un proyecto específico.
- * Alimentado por: Template (en directiva :class y renderizado condicional de iconos de acción).
- * Datos que retorna: Boolean (true si es Administrador, dueño del proyecto o integrante del equipo).
+ * Quién la alimenta (quién la llama): Template (en directiva :class y renderizado condicional de iconos de acción).
+ * Qué datos retorna: Boolean (true si es Administrador, dueño del proyecto o integrante del equipo).
  */
 const puedeGestionar = (proyecto) => {
     const user = authStore.usuario;
@@ -362,8 +396,8 @@ const puedeGestionar = (proyecto) => {
 
 /**
  * Propósito: Solicitar al backend el listado completo de proyectos y actualizar el estado reactivo del componente.
- * Alimentado por: Hook onMounted y función guardarProyecto tras una inserción exitosa.
- * Datos que retorna: Promise<void> (Actualiza proyectos.value o errorMsg.value).
+ * Quién la alimenta (quién la llama): Hook onMounted y función guardarProyecto tras una inserción exitosa.
+ * Qué datos retorna: Promise<void> (Actualiza proyectos.value o errorMsg.value).
  */
 const cargarProyectos = async () => {
     cargando.value = true;
@@ -384,8 +418,8 @@ const cargarProyectos = async () => {
 
 /**
  * Propósito: Obtener las tablas maestras de configuración (escuelas) para alimentar el selector del formulario modal.
- * Alimentado por: Hook onMounted al inicializar la vista.
- * Datos que retorna: Promise<void> (Actualiza el arreglo reactivo escuelasMaestras.value).
+ * Quién la alimenta (quién la llama): Hook onMounted al inicializar la vista.
+ * Qué datos retorna: Promise<void> (Actualiza el arreglo reactivo escuelasMaestras.value).
  */
 const cargarMaestras = async () => {
     try {
@@ -396,8 +430,8 @@ const cargarMaestras = async () => {
 
 /**
  * Propósito: Validar y enviar al backend los datos del formulario modal para registrar un nuevo proyecto estudiantil.
- * Alimentado por: Evento @click en el botón "Guardar Proyecto" del modal.
- * Datos que retorna: Promise<void> (Cierra modal, limpia formulario y recarga listado de proyectos).
+ * Quién la alimenta (quién la llama): Evento @click en el botón "Guardar Proyecto" del modal.
+ * Qué datos retorna: Promise<void> (Cierra modal, limpia formulario y recarga listado de proyectos).
  */
 const guardarProyecto = async () => {
     if (!formProyecto.nombre || !formProyecto.escuela_id) return; 
@@ -418,8 +452,8 @@ const guardarProyecto = async () => {
 
 /**
  * Propósito: Asignar el proyecto seleccionado y activar el modal de confirmación antes de proceder con el borrado.
- * Alimentado por: Evento @click en el botón de eliminación (ícono de basurero) en tabla o tarjeta.
- * Datos que retorna: Void (Modifica estado reactivo de proyectoAEliminar e isConfirmActive).
+ * Quién la alimenta (quién la llama): Evento @click en el botón de eliminación (ícono de basurero) en tabla o tarjeta.
+ * Qué datos retorna: Void (Modifica estado reactivo de proyectoAEliminar e isConfirmActive).
  */
 const prepararEliminacion = (proyecto) => {
     if (!esAdminODocente.value) return; 
@@ -429,8 +463,8 @@ const prepararEliminacion = (proyecto) => {
 
 /**
  * Propósito: Ejecutar la eliminación definitiva de un proyecto consumiendo la API y actualizar el listado local.
- * Alimentado por: Evento @confirmar emitido por el componente hijo <ConfirmarModal>.
- * Datos que retorna: Promise<void> (Elimina registro, cierra modal de confirmación y recarga proyectos).
+ * Quién la alimenta (quién la llama): Evento @confirmar emitido por el componente hijo <ConfirmarModal>.
+ * Qué datos retorna: Promise<void> (Elimina registro, cierra modal de confirmación y recarga proyectos).
  */
 const ejecutarEliminacion = async () => {
     if (!proyectoAEliminar.value || !esAdminODocente.value) return;
@@ -451,22 +485,22 @@ const ejecutarEliminacion = async () => {
 
 /**
  * Propósito: Navegar programáticamente hacia la vista del Backlog (tablero de tareas) del proyecto seleccionado.
- * Alimentado por: Evento @click sobre la fila de la tabla (<tr>) o sobre el contenedor de tarjeta móvil (<div.mobile-project-card>).
- * Datos que retorna: Void (Ejecuta router.push hacia la URI del backlog).
+ * Quién la alimenta (quién la llama): Evento @click sobre la fila de la tabla (<tr>) o sobre el contenedor de tarjeta móvil (<div.mobile-project-card>).
+ * Qué datos retorna: Void (Ejecuta router.push hacia la URI del backlog).
  */
 const irAbacklog = (id) => router.push(`/proyectos/${id}/backlog`);
 
 /**
  * Propósito: Convertir una cadena de fecha ISO o timestamp en una fecha legible formateada bajo el estándar argentino.
- * Alimentado por: Renderizado del template (columnas y pies de tarjeta de fecha de creación).
- * Datos que retorna: String (Fecha en formato dd/mm/yyyy o guión '-' si es nula).
+ * Quién la alimenta (quién la llama): Renderizado del template (columnas y pies de tarjeta de fecha de creación).
+ * Qué datos retorna: String (Fecha en formato dd/mm/yyyy o guión '-' si es nula).
  */
 const formatearFecha = (fecha) => fecha ? new Date(fecha).toLocaleDateString('es-AR') : '-';
 
 /**
  * Propósito: Calcular la proximidad de una fecha de cierre para retornar un color LED de alerta (rojo, amarillo o verde) y su mensaje descriptivo.
- * Alimentado por: Renderizado del template en directivas de estilo (:style) y atributo title de los semáforos.
- * Datos que retorna: Object (Objeto con propiedades string 'color' en formato HEX y string 'mensaje').
+ * Quién la alimenta (quién la llama): Renderizado del template en directivas de estilo (:style) y atributo title de los semáforos.
+ * Qué datos retorna: Object (Objeto con propiedades string 'color' en formato HEX y string 'mensaje').
  */
 const calcularSemaforo = (fecha) => {
   if (!fecha) return { color: '#444', mensaje: 'Sin fecha' };
@@ -479,8 +513,8 @@ const calcularSemaforo = (fecha) => {
 
 /**
  * Propósito: Disparar la carga inicial de datos de proyectos y tablas maestras al montarse el componente en el DOM.
- * Alimentado por: Ciclo de vida del componente Vue (onMounted).
- * Datos que retorna: Void.
+ * Quién la alimenta (quién la llama): Ciclo de vida del componente Vue (onMounted).
+ * Qué datos retorna: Void.
  */
 onMounted(() => {
     cargarProyectos();
@@ -543,6 +577,16 @@ onMounted(() => {
   transition: transform 0.2s;
 }
 .semaforo-led:hover { transform: scale(1.3); }
+
+/* Estilos para la barra de búsqueda en modo oscuro y claro */
+.glass-search-input {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: white !important;
+}
+.glass-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
 
 /* 
   ==========================================================================
@@ -690,7 +734,17 @@ body.theme-light h1.title {
     color: #1a252f !important;
 }
 
-/* 2. Tabla de escritorio */
+/* 2. Barra de búsqueda en modo claro */
+body.theme-light .glass-search-input {
+  background: #ffffff !important;
+  border: 1px solid #dbdbdb !important;
+  color: #363636 !important;
+}
+body.theme-light .glass-search-input::placeholder {
+  color: #7a7a7a !important;
+}
+
+/* 3. Tabla de escritorio */
 body.theme-light .glass-table {
     color: #2c3e50 !important;
 }
@@ -705,7 +759,7 @@ body.theme-light .glass-table td.has-text-grey-light {
     color: #606f7b !important;
 }
 
-/* 3. Tarjetas de la vista móvil */
+/* 4. Tarjetas de la vista móvil */
 body.theme-light .mobile-project-card {
     background: #ffffff !important;
     border: 1px solid #dcdcdc !important;
