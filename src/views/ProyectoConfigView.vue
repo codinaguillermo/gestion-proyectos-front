@@ -3,7 +3,7 @@
     <div class="main-content-wrapper">
       <div class="container mt-0 pt-4 px-2-mobile px-4-tablet pb-6">
         
-        <!-- ENCABEZADO ADAPTATIVO (Reemplazo de .level por Flex/Columnas) -->
+        <!-- ENCABEZADO ADAPTATIVO -->
         <div class="glass-panel p-4 mb-4">
           <div class="columns is-mobile is-multiline is-align-items-center">
             <div class="column is-12-mobile is-7-tablet pb-2-mobile">
@@ -18,7 +18,7 @@
               </div>
             </div>
 
-            <!-- BOTONES DE ACCIÓN (APILADOS EN MÓVIL) -->
+            <!-- BOTONES DE ACCIÓN -->
             <div class="column is-12-mobile is-5-tablet pt-1-mobile is-flex is-justify-content-flex-end-tablet">
               <div class="buttons is-fullwidth-mobile mt-2-mobile">
                 <router-link 
@@ -52,7 +52,7 @@
         <!-- ESTRUCTURA PRINCIPAL RESPONSIVE -->
         <div class="columns is-variable is-4" v-else-if="form && form.id">
           
-          <!-- COLUMNA IZQUIERDA: HITOS, ESTADO Y NOTAS (100% en móvil, 4 col en escritorio) -->
+          <!-- COLUMNA IZQUIERDA -->
           <div class="column is-12-mobile is-4-desktop">
             <div class="box glass-panel p-4-mobile p-5-tablet" style="height: 100%;">
               <h3 class="title is-6-mobile is-5-tablet has-text-info border-bottom-info pb-3 mb-4 uppercase-label">
@@ -94,11 +94,11 @@
             </div>
           </div>
 
-          <!-- COLUMNA DERECHA: PESTAÑAS Y GESTIÓN (100% en móvil, 8 col en escritorio) -->
+          <!-- COLUMNA DERECHA -->
           <div class="column is-12-mobile is-8-desktop">
             <div class="box glass-panel p-0 is-flex is-flex-direction-column" style="min-height: 550px;">
               
-              <!-- NAVEGACIÓN TABS (Estilo X.com: Solo iconos en móvil, iconos + texto en escritorio) -->
+              <!-- NAVEGACIÓN TABS -->
               <div class="tabs is-boxed is-fullwidth mb-0 custom-tabs">
                 <ul>
                   <li :class="{'is-active': tabActiva === 'alcance'}">
@@ -168,7 +168,6 @@
                     </div>
                   </div>
                   <div class="columns is-multiline mb-4">
-                    <!-- 1 tarjeta por fila en móviles, 2 en tablets/escritorio -->
                     <div class="column is-12-mobile is-6-tablet" v-for="miembro in miembrosAsignados" :key="miembro.id">
                       <div class="box p-3 is-dark-box">
                         <article class="media is-align-items-center">
@@ -204,7 +203,6 @@
                   </div>
                   
                   <div class="field mb-4">
-                    <!-- BOTÓN DE ACCESO A CONTROL DE CRONOGRAMA -->
                     <div class="box is-dark-box p-3-mobile p-4-tablet mb-4">
                       <div class="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap" style="gap: 10px;">
                         <div>
@@ -226,7 +224,6 @@
                     </div>
                   </div>
                  
-                  
                   <hr class="has-background-grey-dark my-4">
                   
                   <div class="box is-dark-box p-3-mobile p-4-tablet mb-4" v-if="esDocente">
@@ -337,7 +334,6 @@
                     <p class="help has-text-grey-lighter is-size-7 mt-1">Acceso rápido al repositorio de archivos digitales del proyecto.</p>
                   </div>
 
-                  <!-- Se removió el v-if="esDocente" para que los alumnos puedan agregar documentos -->
                   <div class="field has-addons mb-4">
                     <div class="control is-expanded"><input class="input is-small-mobile custom-input-entregable" type="text" v-model="nuevoEntregableNombre" placeholder="Nombre del nuevo documento..." @keyup.enter="agregarEntregableRAM"></div>
                     <div class="control"><button class="button is-info is-small-mobile" @click="agregarEntregableRAM"><i class="fas fa-plus"></i></button></div>
@@ -349,7 +345,7 @@
                         <tr>
                           <th class="has-text-info is-size-7">Documento</th>
                           <th class="has-text-info is-size-7">Enlace de Drive</th>
-                          <th style="width: 40px;"></th> <!-- Se removió restricción docente del header -->
+                          <th style="width: 40px;"></th> 
                         </tr>
                       </thead>
                       <tbody>
@@ -357,12 +353,10 @@
                           <td class="data-text-bright is-size-7 text-truncate-mobile" style="max-width: 120px;">{{ e.nombre }}</td>
                           <td>
                             <div class="field has-addons mb-0">
-                              <!-- Se removió el :disabled="!esDocente" para que los alumnos editen links -->
                               <div class="control is-expanded"><input class="input custom-input-table is-small" type="text" v-model="e.link_drive" placeholder="Pegar link..."></div>
                               <div class="control"><button class="button is-info is-small is-outlined" :disabled="!e.link_drive" @click="abrirEnlace(e.link_drive)"><i class="fas fa-external-link-alt"></i></button></div>
                             </div>
                           </td>
-                          <!-- Se removió el v-if="esDocente" para que los alumnos puedan borrar links de la lista -->
                           <td class="has-text-centered"><button class="button is-ghost has-text-danger p-1" @click="prepararEliminacion(index)"><i class="fas fa-trash-alt"></i></button></td>
                         </tr>
                       </tbody>
@@ -377,7 +371,7 @@
       </div>
     </div>
 
-    <!-- MODALES (Blindados para no desbordar en pantallas de móviles) -->
+    <!-- MODALES -->
     <div class="modal" :class="{'is-active': mostrarModalConfirmacion}">
       <div class="modal-background" @click="mostrarModalConfirmacion = false"></div>
       <div class="modal-card">
@@ -497,31 +491,47 @@ export default {
     quitarMiembro(id) { this.miembrosAsignados = this.miembrosAsignados.filter(m => m.id !== id); },
     obtenerColorAvatar(r) { return Number(r) === 3 ? 'has-background-success-light has-text-success' : 'has-background-link-light has-text-link'; },
     obtenerIniciales(n) { return n ? n.split(' ').map(x => x[0]).join('').toUpperCase().substring(0, 2) : '?'; },
-    async buscarUsuarios() { if (this.busqueda.length < 2) return this.resultadosBusqueda = []; try { const res = await axios.get(`/api/usuarios?q=${this.busqueda}&escuela_id=${this.proyectoOriginal.escuela_id}`, { headers: { 'Authorization': `Bearer ${useAuthStore().token}` } }); this.resultadosBusqueda = res.data.filter(u => u.activo && !this.miembrosAsignados.some(m => m.id === u.id)); } catch (err) { console.error(err); } },
+
+    /**
+     * Propósito: Buscar usuarios disponibles en el sistema según el texto ingresado, omitiendo el filtro de escuela por el cambio a modelo mono-institucional.
+     * A quién alimenta (quién la llama): Es invocada por el input de búsqueda de la pestaña "Equipo" (evento @input).
+     * Qué datos retorna: No retorna datos globales, actualiza el array local 'resultadosBusqueda' filtrando usuarios inactivos o ya asignados al proyecto actual.
+     */
+    async buscarUsuarios() { 
+        if (this.busqueda.length < 2) return this.resultadosBusqueda = []; 
+        try { 
+            // Eliminamos el parámetro &escuela_id= de la URL para buscar globalmente
+            const res = await axios.get(`/api/usuarios?q=${this.busqueda}`, { 
+                headers: { 'Authorization': `Bearer ${useAuthStore().token}` } 
+            }); 
+            this.resultadosBusqueda = res.data.filter(u => u.activo && !this.miembrosAsignados.some(m => m.id === u.id)); 
+        } catch (err) { 
+            console.error(err); 
+        } 
+    },
+
     seleccionarUsuario(u) { this.miembrosAsignados.push({ ...u }); this.busqueda = ''; this.resultadosBusqueda = []; },
     
     /**
- * Propósito: Validar los datos esenciales del formulario y enviar la actualización general del proyecto al backend.
- * A quién alimenta (quién la llama): Es ejecutada por el botón "GUARDAR" en el encabezado de la vista de configuración del proyecto.
- * Qué datos retorna: No retorna datos locales. Realiza una petición PUT a la API y redirige al dashboard si es exitosa, o activa un modal de error si falla.
- */
-async confirmarCambios() { 
-      if (!this.form.nombre.trim()) return (this.modalErrorMsg = "El nombre del proyecto es obligatorio.", this.showModalError = true); 
-      
-      // Se eliminó la validación estricta del documentoViabilidadLink
-      
-      this.guardando = true; 
-      try { 
-          await axios.put(`/api/proyectos/${this.form.id}`, { ...this.form, usuariosIds: this.miembrosAsignados.map(m => m.id) }, { headers: { 'Authorization': `Bearer ${useAuthStore().token}` } }); 
-          this.volver(); 
-      } catch (e) { 
-          console.error(e); 
-          this.modalErrorMsg = "Error de conexión."; 
-          this.showModalError = true; 
-      } finally { 
-          this.guardando = false; 
-      } 
-  },
+     * Propósito: Validar los datos esenciales del formulario y enviar la actualización general del proyecto al backend.
+     * A quién alimenta (quién la llama): Es ejecutada por el botón "GUARDAR" en el encabezado de la vista de configuración del proyecto.
+     * Qué datos retorna: No retorna datos locales. Realiza una petición PUT a la API y redirige al dashboard si es exitosa, o activa un modal de error si falla.
+     */
+    async confirmarCambios() { 
+        if (!this.form.nombre.trim()) return (this.modalErrorMsg = "El nombre del proyecto es obligatorio.", this.showModalError = true); 
+        
+        this.guardando = true; 
+        try { 
+            await axios.put(`/api/proyectos/${this.form.id}`, { ...this.form, usuariosIds: this.miembrosAsignados.map(m => m.id) }, { headers: { 'Authorization': `Bearer ${useAuthStore().token}` } }); 
+            this.volver(); 
+        } catch (e) { 
+            console.error(e); 
+            this.modalErrorMsg = "Error de conexión."; 
+            this.showModalError = true; 
+        } finally { 
+            this.guardando = false; 
+        } 
+    },
 
     confirmarEliminacionUsuario(miembro) { this.miembroAEliminar = miembro; this.mostrarModalConfirmacion = true; },
     intentarVerDetalle(miembro) { if (this.esDocente || this.usuarioLogueado.id === miembro.id) { this.alumnoSeleccionado = miembro; this.mostrarDetalle = true; } else { this.modalErrorMsg = "No tienes permiso para ver las notas de este compañero."; this.showModalError = true; } },
@@ -752,35 +762,25 @@ async confirmarCambios() {
   }
 }
 
-
 /* ==========================================
    ADAPTACIÓN MODO CLARO: CONFIGURACIÓN DE PROYECTO
    ================================---------- */
 
 /* 1. Título y subtítulo del encabezado principal */
-body.theme-light .glass-panel h1.title {
-    color: #1a252f !important;
-}
-
-body.theme-light .glass-panel p.subtitle {
-    color: #4a5568 !important;
-}
+body.theme-light .glass-panel h1.title { color: #1a252f !important; }
+body.theme-light .glass-panel p.subtitle { color: #4a5568 !important; }
 
 /* 2. Botón de retroceso en el encabezado */
-body.theme-light .glass-panel .button.is-ghost {
-    color: #1d6fa5 !important;
-}
+body.theme-light .glass-panel .button.is-ghost { color: #1d6fa5 !important; }
 
 /* ==========================================
    ADAPTACIÓN MODO CLARO: CONFIGURACIÓN DE PROYECTO (ETIQUETAS Y TEXTOS)
    ================================---------- */
 
-/* 1. Etiquetas y títulos secundarios (Hitos, Estado, Cierres, Notas, Títulos de Alcance) */
+/* 1. Etiquetas y títulos secundarios */
 body.theme-light .box.glass-panel h3.title,
 body.theme-light label.label,
-body.theme-light p.subtitle {
-    color: #2c3e50 !important;
-}
+body.theme-light p.subtitle { color: #2c3e50 !important; }
 
 /* 2. Cajas oscuras internas de paneles en modo claro */
 body.theme-light .is-dark-box {
@@ -789,13 +789,8 @@ body.theme-light .is-dark-box {
     box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
 }
 
-body.theme-light .is-dark-box .has-text-white {
-    color: #2c3e50 !important;
-}
-
-body.theme-light .is-dark-box .has-text-grey-light {
-    color: #64748b !important;
-}
+body.theme-light .is-dark-box .has-text-white { color: #2c3e50 !important; }
+body.theme-light .is-dark-box .has-text-grey-light { color: #64748b !important; }
 
 /* 3. Textareas y inputs dentro de cajas oscuras en modo claro */
 body.theme-light textarea.custom-textarea,
@@ -804,29 +799,19 @@ body.theme-light input.input.is-dark {
     color: #2c3e50 !important;
     border: 1px solid #cbd5e1 !important;
 }
+
 /* ==========================================
    AJUSTES FINALES MODO CLARO: TABS Y BOTONES
    ================================---------- */
 
-/* 1. Textos e íconos de las pestañas inactivas en modo claro */
-body.theme-light .custom-tabs li a {
-    color: #4a5568 !important;
-}
-
-body.theme-light .custom-tabs li.is-active a {
-    color: #1d6fa5 !important;
-}
-
-/* 2. Botón "Cancelar" en el encabezado */
+body.theme-light .custom-tabs li a { color: #4a5568 !important; }
+body.theme-light .custom-tabs li.is-active a { color: #1d6fa5 !important; }
 body.theme-light .glass-panel .button.is-light {
     color: #2c3e50 !important;
     background-color: #e2e8f0 !important;
     border-color: #cbd5e1 !important;
 }
-
-body.theme-light .glass-panel .button.is-light:hover {
-    background-color: #cbd5e1 !important;
-}
+body.theme-light .glass-panel .button.is-light:hover { background-color: #cbd5e1 !important; }
 
 /* ==========================================
    TAMAÑO DE FUENTE GLOBAL PARA CONTROLES DE EVALUACIÓN (.is-small)
@@ -842,76 +827,36 @@ textarea.textarea.is-small {
 /* ==========================================
    CORRECCIÓN DE FONDO Y CONTRASTE EN TABLA DE NOTAS (MODO CLARO)
    ================================---------- */
-
-body.theme-light .container-table-accordion {
-    background: #ffffff !important;
-    border: 1px solid #cbd5e1 !important;
-}
-
-body.theme-light .delivery-table-v2 td {
-    color: #2c3e50 !important;
-}
-
-body.theme-light .custom-date-font {
-    color: #4a5568 !important;
-}
-
-body.theme-light .desc-cell-format {
-    color: #4a5568 !important;
-}
+body.theme-light .container-table-accordion { background: #ffffff !important; border: 1px solid #cbd5e1 !important; }
+body.theme-light .delivery-table-v2 td { color: #2c3e50 !important; }
+body.theme-light .custom-date-font { color: #4a5568 !important; }
+body.theme-light .desc-cell-format { color: #4a5568 !important; }
 
 /* ==========================================
    MEJORA DE CONTRASTE PARA BOTÓN BACKLOG (MODO CLARO)
    ================================---------- */
-
 body.theme-light .glass-panel .button.is-info.is-outlined {
     color: #1d6fa5 !important;
     border-color: #1d6fa5 !important;
     font-weight: 600 !important;
     background-color: transparent !important;
 }
-
 body.theme-light .glass-panel .button.is-info.is-outlined:hover {
     background-color: #1d6fa5 !important;
     color: #ffffff !important;
 }
 
-
 /* ==========================================
    AJUSTES FINALES EN PESTAÑA DOCS (MODO CLARO)
    ================================---------- */
-
-/* 1. Texto de ayuda de la carpeta raíz */
-body.theme-light .help.has-text-grey-lighter {
-    color: #4a5568 !important;
-}
-
-/* 2. Encabezados de la tabla de documentos */
-body.theme-light .delivery-table-v2 th {
-    color: #2c3e50 !important;
-}
+body.theme-light .help.has-text-grey-lighter { color: #4a5568 !important; }
+body.theme-light .delivery-table-v2 th { color: #2c3e50 !important; }
 
 /* ==========================================
    AMPLIACIÓN GLOBAL DE FUENTES (MODO APTO PARA TODOS)
    ================================---------- */
-
-/* 1. Inputs, selects y textareas de toda la vista */
-.input, .textarea, .select select {
-    font-size: 1.05rem !important;
-}
-
-/* 2. Textos de ayuda e instrucciones secundarias */
-.help, .is-size-7 {
-    font-size: 0.9rem !important;
-}
-
-/* 3. Celdas y textos dentro de las tablas */
-.delivery-table-v2 td, .delivery-table-v2 th {
-    font-size: 0.95rem !important;
-}
-
-/* 4. Placeholder de los inputs para que no queden chicos */
-::placeholder {
-    font-size: 0.95rem !important;
-}
+.input, .textarea, .select select { font-size: 1.05rem !important; }
+.help, .is-size-7 { font-size: 0.9rem !important; }
+.delivery-table-v2 td, .delivery-table-v2 th { font-size: 0.95rem !important; }
+::placeholder { font-size: 0.95rem !important; }
 </style>

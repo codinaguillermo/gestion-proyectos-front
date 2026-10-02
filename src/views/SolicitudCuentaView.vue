@@ -242,7 +242,7 @@
             <div class="footer-info has-text-centered">
                 <span>&copy; {{ anioActual }}</span> | 
                 <span>Creado por Guillermo Codina.</span>
-                <span class="version-badge">v4.3.3</span>
+                <span class="version-badge">v4.3.4</span>
             </div>
         </div>
     </footer>
